@@ -1,3 +1,8 @@
 [submodule "third_party/wxWidgets"]
 	path = third_party/wxWidgets
 	url = https://github.com/wxWidgets/wxWidgets.git
+	shallow = true
+[submodule "third_party/spdlog"]
+	path = third_party/spdlog
+	url = https://github.com/gabime/spdlog.git
+	shallow = true
