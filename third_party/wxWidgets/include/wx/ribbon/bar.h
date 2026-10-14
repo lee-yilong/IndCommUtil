@@ -1,0 +1,494 @@
+///////////////////////////////////////////////////////////////////////////////
+// Name:        wx/ribbon/bar.h
+// Purpose:     Top-level component of the ribbon-bar-style interface
+// Author:      Peter Cawley
+// Created:     2009-05-23
+// Copyright:   (C) Peter Cawley
+// Licence:     wxWindows licence
+///////////////////////////////////////////////////////////////////////////////
+
+#ifndef _WX_RIBBON_BAR_H_
+#define _WX_RIBBON_BAR_H_
+
+#include "wx/defs.h"
+
+#if wxUSE_RIBBON
+
+class WXDLLIMPEXP_FWD_CORE wxImageList;
+class WXDLLIMPEXP_FWD_CORE wxKeyEvent;
+class WXDLLIMPEXP_FWD_CORE wxActivateEvent;
+class WXDLLIMPEXP_FWD_CORE wxWindowDestroyEvent;
+class wxRibbonButtonBar;
+class wxRibbonToolBar;
+class WXDLLIMPEXP_FWD_RIBBON wxBackstage;
+
+#include "wx/ribbon/control.h"
+#include "wx/ribbon/page.h"
+
+#include "wx/vector.h"
+#include "wx/weakref.h"
+
+#include <vector>
+
+enum wxRibbonBarOption
+{
+    wxRIBBON_BAR_SHOW_PAGE_LABELS    = 1 << 0,
+    wxRIBBON_BAR_SHOW_PAGE_ICONS    = 1 << 1,
+    wxRIBBON_BAR_FLOW_HORIZONTAL    = 0,
+    wxRIBBON_BAR_FLOW_VERTICAL        = 1 << 2,
+    wxRIBBON_BAR_SHOW_PANEL_EXT_BUTTONS = 1 << 3,
+    wxRIBBON_BAR_SHOW_PANEL_MINIMISE_BUTTONS = 1 << 4,
+    wxRIBBON_BAR_ALWAYS_SHOW_TABS = 1 << 5,
+    wxRIBBON_BAR_SHOW_TOGGLE_BUTTON = 1 << 6,
+    wxRIBBON_BAR_SHOW_HELP_BUTTON = 1 << 7,
+
+    wxRIBBON_BAR_DEFAULT_STYLE =  wxRIBBON_BAR_FLOW_HORIZONTAL
+                                | wxRIBBON_BAR_SHOW_PAGE_LABELS
+                                | wxRIBBON_BAR_SHOW_PANEL_EXT_BUTTONS
+                                | wxRIBBON_BAR_SHOW_TOGGLE_BUTTON
+                                | wxRIBBON_BAR_SHOW_HELP_BUTTON,
+
+    wxRIBBON_BAR_FOLDBAR_STYLE =  wxRIBBON_BAR_FLOW_VERTICAL
+                                | wxRIBBON_BAR_SHOW_PAGE_ICONS
+                                | wxRIBBON_BAR_SHOW_PANEL_EXT_BUTTONS
+                                | wxRIBBON_BAR_SHOW_PANEL_MINIMISE_BUTTONS
+};
+
+enum wxRibbonDisplayMode
+{
+    wxRIBBON_BAR_PINNED,
+    wxRIBBON_BAR_MINIMIZED,
+    wxRIBBON_BAR_EXPANDED
+};
+
+class WXDLLIMPEXP_RIBBON wxRibbonBarEvent : public wxNotifyEvent
+{
+public:
+    wxRibbonBarEvent(wxEventType command_type = wxEVT_NULL,
+                       int win_id = 0,
+                       wxRibbonPage* page = nullptr)
+        : wxNotifyEvent(command_type, win_id)
+        , m_page(page)
+    {
+    }
+
+    wxRibbonBarEvent(const wxRibbonBarEvent& e) = default;
+    wxNODISCARD wxEvent *Clone() const override { return new wxRibbonBarEvent(*this); }
+
+    wxRibbonPage* GetPage() {return m_page;}
+    void SetPage(wxRibbonPage* page) {m_page = page;}
+
+protected:
+    wxRibbonPage* m_page = nullptr;
+
+#ifndef SWIG
+private:
+    wxDECLARE_DYNAMIC_CLASS_NO_ASSIGN(wxRibbonBarEvent);
+#endif
+};
+
+class WXDLLIMPEXP_RIBBON wxRibbonPageTabInfo
+{
+public:
+    wxRect rect;
+    wxRibbonPage* page = nullptr;
+    int ideal_width;
+    int small_begin_need_separator_width;
+    int small_must_have_separator_width;
+    int minimum_width;
+    bool active;
+    bool hovered;
+    bool highlight;
+    bool shown;
+    wxString keytip;
+};
+
+// This must be a class because it's forward declared.
+class wxRibbonPageTabInfoArray : public wxBaseArray<wxRibbonPageTabInfo>
+{
+public:
+    using wxBaseArray<wxRibbonPageTabInfo>::wxBaseArray;
+};
+
+class WXDLLIMPEXP_RIBBON wxRibbonBar : public wxRibbonControl
+{
+public:
+    wxRibbonBar();
+
+    wxRibbonBar(wxWindow* parent,
+                  wxWindowID id = wxID_ANY,
+                  const wxPoint& pos = wxDefaultPosition,
+                  const wxSize& size = wxDefaultSize,
+                  long style = wxRIBBON_BAR_DEFAULT_STYLE);
+
+    virtual ~wxRibbonBar();
+
+    bool Create(wxWindow* parent,
+                wxWindowID id = wxID_ANY,
+                const wxPoint& pos = wxDefaultPosition,
+                const wxSize& size = wxDefaultSize,
+                long style = wxRIBBON_BAR_DEFAULT_STYLE);
+
+    void SetTabCtrlMargins(int left, int right);
+
+    void SetArtProvider(wxRibbonArtProvider* art) override;
+
+    bool SetActivePage(size_t page);
+    bool SetActivePage(wxRibbonPage* page);
+    int GetActivePage() const;
+    wxRibbonPage* GetPage(int n);
+    wxRibbonPage* GetPageById(wxWindowID id);
+    size_t GetPageCount() const;
+    bool DismissExpandedPanel();
+    int GetPageNumber(wxRibbonPage* page) const;
+
+    void DeletePage(size_t n);
+    void ClearPages();
+
+    bool IsPageShown(size_t page) const;
+    void ShowPage(size_t page, bool show = true);
+    void HidePage(size_t page) { ShowPage(page, false); }
+
+    bool IsPageHighlighted(size_t page) const;
+    void AddPageHighlight(size_t page, bool highlight = true);
+    void RemovePageHighlight(size_t page) { AddPageHighlight(page, false); }
+
+    void ShowPanels(wxRibbonDisplayMode mode);
+    void ShowPanels(bool show = true);
+    void HidePanels() { ShowPanels(wxRIBBON_BAR_MINIMIZED); }
+    bool ArePanelsShown() const { return m_arePanelsShown; }
+    wxRibbonDisplayMode GetDisplayMode() const { return m_ribbon_state; }
+
+    virtual bool HasMultiplePages() const override { return true; }
+
+    void SetBackstagePage(wxRibbonPage* page);
+    wxRibbonPage* GetBackstagePage() const { return m_backstagePage.get(); }
+
+    void SetBackstage(wxBackstage* backstage, wxWindow* content);
+
+    void ShowBackstage(bool show = true);
+    bool IsBackstageShown() const { return m_backstageShown; }
+
+    void StyleBackstageTab(bool style = true);
+    bool IsBackstageTabStyled() const { return m_styleBackstageTab; }
+
+    void SetBackstageTabColour(const wxColour& colour);
+    wxColour GetBackstageTabColour() const;
+
+    void UpdateBackstageColours();
+
+    void SetWindowStyleFlag(long style) override;
+    long GetWindowStyleFlag() const override;
+    virtual bool Realize() override;
+    bool Reparent(wxWindowBase* newParent) override;
+
+    // Implementation only.
+    bool IsToggleButtonHovered() const { return m_toggle_button_hovered; }
+    bool IsHelpButtonHovered() const { return m_help_button_hovered; }
+
+    // Implementation only: true if the keyboard focus is on the tabs
+    // themselves, rather than on an item in the page or on a bar button.
+    bool IsTabRowFocused() const
+        { return m_focusedControl == nullptr && m_focusedButton == BarButton_None; }
+
+    void HideIfExpanded();
+
+    // Deprecated: wxRibbonButtonBar now uses wxBitmapBundle directly for
+    // DPI-aware bitmap management. This method is maintained for backward
+    // compatibility but is no longer used by wxRibbonButtonBar.
+    wxDEPRECATED_MSG("wxRibbonButtonBar now uses wxBitmapBundle for DPI support")
+    wxImageList* GetButtonImageList(wxSize size, int initialCount = 1);
+
+    // Key tips (popup windows showing associated keys).
+    void SetPageKeyTip(size_t page, const wxString& keytip);
+    void SetPageKeyTip(wxRibbonPage* page, const wxString& keytip);
+    void SetToggleButtonKeyTip(const wxString& keytip);
+    void SetHelpButtonKeyTip(const wxString& keytip);
+
+    bool ShowKeyTips();
+    void HideKeyTips();
+    bool AreKeyTipsShown() const { return m_keyTipsActive; }
+
+    struct TriggerKey
+    {
+        int keyCode;
+        int modifiers;
+    };
+
+    // Replaces all trigger keys with just this one (default is WXK_F10).
+    void SetKeyTipsTriggerKey(int keyCode, int modifiers = wxMOD_NONE);
+    // Adds an additional trigger key (e.g., Ctrl+F10 alongside F10).
+    void AddKeyTipsTriggerKey(int keyCode, int modifiers = wxMOD_NONE);
+    void ClearKeyTipsTriggerKeys();
+    const std::vector<TriggerKey>& GetKeyTipsTriggerKeys() const { return m_keyTipsTriggerKeys; }
+
+    // Implementation only: draw the badges of the keytip targets on 'window',
+    // if any, using the given art provider.
+    void DrawKeyTipsFor(wxDC& dc, wxWindow* window, wxRibbonArtProvider* art) const;
+
+    // Implementation only: give the keyboard focus back to the bar, with
+    // the focus on the first item of 'control'.
+    void FocusItemOf(wxRibbonControl* control);
+
+    // Make the bar a tab stop so that it can be reached with the keyboard.
+    bool AcceptsFocus() const override { return IsShown() && IsEnabled(); }
+
+#if wxUSE_ACCESSIBILITY
+    virtual wxAccessible* CreateAccessible() override;
+#endif // wxUSE_ACCESSIBILITY
+
+protected:
+    friend class wxRibbonPage;
+#if wxUSE_ACCESSIBILITY
+    friend class wxRibbonBarAccessible;
+#endif // wxUSE_ACCESSIBILITY
+
+    virtual wxSize DoGetBestSize() const override;
+    wxBorder GetDefaultBorder() const override { return wxBORDER_NONE; }
+    wxRibbonPageTabInfo* HitTestTabs(wxPoint position, int* index = nullptr);
+    void HitTestRibbonButton(const wxRect& rect, const wxPoint& position, bool &hover_flag);
+
+    void CommonInit(long style);
+    void AddPage(wxRibbonPage *page);
+    void RecalculateTabSizes();
+    void RecalculateMinSize();
+    void ScrollTabBar(int npixels);
+    void RefreshTabBar();
+    void RepositionPage(wxRibbonPage *page);
+
+    void OnPaint(wxPaintEvent& evt);
+    void OnEraseBackground(wxEraseEvent& evt);
+    void DoEraseBackground(wxDC& dc);
+    void OnSize(wxSizeEvent& evt);
+    void OnDPIChanged(wxDPIChangedEvent& evt);
+    void OnSysColourChanged(wxSysColourChangedEvent& evt);
+    void OnMouseLeftDown(wxMouseEvent& evt);
+    void OnMouseLeftUp(wxMouseEvent& evt);
+    void OnMouseMiddleDown(wxMouseEvent& evt);
+    void OnMouseMiddleUp(wxMouseEvent& evt);
+    void OnMouseRightDown(wxMouseEvent& evt);
+    void OnMouseRightUp(wxMouseEvent& evt);
+    void OnMouseMove(wxMouseEvent& evt);
+    void OnMouseLeave(wxMouseEvent& evt);
+    void OnMouseDoubleClick(wxMouseEvent& evt);
+    void DoMouseButtonCommon(wxMouseEvent& evt, wxEventType tab_event_type);
+    void OnKillFocus(wxFocusEvent& evt);
+    void OnSetFocus(wxFocusEvent& evt);
+    void OnKeyDown(wxKeyEvent& evt);
+
+    void OnBackstagePageChanged(wxRibbonBarEvent& evt);
+    void OnBackstageToggled(wxRibbonBarEvent& evt);
+    void UpdateBackstageViews(bool showBackstage);
+    void DrawBackstageTab(wxDC& dc, const wxRibbonPageTabInfo& tab);
+    bool IsBackstageTabHit(const wxPoint& position);
+
+    // Activate the given page the same way a click on its tab does.
+    bool DoChangeActivePage(size_t page);
+
+    int FindShownPage(int from, int step) const;
+
+    // Keyboard focus in the active page's controls.
+    std::vector<wxRibbonControl*> GetFocusableControls() const;
+    bool FocusPageItem(bool forward);
+    bool MoveFocusedItem(bool forward);
+    void ClearPageFocus();
+    void OnPageKeyDown(wxKeyEvent& evt);
+
+    // Like Navigate(), but also works if the parent doesn't handle Tab.
+    void NavigateOut(int flags);
+    static wxWindow* FindFocusableWindow(wxWindow* window, bool forward);
+
+    // The buttons after the tabs which can also have the keyboard focus.
+    enum BarButton
+    {
+        BarButton_None,
+        BarButton_Toggle,
+        BarButton_Help
+    };
+
+    std::vector<BarButton> GetFocusableBarButtons() const;
+    wxRect GetBarButtonRect(BarButton button) const;
+    bool MoveBarButtonFocus(bool forward);
+    void DoActivateToggleButton();
+    void DoActivateHelpButton();
+
+    wxRibbonPageTabInfoArray m_pages;
+    wxRect m_tab_scroll_left_button_rect;
+    wxRect m_tab_scroll_right_button_rect;
+    wxRect m_toggle_button_rect;
+    wxRect m_help_button_rect;
+    long m_flags = 0;
+    int m_tabs_total_width_ideal = 0;
+    int m_tabs_total_width_minimum = 0;
+    int m_tab_margin_left = 0;
+    int m_tab_margin_right = 0;
+    int m_tab_height = 0;
+    int m_tab_scroll_amount = 0;
+    int m_current_page = wxNOT_FOUND;
+    int m_current_hovered_page = wxNOT_FOUND;
+    int m_tab_scroll_left_button_state = 0;
+    int m_tab_scroll_right_button_state = 0;
+    bool m_tab_scroll_buttons_shown = false;
+    bool m_arePanelsShown = true;
+    bool m_bar_hovered = false;
+    bool m_toggle_button_hovered = false;
+    bool m_help_button_hovered = false;
+
+    wxRibbonDisplayMode m_ribbon_state = wxRIBBON_BAR_PINNED;
+
+    wxWeakRef<wxRibbonPage> m_backstagePage;
+    wxWeakRef<wxBackstage> m_backstage;
+    wxWeakRef<wxWindow> m_backstageContent;
+    // The ribbon's display mode from before the backstage was shown.
+    wxRibbonDisplayMode m_backstageSavedMode = wxRIBBON_BAR_PINNED;
+    wxColour m_backstageTabColour;
+    bool m_backstageShown = false;
+    bool m_styleBackstageTab = true;
+
+    wxVector<wxImageList*> m_image_lists;
+
+    // The control whose item has the keyboard focus, null if it's on the tabs.
+    wxWeakRef<wxRibbonControl> m_focusedControl;
+    // The button with the keyboard focus, if it isn't on a tab or in the page.
+    BarButton m_focusedButton = BarButton_None;
+
+private:
+    static bool IsFlatArtProvider(const wxRibbonArtProvider* art);
+
+    // Key tips implementation.
+    struct wxRibbonKeyTipInfo
+    {
+        enum class Kind
+        {
+            PageTab,
+            ToggleButton,
+            HelpButton,
+            ExtButton,
+            MinimisedPanel,
+            ButtonBarItem,
+            ToolBarItem,
+            Gallery
+        };
+
+        wxString fullKeyTip;
+        wxString remaining;
+        wxRect rect;
+        wxWindow* window = nullptr;
+        Kind kind = Kind::PageTab;
+
+        // For Kind::ButtonBarItem/Kind::ToolBarItem: targets the item's
+        // dropdown arrow instead of its main click area.
+        bool dropdown = false;
+
+        // Data needed to activate this target. Only the member(s) matching
+        // 'kind' are used.
+        size_t pageIndex = 0;
+        wxRibbonPanel* panel = nullptr;
+        wxRibbonButtonBar* buttonBar = nullptr;
+        wxWindowID buttonBarItemId = wxID_ANY;
+        wxRibbonToolBar* toolBar = nullptr;
+        wxWindowID toolBarItemId = wxID_ANY;
+    };
+
+    void DoBuildKeyTipTargets();
+    void DoActivateKeyTipTarget(const wxRibbonKeyTipInfo& target);
+    bool IsKeyTipsTriggerKey(int keyCode, int modifiers) const;
+    void OnKeyTipsCharHook(wxKeyEvent& event);
+    void OnKeyTipsActivate(wxActivateEvent& event);
+    void OnKeyTipsWindowDestroy(wxWindowDestroyEvent& event);
+    void RefreshKeyTipTargetWindows();
+
+    bool m_keyTipsActive = false;
+    wxString m_keyTipsTypedPrefix;
+    std::vector<wxRibbonKeyTipInfo> m_keyTipsTargets;
+    // Every window with a badge this session, so a narrowed-away badge
+    // still gets its window refreshed once (to erase it).
+    std::vector<wxWindow*> m_keyTipsWindows;
+    wxWindow* m_keyTipsTopLevelParent = nullptr;
+    std::vector<TriggerKey> m_keyTipsTriggerKeys;
+    wxString m_toggleButtonKeyTip;
+    wxString m_helpButtonKeyTip;
+
+protected:
+#ifndef SWIG
+    wxDECLARE_CLASS(wxRibbonBar);
+    wxDECLARE_EVENT_TABLE();
+#endif
+};
+
+#ifndef SWIG
+
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_RIBBON, wxEVT_RIBBONBAR_PAGE_CHANGED, wxRibbonBarEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_RIBBON, wxEVT_RIBBONBAR_PAGE_CHANGING, wxRibbonBarEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_RIBBON, wxEVT_RIBBONBAR_TAB_MIDDLE_DOWN, wxRibbonBarEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_RIBBON, wxEVT_RIBBONBAR_TAB_MIDDLE_UP, wxRibbonBarEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_RIBBON, wxEVT_RIBBONBAR_TAB_RIGHT_DOWN, wxRibbonBarEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_RIBBON, wxEVT_RIBBONBAR_TAB_RIGHT_UP, wxRibbonBarEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_RIBBON, wxEVT_RIBBONBAR_TAB_LEFT_DCLICK, wxRibbonBarEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_RIBBON, wxEVT_RIBBONBAR_TOGGLED, wxRibbonBarEvent);
+wxDECLARE_EXPORTED_EVENT(WXDLLIMPEXP_RIBBON, wxEVT_RIBBONBAR_HELP_CLICK, wxRibbonBarEvent);
+
+typedef void (wxEvtHandler::*wxRibbonBarEventFunction)(wxRibbonBarEvent&);
+
+#define wxRibbonBarEventHandler(func) \
+    wxEVENT_HANDLER_CAST(wxRibbonBarEventFunction, func)
+
+#define EVT_RIBBONBAR_PAGE_CHANGED(winid, fn) \
+    wx__DECLARE_EVT1(wxEVT_RIBBONBAR_PAGE_CHANGED, winid, wxRibbonBarEventHandler(fn))
+#define EVT_RIBBONBAR_PAGE_CHANGING(winid, fn) \
+    wx__DECLARE_EVT1(wxEVT_RIBBONBAR_PAGE_CHANGING, winid, wxRibbonBarEventHandler(fn))
+#define EVT_RIBBONBAR_TAB_MIDDLE_DOWN(winid, fn) \
+    wx__DECLARE_EVT1(wxEVT_RIBBONBAR_TAB_MIDDLE_DOWN, winid, wxRibbonBarEventHandler(fn))
+#define EVT_RIBBONBAR_TAB_MIDDLE_UP(winid, fn) \
+    wx__DECLARE_EVT1(wxEVT_RIBBONBAR_TAB_MIDDLE_UP, winid, wxRibbonBarEventHandler(fn))
+#define EVT_RIBBONBAR_TAB_RIGHT_DOWN(winid, fn) \
+    wx__DECLARE_EVT1(wxEVT_RIBBONBAR_TAB_RIGHT_DOWN, winid, wxRibbonBarEventHandler(fn))
+#define EVT_RIBBONBAR_TAB_RIGHT_UP(winid, fn) \
+    wx__DECLARE_EVT1(wxEVT_RIBBONBAR_TAB_RIGHT_UP, winid, wxRibbonBarEventHandler(fn))
+#define EVT_RIBBONBAR_TAB_LEFT_DCLICK(winid, fn) \
+    wx__DECLARE_EVT1(wxEVT_RIBBONBAR_TAB_LEFT_DCLICK, winid, wxRibbonBarEventHandler(fn))
+#define EVT_RIBBONBAR_TOGGLED(winid, fn) \
+    wx__DECLARE_EVT1(wxEVT_RIBBONBAR_TOGGLED, winid, wxRibbonBarEventHandler(fn))
+#define EVT_RIBBONBAR_HELP_CLICK(winid, fn) \
+    wx__DECLARE_EVT1(wxEVT_RIBBONBAR_HELP_CLICK, winid, wxRibbonBarEventHandler(fn))
+#else
+
+// wxpython/swig event work
+%constant wxEventType wxEVT_RIBBONBAR_PAGE_CHANGED;
+%constant wxEventType wxEVT_RIBBONBAR_PAGE_CHANGING;
+%constant wxEventType wxEVT_RIBBONBAR_TAB_MIDDLE_DOWN;
+%constant wxEventType wxEVT_RIBBONBAR_TAB_MIDDLE_UP;
+%constant wxEventType wxEVT_RIBBONBAR_TAB_RIGHT_DOWN;
+%constant wxEventType wxEVT_RIBBONBAR_TAB_RIGHT_UP;
+%constant wxEventType wxEVT_RIBBONBAR_TAB_LEFT_DCLICK;
+%constant wxEventType wxEVT_RIBBONBAR_TOGGLED;
+%constant wxEventType wxEVT_RIBBONBAR_HELP_CLICK;
+
+%pythoncode {
+    EVT_RIBBONBAR_PAGE_CHANGED = wx.PyEventBinder( wxEVT_RIBBONBAR_PAGE_CHANGED, 1 )
+    EVT_RIBBONBAR_PAGE_CHANGING = wx.PyEventBinder( wxEVT_RIBBONBAR_PAGE_CHANGING, 1 )
+    EVT_RIBBONBAR_TAB_MIDDLE_DOWN = wx.PyEventBinder( wxEVT_RIBBONBAR_TAB_MIDDLE_DOWN, 1 )
+    EVT_RIBBONBAR_TAB_MIDDLE_UP = wx.PyEventBinder( wxEVT_RIBBONBAR_TAB_MIDDLE_UP, 1 )
+    EVT_RIBBONBAR_TAB_RIGHT_DOWN = wx.PyEventBinder( wxEVT_RIBBONBAR_TAB_RIGHT_DOWN, 1 )
+    EVT_RIBBONBAR_TAB_RIGHT_UP = wx.PyEventBinder( wxEVT_RIBBONBAR_TAB_RIGHT_UP, 1 )
+    EVT_RIBBONBAR_TAB_LEFT_DCLICK = wx.PyEventBinder( wxEVT_RIBBONBAR_TAB_LEFT_DCLICK, 1 )
+    EVT_RIBBONBAR_TOGGLED = wx.PyEventBinder( wxEVT_RIBBONBAR_TOGGLED, 1 )
+    EVT_RIBBONBAR_HELP_CLICK = wx.PyEventBinder( wxEVT_RIBBONBAR_HELP_CLICK, 1 )
+}
+#endif
+
+// old wxEVT_COMMAND_* constants
+#define wxEVT_COMMAND_RIBBONBAR_PAGE_CHANGED      wxEVT_RIBBONBAR_PAGE_CHANGED
+#define wxEVT_COMMAND_RIBBONBAR_PAGE_CHANGING     wxEVT_RIBBONBAR_PAGE_CHANGING
+#define wxEVT_COMMAND_RIBBONBAR_TAB_MIDDLE_DOWN   wxEVT_RIBBONBAR_TAB_MIDDLE_DOWN
+#define wxEVT_COMMAND_RIBBONBAR_TAB_MIDDLE_UP     wxEVT_RIBBONBAR_TAB_MIDDLE_UP
+#define wxEVT_COMMAND_RIBBONBAR_TAB_RIGHT_DOWN    wxEVT_RIBBONBAR_TAB_RIGHT_DOWN
+#define wxEVT_COMMAND_RIBBONBAR_TAB_RIGHT_UP      wxEVT_RIBBONBAR_TAB_RIGHT_UP
+#define wxEVT_COMMAND_RIBBONBAR_TAB_LEFT_DCLICK   wxEVT_RIBBONBAR_TAB_LEFT_DCLICK
+#define wxEVT_COMMAND_RIBBONBAR_TOGGLED           wxEVT_RIBBONBAR_TOGGLED
+#define wxEVT_COMMAND_RIBBONBAR_HELP_CLICKED      wxEVT_RIBBONBAR_HELP_CLICK
+
+#endif // wxUSE_RIBBON
+
+#endif // _WX_RIBBON_BAR_H_
+

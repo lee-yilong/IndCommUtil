@@ -1,0 +1,33 @@
+/////////////////////////////////////////////////////////////////////////////
+// Name:        wx/osx/accel.h
+// Purpose:     wxAcceleratorTable class
+// Author:      Stefan Csomor
+// Created:     1998-01-01
+// Copyright:   (c) Stefan Csomor
+// Licence:     wxWindows licence
+/////////////////////////////////////////////////////////////////////////////
+
+#ifndef _WX_ACCEL_H_
+#define _WX_ACCEL_H_
+
+#include "wx/string.h"
+#include "wx/event.h"
+
+class WXDLLIMPEXP_CORE wxAcceleratorTable: public wxObject
+{
+    wxDECLARE_DYNAMIC_CLASS(wxAcceleratorTable);
+public:
+    wxAcceleratorTable();
+    wxAcceleratorTable(int n, const wxAcceleratorEntry entries[]); // Load from array
+
+    bool Ok() const { return IsOk(); }
+    bool IsOk() const;
+
+    int GetCommand( wxKeyEvent &event );
+
+    // Find the entry corresponding to the given key event or nullptr.
+    const wxAcceleratorEntry *GetEntry(const wxKeyEvent& event) const;
+};
+
+#endif
+    // _WX_ACCEL_H_

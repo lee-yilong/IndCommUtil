@@ -1,0 +1,4 @@
+// 应用资源脚本。引用 wxWidgets 自带的 wx.rc，它会自动注入：
+//   - Common Controls 6.0 清单（解决 GetWindowSubclass 等入口点问题）
+//   - 默认光标、图标、About 对话框等标准资源
+#include "wx/msw/wx.rc"

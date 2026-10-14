@@ -1,0 +1,729 @@
+# Industrial Communication Utility - Simplified Chinese Translation
+# Copyright (C) 2026
+# This file is distributed under the same license as the package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: IndustrialCommunicationUtility 0.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-14 10:23+0800\n"
+"PO-Revision-Date: 2026-10-13 16:00+0800\n"
+"Last-Translator: Your Name <you@example.com>\n"
+"Language-Team: Simplified Chinese\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: src/app/App.cpp:16
+msgid "Application initializing..."
+msgstr "应用程序正在初始化..."
+
+#: src/app/App.cpp:27 src/app/MainFrame.cpp:509 src/ui/AppTaskBarIcon.cpp:20
+msgid "Industrial Communication Utility"
+msgstr "工业通信实用工具"
+
+#: src/app/App.cpp:30
+msgid "Application initialized"
+msgstr "应用程序初始化完成"
+
+#: src/app/App.cpp:35
+msgid "Application shutting down..."
+msgstr "应用程序正在关闭..."
+
+#: src/app/App.cpp:45
+#, c-format
+msgid "Language already '%s', ignoring"
+msgstr "当前已是语言 '%s'，忽略切换请求"
+
+#: src/app/App.cpp:51
+msgid ""
+"Language will be applied after restart.\n"
+"\n"
+"Restart now?"
+msgstr ""
+"语言将在重启后生效。\n"
+"\n"
+"是否立即重启？"
+
+#: src/app/App.cpp:52
+msgid "Language Changed"
+msgstr "语言已切换"
+
+#: src/app/App.cpp:56
+#, c-format
+msgid "Restarting application: %s"
+msgstr "正在重启应用程序: %s"
+
+#: src/app/App.cpp:60
+msgid "Language will be applied on next start"
+msgstr "语言将在下次启动时生效"
+
+#: src/app/MainFrame.cpp:76
+msgid "Industrial Communication Utility started"
+msgstr "工业通信实用工具已启动"
+
+#: src/app/MainFrame.cpp:81
+msgid "MainFrame destroyed"
+msgstr "主窗口已销毁"
+
+#: src/app/MainFrame.cpp:95
+msgid "Too many protocols, menu ID overflow"
+msgstr "协议过多，菜单 ID 溢出"
+
+#: src/app/MainFrame.cpp:105
+msgid "&New Connection"
+msgstr "&新建连接"
+
+#: src/app/MainFrame.cpp:105
+msgid "Create a new connection"
+msgstr "创建一个新连接"
+
+#: src/app/MainFrame.cpp:108
+msgid "Recent &Connections"
+msgstr "最近&连接"
+
+#: src/app/MainFrame.cpp:109
+msgid "Recently used connections"
+msgstr "最近使用过的连接"
+
+#: src/app/MainFrame.cpp:111
+msgid "&Open Connection\tCtrl+O"
+msgstr "&打开连接\tCtrl+O"
+
+#: src/app/MainFrame.cpp:112
+msgid "Open a saved connection"
+msgstr "打开一个已保存的连接"
+
+#: src/app/MainFrame.cpp:114
+msgid "&Save Connection\tCtrl+S"
+msgstr "&保存连接\tCtrl+S"
+
+#: src/app/MainFrame.cpp:115
+msgid "Save the current connection profile"
+msgstr "保存当前连接配置"
+
+#: src/app/MainFrame.cpp:117
+msgid "Save Connection &As...\tCtrl+Shift+S"
+msgstr "连接另存为(&A)...\tCtrl+Shift+S"
+
+#: src/app/MainFrame.cpp:118
+msgid "Save the current connection profile to a new file"
+msgstr "将当前连接配置保存到新文件"
+
+#: src/app/MainFrame.cpp:120
+msgid "&Close Connection\tCtrl+W"
+msgstr "&关闭连接\tCtrl+W"
+
+#: src/app/MainFrame.cpp:121
+msgid "Close the current connection"
+msgstr "关闭当前连接"
+
+#: src/app/MainFrame.cpp:124
+msgid "&Quit\tAlt+F4"
+msgstr "&退出\tAlt+F4"
+
+#: src/app/MainFrame.cpp:124
+msgid "Quit the application"
+msgstr "退出应用程序"
+
+#: src/app/MainFrame.cpp:126
+msgid "&File"
+msgstr "&文件"
+
+#: src/app/MainFrame.cpp:129
+msgid "&Show Log\tF2"
+msgstr "&显示日志\tF2"
+
+#: src/app/MainFrame.cpp:129
+msgid "Show application logs"
+msgstr "显示应用日志"
+
+#: src/app/MainFrame.cpp:130
+msgid "&View"
+msgstr "&视图"
+
+#: src/app/MainFrame.cpp:134
+msgid "Simplified Chinese"
+msgstr "简体中文"
+
+#: src/app/MainFrame.cpp:135
+msgid "English"
+msgstr "English"
+
+#: src/app/MainFrame.cpp:142
+msgid "Language"
+msgstr "语言"
+
+#: src/app/MainFrame.cpp:143
+msgid "&Settings"
+msgstr "&设置"
+
+#: src/app/MainFrame.cpp:146
+msgid "&About\tF1"
+msgstr "&关于\tF1"
+
+#: src/app/MainFrame.cpp:146
+msgid "Show info about this application"
+msgstr "显示关于本应用的信息"
+
+#: src/app/MainFrame.cpp:147
+msgid "&Help"
+msgstr "&帮助"
+
+#: src/app/MainFrame.cpp:151
+msgid "Ready"
+msgstr "就绪"
+
+#: src/app/MainFrame.cpp:164
+msgid ""
+"No active connection.\n"
+"Use File → New Connection to get started."
+msgstr ""
+"当前无活动连接。\n"
+"使用「文件 → 新建连接」开始。"
+
+#: src/app/MainFrame.cpp:171
+msgid "Welcome"
+msgstr "欢迎"
+
+#: src/app/MainFrame.cpp:173 src/app/MainFrame.cpp:185
+#: src/app/MainFrame.cpp:194
+msgid "Session"
+msgstr "会话"
+
+#: src/app/MainFrame.cpp:203 src/app/MainFrame.cpp:254
+msgid "Application exiting"
+msgstr "应用程序正在退出"
+
+#: src/app/MainFrame.cpp:224 src/app/MainFrame.cpp:336
+#, c-format
+msgid "Save changes to '%s' before closing?"
+msgstr "关闭前是否保存对 '%s' 的修改？"
+
+#: src/app/MainFrame.cpp:225 src/app/MainFrame.cpp:337
+#: src/app/MainFrame.cpp:553
+msgid "Save Connection Profile"
+msgstr "保存连接配置"
+
+#: src/app/MainFrame.cpp:229 src/app/MainFrame.cpp:340
+msgid "Close cancelled by user"
+msgstr "用户取消了关闭"
+
+#: src/app/MainFrame.cpp:236 src/app/MainFrame.cpp:346
+msgid "Save cancelled, close aborted"
+msgstr "保存已取消，关闭操作中止"
+
+#: src/app/MainFrame.cpp:242
+msgid "Minimize to system tray instead of exiting?"
+msgstr "是否最小化到系统托盘而不退出？"
+
+#: src/app/MainFrame.cpp:242
+msgid "Close"
+msgstr "关闭"
+
+#: src/app/MainFrame.cpp:277
+msgid ""
+"Industrial Communication Utility\n"
+"A tool for testing industrial protocols."
+msgstr ""
+"工业通信实用工具\n"
+"工业协议测试工具"
+
+#: src/app/MainFrame.cpp:278
+msgid "About"
+msgstr "关于"
+
+#: src/app/MainFrame.cpp:279
+msgid "About dialog shown"
+msgstr "已显示关于对话框"
+
+#: src/app/MainFrame.cpp:291
+msgid "User invoked Open Connection"
+msgstr "用户调用了打开连接"
+
+#: src/app/MainFrame.cpp:294 src/app/MainFrame.cpp:367
+#: src/app/MainFrame.cpp:607 src/app/MainFrame.cpp:745
+msgid "Please close the current connection first."
+msgstr "请先关闭当前连接。"
+
+#: src/app/MainFrame.cpp:294 src/app/MainFrame.cpp:367
+#: src/app/MainFrame.cpp:607 src/app/MainFrame.cpp:745
+msgid "Notice"
+msgstr "提示"
+
+#: src/app/MainFrame.cpp:299
+msgid "Open Connection Configuration"
+msgstr "打开连接配置"
+
+#: src/app/MainFrame.cpp:303
+msgid "Open connection cancelled by user"
+msgstr "用户取消了打开连接"
+
+#: src/app/MainFrame.cpp:311 src/app/MainFrame.cpp:385
+#, c-format
+msgid ""
+"Failed to load connection profile:\n"
+"%s"
+msgstr ""
+"加载连接配置文件失败：\n"
+"%s"
+
+#: src/app/MainFrame.cpp:312 src/app/MainFrame.cpp:375
+#: src/app/MainFrame.cpp:386 src/app/MainFrame.cpp:536
+#: src/app/MainFrame.cpp:567
+msgid "Error"
+msgstr "错误"
+
+#: src/app/MainFrame.cpp:323
+#, c-format
+msgid "Opening connection from file: %s"
+msgstr "正在从文件打开连接: %s"
+
+#: src/app/MainFrame.cpp:332
+#, c-format
+msgid "Closing connection: %s"
+msgstr "正在关闭连接: %s"
+
+#: src/app/MainFrame.cpp:359 src/app/MainFrame.cpp:691
+#: src/ui/ProtocolSessionPanel.cpp:162 src/ui/ProtocolSessionPanel.cpp:195
+msgid "Disconnected"
+msgstr "已断开连接"
+
+#: src/app/MainFrame.cpp:375
+#, c-format
+msgid ""
+"Connection profile not found:\n"
+"%s"
+msgstr ""
+"找不到连接配置文件：\n"
+"%s"
+
+#: src/app/MainFrame.cpp:414
+#, c-format
+msgid "AddRecentConnection: not a .conn path, ignored: %s"
+msgstr "AddRecentConnection: 非 .conn 路径，已忽略: %s"
+
+#: src/app/MainFrame.cpp:436
+msgid "(None)"
+msgstr "（无）"
+
+#: src/app/MainFrame.cpp:441
+#, c-format
+msgid "&%d %s"
+msgstr "&%d %s"
+
+#: src/app/MainFrame.cpp:450
+msgid "User selected Simplified Chinese"
+msgstr "用户选择了简体中文"
+
+#: src/app/MainFrame.cpp:455 src/app/MainFrame.cpp:464
+msgid "wxTheApp is not icu::App"
+msgstr "wxTheApp 不是 icu::App 类型的实例"
+
+#: src/app/MainFrame.cpp:459
+msgid "User selected English"
+msgstr "用户选择了英文"
+
+#: src/app/MainFrame.cpp:504
+msgid "Untitled"
+msgstr "未命名"
+
+#: src/app/MainFrame.cpp:534
+#, c-format
+msgid "Profile saved: %s"
+msgstr "配置文件已保存: %s"
+
+#: src/app/MainFrame.cpp:536 src/app/MainFrame.cpp:567
+msgid "Failed to save connection profile."
+msgstr "保存连接配置失败。"
+
+#: src/app/MainFrame.cpp:565
+#, c-format
+msgid "Profile saved as: %s"
+msgstr "配置文件已另存为: %s"
+
+#: src/app/MainFrame.cpp:573
+msgid "User clicked Save Connection"
+msgstr "用户点击了保存连接"
+
+#: src/app/MainFrame.cpp:578
+msgid "User clicked Save Connection As"
+msgstr "用户点击了另存连接"
+
+#: src/app/MainFrame.cpp:584
+msgid "Minimized to system tray"
+msgstr "已最小化到系统托盘"
+
+#: src/app/MainFrame.cpp:591
+msgid "Restored from system tray"
+msgstr "已从系统托盘恢复"
+
+#: src/app/MainFrame.cpp:598
+#, c-format
+msgid "Unknown protocol menu id: %d"
+msgstr "未知的协议菜单 ID: %d"
+
+#: src/app/MainFrame.cpp:603
+#, c-format
+msgid "User invoked New Connection for protocol: %s"
+msgstr "用户为协议调用了新建连接: %s"
+
+#: src/app/MainFrame.cpp:657
+msgid "Failed to open session"
+msgstr "无法打开会话"
+
+#: src/app/MainFrame.cpp:660
+#, c-format
+msgid "Creating session: %s"
+msgstr "正在创建会话: %s"
+
+#: src/app/MainFrame.cpp:661 src/app/MainFrame.cpp:685
+#: src/ui/ProtocolSessionPanel.cpp:37 src/ui/ProtocolSessionPanel.cpp:172
+#, c-format
+msgid "Connecting to %s ..."
+msgstr "正在连接到 %s ..."
+
+#: src/app/MainFrame.cpp:678 src/ui/ProtocolSessionPanel.cpp:183
+#, c-format
+msgid "Listening on %s"
+msgstr "正在监听 %s"
+
+#: src/app/MainFrame.cpp:681
+#, c-format
+msgid "Connected [%s]: %s"
+msgstr "已连接 [%s]: %s"
+
+#: src/app/MainFrame.cpp:688
+#, c-format
+msgid "Reconnecting to %s ..."
+msgstr "正在重新连接到 %s ..."
+
+#: src/app/MainFrame.cpp:724 src/ui/ProtocolSessionPanel.cpp:264
+msgid "User clicked Open Connection"
+msgstr "用户点击了打开连接"
+
+#: src/app/MainFrame.cpp:739
+msgid "User clicked Configure Connection"
+msgstr "用户点击了配置连接"
+
+#: src/app/MainFrame.cpp:763
+#, c-format
+msgid "Configuration updated (modified=%s)"
+msgstr "配置已更新（已修改=%s）"
+
+#: src/app/MainFrame.cpp:764
+msgid "yes"
+msgstr "是"
+
+#: src/app/MainFrame.cpp:764
+msgid "no"
+msgstr "否"
+
+#: src/protocols/tcp/TcpTransport.cpp:55
+#, c-format
+msgid "TCP transport connecting to %s:%d (attempt %d)"
+msgstr "TCP 传输正在连接 %s:%d（第 %d 次尝试）"
+
+#: src/protocols/tcp/TcpTransport.cpp:101
+#, c-format
+msgid "TCP transport connected to %s:%d"
+msgstr "TCP 传输已连接到 %s:%d"
+
+#: src/protocols/tcp/TcpTransport.cpp:119
+#, c-format
+msgid "TCP transport failed to connect to %s:%d"
+msgstr "TCP 传输连接 %s:%d 失败"
+
+#: src/protocols/tcp/TcpTransport.cpp:122
+#, c-format
+msgid "TCP transport reconnection failed to %s:%d"
+msgstr "TCP 传输重连 %s:%d 失败"
+
+#: src/protocols/tcp/TcpTransport.cpp:125
+#, c-format
+msgid "TCP transport disconnected from %s:%d"
+msgstr "TCP 传输已断开与 %s:%d 的连接"
+
+#: src/protocols/tcp/TcpTransport.cpp:149
+#, c-format
+msgid "TCP transport connect to %s:%d timed out"
+msgstr "TCP 传输连接 %s:%d 超时"
+
+#: src/protocols/tcp/TcpTransport.cpp:170
+#, fuzzy, c-format
+msgid "Reconnect attempts exhausted (%d)"
+msgstr "重连次数已耗尽（%d 次）"
+
+#: src/protocols/tcp/TcpTransport.cpp:182
+#, c-format
+msgid "Reconnecting in %d s (attempt %d)"
+msgstr "%d 秒后重连（第 %d 次尝试）"
+
+#: src/protocols/tcp/TcpTransport.cpp:216
+#, c-format
+msgid "Failed to listen on %s:%d"
+msgstr "监听 %s:%d 失败"
+
+#: src/protocols/tcp/TcpTransport.cpp:230
+#, c-format
+msgid "TCP server listening on %s:%d"
+msgstr "TCP 服务器正在监听 %s:%d"
+
+#: src/protocols/tcp/TcpTransport.cpp:291
+#, c-format
+msgid "Max clients (%d) reached, rejecting new connection"
+msgstr "已达最大客户端数（%d），拒绝新连接"
+
+#: src/protocols/tcp/TcpTransport.cpp:306
+#, c-format
+msgid "Client #%d connected (total: %d)"
+msgstr "客户端 #%d 已连接（总数: %d）"
+
+#: src/protocols/tcp/TcpTransport.cpp:327
+#, c-format
+msgid "Client #%d disconnected (remaining: %d)"
+msgstr "客户端 #%d 已断开（剩余: %d）"
+
+#: src/settings/LanguageSettings.cpp:44
+msgid "UTF-8 locale not available"
+msgstr "UTF-8 区域设置不可用"
+
+#: src/settings/LanguageSettings.cpp:63
+#, c-format
+msgid "Language preference saved: %s"
+msgstr "语言偏好已保存: %s"
+
+#: src/settings/LanguageSettings.cpp:67
+#, c-format
+msgid "Applying language: %s"
+msgstr "正在应用语言: %s"
+
+#: src/settings/LanguageSettings.cpp:76
+#, c-format
+msgid "wxLocale::Init failed for %s"
+msgstr "wxLocale::Init 对 %s 初始化失败"
+
+#: src/settings/LanguageSettings.cpp:82
+#, c-format
+msgid "Failed to load catalog '%s' for lang '%s'"
+msgstr "无法加载翻译文件 '%s'（语言 '%s'）"
+
+#: src/settings/LanguageSettings.cpp:85
+#, c-format
+msgid "Catalog '%s' loaded for lang '%s'"
+msgstr "已加载翻译文件 '%s'（语言 '%s'）"
+
+#: src/settings/Settings.cpp:17
+msgid "Settings initialized"
+msgstr "设置系统已初始化"
+
+#: src/settings/Settings.cpp:25
+msgid "Settings shutdown"
+msgstr "设置系统已关闭"
+
+#: src/ui/AppTaskBarIcon.cpp:25
+msgid "Show Window"
+msgstr "显示窗口"
+
+#: src/ui/AppTaskBarIcon.cpp:27
+msgid "Exit"
+msgstr "退出"
+
+#: src/ui/GenericProtocolDialog.cpp:13
+msgid "New Connection"
+msgstr "新建连接"
+
+#: src/ui/GenericProtocolDialog.cpp:29
+msgid "Mode"
+msgstr "模式"
+
+#: src/ui/LogFrame.cpp:12
+msgid "Log"
+msgstr "日志"
+
+#: src/ui/LogFrame.cpp:19
+msgid "Log window opened"
+msgstr "日志窗口已打开"
+
+#: src/ui/LogFrame.cpp:32
+msgid "Clear"
+msgstr "清空"
+
+#: src/ui/LogFrame.cpp:35
+msgid "Auto Scroll"
+msgstr "自动滚动"
+
+#: src/ui/LogFrame.cpp:60
+msgid "Log window hidden"
+msgstr "日志窗口已隐藏"
+
+#: src/ui/ProtocolSessionPanel.cpp:33 src/ui/ProtocolSessionPanel.cpp:129
+#, c-format
+msgid "Target: %s"
+msgstr "目标: %s"
+
+#: src/ui/ProtocolSessionPanel.cpp:58
+msgid "Session Status"
+msgstr "会话状态"
+
+#: src/ui/ProtocolSessionPanel.cpp:70
+msgid "Statistics"
+msgstr "统计"
+
+#: src/ui/ProtocolSessionPanel.cpp:71
+msgid "Received: 0 bytes"
+msgstr "已接收: 0 字节"
+
+#: src/ui/ProtocolSessionPanel.cpp:72
+msgid "Sent: 0 bytes"
+msgstr "已发送: 0 字节"
+
+#: src/ui/ProtocolSessionPanel.cpp:73
+msgid "Clients: 0"
+msgstr "客户端: 0"
+
+#: src/ui/ProtocolSessionPanel.cpp:80
+msgid "Data Log"
+msgstr "数据日志"
+
+#: src/ui/ProtocolSessionPanel.cpp:87 src/ui/ProtocolSessionPanel.cpp:92
+msgid "Send"
+msgstr "发送"
+
+#: src/ui/ProtocolSessionPanel.cpp:101 src/ui/ProtocolSessionPanel.cpp:294
+msgid "Open Connection"
+msgstr "打开连接"
+
+#: src/ui/ProtocolSessionPanel.cpp:105
+msgid "Configure Connection..."
+msgstr "配置连接..."
+
+#: src/ui/ProtocolSessionPanel.cpp:139
+msgid "Idle"
+msgstr "空闲"
+
+#: src/ui/ProtocolSessionPanel.cpp:143
+msgid "Connecting..."
+msgstr "连接中..."
+
+#: src/ui/ProtocolSessionPanel.cpp:147
+msgid "Reconnecting..."
+msgstr "重新连接中..."
+
+#: src/ui/ProtocolSessionPanel.cpp:153
+#, c-format
+msgid "Connected (%d)"
+msgstr "已连接 (%d)"
+
+#: src/ui/ProtocolSessionPanel.cpp:155
+msgid "Listening"
+msgstr "正在监听"
+
+#: src/ui/ProtocolSessionPanel.cpp:157
+msgid "Connected"
+msgstr "已连接"
+
+#: src/ui/ProtocolSessionPanel.cpp:177
+msgid "Connection lost, reconnecting ..."
+msgstr "连接丢失，正在重连..."
+
+#: src/ui/ProtocolSessionPanel.cpp:186
+#, c-format
+msgid "Connected to %s"
+msgstr "已连接到 %s"
+
+#: src/ui/ProtocolSessionPanel.cpp:191
+msgid "Connection failed or timed out"
+msgstr "连接失败或超时"
+
+#: src/ui/ProtocolSessionPanel.cpp:193
+msgid "Reconnect failed, giving up"
+msgstr "重连失败，已放弃"
+
+#: src/ui/ProtocolSessionPanel.cpp:213
+#, c-format
+msgid "Received: %llu bytes"
+msgstr "已接收: %llu 字节"
+
+#: src/ui/ProtocolSessionPanel.cpp:246
+#, c-format
+msgid "Sent: %llu bytes"
+msgstr "已发送: %llu 字节"
+
+#: src/ui/ProtocolSessionPanel.cpp:250
+msgid "Send failed"
+msgstr "发送失败"
+
+#: src/ui/ProtocolSessionPanel.cpp:275
+msgid "User cancelled connecting/reconnecting"
+msgstr "用户取消了连接/重连"
+
+#: src/ui/ProtocolSessionPanel.cpp:281
+msgid "User clicked Disconnect"
+msgstr "用户点击了断开连接"
+
+#: src/ui/ProtocolSessionPanel.cpp:297
+msgid "Cancel"
+msgstr "取消"
+
+#: src/ui/ProtocolSessionPanel.cpp:300
+msgid "Cancel Reconnecting"
+msgstr "取消重连"
+
+#: src/ui/ProtocolSessionPanel.cpp:304
+msgid "Stop Listening"
+msgstr "停止监听"
+
+#: src/ui/ProtocolSessionPanel.cpp:306
+msgid "Disconnect"
+msgstr "断开连接"
+
+#: src/ui/ProtocolSessionPanel.cpp:321
+#, c-format
+msgid "Reconnecting (attempt %d) ..."
+msgstr "正在重连（第 %d 次）..."
+
+#: src/ui/ProtocolSessionPanel.cpp:325
+msgid "User clicked Reconfigure"
+msgstr "用户点击了重新配置"
+
+#: src/ui/ProtocolSessionPanel.cpp:333
+#, c-format
+msgid "Clients: %d"
+msgstr "客户端: %d"
+
+#: src/ui/ProtocolSessionPanel.cpp:343
+#, c-format
+msgid "Client #%d connected"
+msgstr "客户端 #%d 已连接"
+
+#: src/ui/ProtocolSessionPanel.cpp:353
+#, c-format
+msgid "Client #%d disconnected"
+msgstr "客户端 #%d 已断开"
+
+#: src/ui/ProtocolSessionPanel.cpp:364
+msgid "Server Mode"
+msgstr "服务器模式"
+
+#: src/ui/ProtocolSessionPanel.cpp:364
+msgid "Client Mode"
+msgstr "客户端模式"
+
+#~ msgid "TCP Server"
+#~ msgstr "TCP 服务器"
+
+#~ msgid "TCP Client"
+#~ msgstr "TCP 客户端"
+
+#~ msgid "Modbus RTU"
+#~ msgstr "Modbus RTU"
+
+#~ msgid "Raw"
+#~ msgstr "原始"
+
+#, c-format
+#~ msgid "Codec '%s' encode failed"
+#~ msgstr "编解码器 '%s' 编码失败"

@@ -1,0 +1,74 @@
+name: build
+
+on:
+  push:
+    branches: [ main, master, dev ]
+  pull_request:
+    branches: [ main, master, dev ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Setup MSYS2 (UCRT64)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-gettext
+
+      - name: Cache wxWidgets build
+        id: wx-cache
+        uses: actions/cache@v4
+        with:
+          path: third_party/wxWidgets/lib
+          key: wx-${{ runner.os }}-${{ hashFiles('.git/modules/third_party/wxWidgets/HEAD') }}
+
+      - name: Build wxWidgets (shared, unicode, debug)
+        if: steps.wx-cache.outputs.cache-hit != 'true'
+        run: |
+          cd third_party/wxWidgets
+          mkdir -p build-release
+          cd build-release
+          ../configure \
+            --enable-shared \
+            --enable-unicode \
+            --enable-debug \
+            --disable-monolithic \
+            --with-msw \
+            CFLAGS="-O2" CXXFLAGS="-O2"
+          make -j$(nproc)
+
+      - name: Verify third_party
+        run: |
+          test -d third_party/wxWidgets/include       || (echo "wxWidgets include missing" && exit 1)
+          test -d third_party/wxWidgets/lib/gcc_dll   || (echo "wxWidgets lib missing"     && exit 1)
+          test -d third_party/spdlog/include          || (echo "spdlog missing"           && exit 1)
+          test -f third_party/doctest/doctest.h       || (echo "doctest missing"          && exit 1)
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DICU_BUILD_TESTS=ON
+          -DICU_BUILD_COVERAGE=OFF
+
+      - name: Build
+        run: cmake --build build -j
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
