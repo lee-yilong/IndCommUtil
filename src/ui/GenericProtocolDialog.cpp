@@ -4,12 +4,15 @@
 
 namespace icu {
 
+// clang-format off
+// wxWidgets 事件表宏展开后是一条语句，clang-format 会把后续行的缩进逐级累积
 wxBEGIN_EVENT_TABLE(GenericProtocolDialog, wxDialog)
-    EVT_RADIOBOX(wxID_ANY, GenericProtocolDialog::OnModeChanged) wxEND_EVENT_TABLE()
+    EVT_RADIOBOX(wxID_ANY, GenericProtocolDialog::OnModeChanged) wxEND_EVENT_TABLE();
+// clang-format on
 
-        GenericProtocolDialog::GenericProtocolDialog(
-            wxWindow* parent, IProtocol* protocol, int initialModeIndex,
-            const std::map<std::string, FieldValue>& initialValues)
+GenericProtocolDialog::GenericProtocolDialog(wxWindow* parent, IProtocol* protocol,
+                                             int initialModeIndex,
+                                             const std::map<std::string, FieldValue>& initialValues)
     : wxDialog(parent, wxID_ANY, _("New Connection"), wxDefaultPosition, wxDefaultSize,
                wxDEFAULT_DIALOG_STYLE),
       m_protocol(protocol),

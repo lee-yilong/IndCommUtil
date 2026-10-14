@@ -21,9 +21,15 @@ wxFont FontSettings::MonospaceDefault() {
     return wxFont(10, wxFONTFAMILY_TELETYPE, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
 }
 
-wxFont FontSettings::GetUiFont() const { return SystemDefault(); }
-wxFont FontSettings::GetLogFont() const { return MonospaceDefault(); }
-wxFont FontSettings::GetDataFont() const { return MonospaceDefault(); }
+wxFont FontSettings::GetUiFont() const {
+    return SystemDefault();
+}
+wxFont FontSettings::GetLogFont() const {
+    return MonospaceDefault();
+}
+wxFont FontSettings::GetDataFont() const {
+    return MonospaceDefault();
+}
 
 void FontSettings::SetUiFont(const wxFont&) {}
 void FontSettings::SetLogFont(const wxFont&) {}

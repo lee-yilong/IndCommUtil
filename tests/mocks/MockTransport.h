@@ -1,11 +1,11 @@
 #pragma once
 
-#include "core/ITransport.h"
-
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "core/ITransport.h"
 
 namespace icu {
 namespace test {
@@ -18,8 +18,7 @@ public:
     bool Open() override {
         ++(*openCount);
         if (m_openShouldFail) return false;
-        if (m_state == TransportState::Opening || m_state == TransportState::Open)
-            return true;
+        if (m_state == TransportState::Opening || m_state == TransportState::Open) return true;
         m_state = TransportState::Opening;
         NotifyState(m_state);
         return true;
@@ -62,9 +61,7 @@ public:
         NotifyState(st);
     }
 
-    void SimulateReconnectAttempt(int attempt) {
-        NotifyReconnectAttempt(attempt);
-    }
+    void SimulateReconnectAttempt(int attempt) { NotifyReconnectAttempt(attempt); }
 
     void SimulateClientConnected(int clientId) {
         m_clients.push_back(clientId);
@@ -84,16 +81,14 @@ public:
 
     const std::vector<uint8_t>& SentBytes() const { return m_sent; }
 
-    std::string SentString() const {
-        return std::string(m_sent.begin(), m_sent.end());
-    }
+    std::string SentString() const { return std::string(m_sent.begin(), m_sent.end()); }
 
     void ClearSent() { m_sent.clear(); }
 
     int OpenCallCount() const { return *openCount; }
     int CloseCallCount() const { return *closeCount; }
 
-    std::shared_ptr<int> openCount  = std::make_shared<int>(0);
+    std::shared_ptr<int> openCount = std::make_shared<int>(0);
     std::shared_ptr<int> closeCount = std::make_shared<int>(0);
 
 private:

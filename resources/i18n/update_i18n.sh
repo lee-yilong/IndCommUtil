@@ -8,14 +8,24 @@ LANGS=(zh_CN en_US)
 
 cd "$ROOT"
 
-echo "[1/3] Extracting strings from source -> $CATALOG.pot"
+# 递归收集 src/ 下的 .cpp 与 .h
+#   - 必须递归：src/core/、src/ui/ 等，以及 header-only 的 Codec 里的 _()
+#   - 传入相对路径，避免 .pot 里出现绝对路径
+mapfile -t SOURCES < <(find src -type f \( -name '*.cpp' -o -name '*.h' \) | sort)
+
+if [ "${#SOURCES[@]}" -eq 0 ]; then
+    echo "错误：src/ 下没有找到源文件" >&2
+    exit 1
+fi
+
+echo "[1/3] Extracting strings from ${#SOURCES[@]} files -> $CATALOG.pot"
 xgettext \
     --language=C++ \
     --keyword=_ \
     --keyword=wxTRANSLATE \
     --from-code=UTF-8 \
     --output="$I18N/$CATALOG.pot" \
-    src/*.cpp src/*/*.cpp
+    "${SOURCES[@]}"
 
 for lang in "${LANGS[@]}"; do
     po="$I18N/$lang/LC_MESSAGES/$CATALOG.po"
@@ -26,11 +36,11 @@ for lang in "${LANGS[@]}"; do
         msginit --input="$I18N/$CATALOG.pot" --locale="$lang" --output="$po" --no-translator
     else
         echo "[2/3] Merging $po"
-        msgmerge --update --backup=none "$po" "$I18N/$CATALOG.pot"
+        msgmerge --update --backup=none --quiet "$po" "$I18N/$CATALOG.pot"
     fi
 
     echo "[3/3] Compiling $mo"
-    msgfmt --output-file="$mo" "$po"
+    msgfmt --check-format --output-file="$mo" "$po"
 done
 
 echo "Done. Edit .po files, then rerun this script."

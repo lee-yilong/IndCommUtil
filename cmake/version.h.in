@@ -1,0 +1,12 @@
+#pragma once
+
+// =========================================================================
+// 由 CMake 从 cmake/version.h.in 生成，不要手工修改
+// 生成位置：<build>/generated/version.h
+// =========================================================================
+
+#define ICU_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define ICU_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define ICU_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#define ICU_VERSION_STRING "@PROJECT_VERSION@"
+#define ICU_BUILD_TYPE "@CMAKE_BUILD_TYPE@"

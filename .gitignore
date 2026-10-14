@@ -1,8 +1,14 @@
 build/
+build-release/
+build-ci/
+build-coverage/
 logs/
 *.user
 .vscode/
 .cache/
+
+# 覆盖率报告
+coverage/
 
 # i18n 的中间产物，由构建自动生成
 resources/i18n/*.pot

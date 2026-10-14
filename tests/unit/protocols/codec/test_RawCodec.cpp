@@ -1,8 +1,8 @@
-#include "doctest.h"
-#include "protocols/codec/RawCodec.h"
-
 #include <string>
 #include <vector>
+
+#include "doctest.h"
+#include "protocols/codec/RawCodec.h"
 
 using namespace icu;
 
@@ -47,7 +47,7 @@ TEST_CASE("RawCodec: Encode 覆盖已有的 out 内容") {
     RawCodec c;
 
     const std::vector<uint8_t> msg = {'a', 'b'};
-    std::vector<uint8_t> out  = {'x', 'y', 'z', 'z', 'z'};
+    std::vector<uint8_t> out = {'x', 'y', 'z', 'z', 'z'};
 
     CHECK(c.Encode(msg, out));
     CHECK(out == msg);
@@ -87,7 +87,7 @@ TEST_CASE("RawCodec: Feed 多次调用每次都独立触发（不累积）") {
     auto onMsg = [&](const std::vector<uint8_t>& m) { msgs.push_back(ToStr(m)); };
 
     c.Feed(reinterpret_cast<const uint8_t*>("abc"), 3, onMsg);
-    c.Feed(reinterpret_cast<const uint8_t*>("de"),  2, onMsg);
+    c.Feed(reinterpret_cast<const uint8_t*>("de"), 2, onMsg);
     c.Feed(reinterpret_cast<const uint8_t*>("fghi"), 4, onMsg);
 
     REQUIRE(msgs.size() == 3);
@@ -176,8 +176,7 @@ TEST_CASE("RawCodec: Encode → Feed 往返一致") {
     REQUIRE(c.Encode(original, encoded));
 
     std::vector<uint8_t> decoded;
-    c.Feed(encoded.data(), encoded.size(),
-           [&](const std::vector<uint8_t>& m) { decoded = m; });
+    c.Feed(encoded.data(), encoded.size(), [&](const std::vector<uint8_t>& m) { decoded = m; });
 
     CHECK(decoded == original);
 }

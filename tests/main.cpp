@@ -8,10 +8,10 @@
 // =========================================================================
 
 #define DOCTEST_CONFIG_IMPLEMENT
-#include "doctest.h"
-
 #include <wx/init.h>
 #include <wx/translation.h>
+
+#include "doctest.h"
 
 int main(int argc, char** argv) {
     wxInitializer wxInit;

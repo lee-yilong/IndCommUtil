@@ -5,10 +5,12 @@
 
 namespace icu {
 
+// clang-format off
+// wxWidgets 事件表宏展开后是一条语句，clang-format 会把后续行的缩进逐级累积
 wxBEGIN_EVENT_TABLE(LogFrame, wxFrame) EVT_CLOSE(LogFrame::OnClose)
-    EVT_BUTTON(wxID_ANY, LogFrame::OnClear) wxEND_EVENT_TABLE()
+    EVT_BUTTON(wxID_ANY, LogFrame::OnClear) wxEND_EVENT_TABLE();  // clang-format on
 
-        LogFrame::LogFrame(wxWindow* parent)
+LogFrame::LogFrame(wxWindow* parent)
     : wxFrame(parent, wxID_ANY, _("Log"), wxDefaultPosition, wxSize(900, 500),
               wxDEFAULT_FRAME_STYLE) {
     BuildUi();

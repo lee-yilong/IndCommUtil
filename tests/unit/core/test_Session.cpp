@@ -1,11 +1,11 @@
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "core/Session.h"
 #include "doctest.h"
 #include "mocks/MockCodec.h"
 #include "mocks/MockTransport.h"
-
-#include <memory>
-#include <string>
-#include <vector>
 
 using namespace icu;
 using icu::test::MockCodec;
@@ -15,15 +15,15 @@ namespace {
 
 struct Fixture {
     MockTransport* transport = nullptr;
-    MockCodec*     codec     = nullptr;
+    MockCodec* codec = nullptr;
     std::unique_ptr<Session> session;
 
     Fixture() {
         auto t = std::make_unique<MockTransport>();
         auto c = std::make_unique<MockCodec>();
         transport = t.get();
-        codec     = c.get();
-        session   = std::make_unique<Session>(std::move(t), std::move(c));
+        codec = c.get();
+        session = std::make_unique<Session>(std::move(t), std::move(c));
     }
 };
 
@@ -220,9 +220,7 @@ TEST_CASE("Session: clientId 透传（服务器模式）") {
     Fixture f;
 
     int receivedClientId = -1;
-    f.session->OnMessage([&](int id, const std::vector<uint8_t>&) {
-        receivedClientId = id;
-    });
+    f.session->OnMessage([&](int id, const std::vector<uint8_t>&) { receivedClientId = id; });
 
     f.session->Open();
     f.transport->SimulateState(TransportState::Open);
@@ -238,9 +236,7 @@ TEST_CASE("Session: Codec 定长切帧后多次 OnMessage") {
     f.codec->SetFrameSize(3);
 
     std::vector<std::vector<uint8_t>> msgs;
-    f.session->OnMessage([&](int, const std::vector<uint8_t>& m) {
-        msgs.push_back(m);
-    });
+    f.session->OnMessage([&](int, const std::vector<uint8_t>& m) { msgs.push_back(m); });
 
     f.session->Open();
     f.transport->SimulateState(TransportState::Open);

@@ -26,6 +26,8 @@
 
 namespace icu {
 
+// clang-format off
+// wxWidgets 事件表宏展开后是一条语句，clang-format 会把后续行的缩进逐级累积
 wxBEGIN_EVENT_TABLE(MainFrame, wxFrame) EVT_CLOSE(MainFrame::OnClose)
     EVT_MENU(idMenuQuit, MainFrame::OnQuit)
     EVT_MENU(idMenuAbout, MainFrame::OnAbout)
@@ -38,10 +40,9 @@ wxBEGIN_EVENT_TABLE(MainFrame, wxFrame) EVT_CLOSE(MainFrame::OnClose)
     EVT_MENU(idMenuLangZhCN, MainFrame::OnLangZhCN)
     EVT_MENU(idMenuLangEnUS, MainFrame::OnLangEnUS)
     EVT_MENU_RANGE(idMenuRecentBase, idMenuRecentBase + 100, MainFrame::OnRecentConnection)
-wxEND_EVENT_TABLE()
+wxEND_EVENT_TABLE();  // clang-format on
 
-MainFrame::MainFrame(wxFrame* parent, const wxString& title)
-    : wxFrame(parent, wxID_ANY, title) {
+MainFrame::MainFrame(wxFrame* parent, const wxString& title) : wxFrame(parent, wxID_ANY, title) {
     BuildMenuBar();
     BuildLayout();
 
@@ -329,7 +330,8 @@ void MainFrame::OnOpenConnection(wxCommandEvent&) {
 void MainFrame::OnCloseConnection(wxCommandEvent&) {
     if (!m_sessionMgr.Active()) return;
 
-    ICU_SPDLOG_INFO(_("Closing connection: %s"), wxString::FromUTF8(m_sessionMgr.Active()->Target().c_str()));
+    ICU_SPDLOG_INFO(_("Closing connection: %s"),
+                    wxString::FromUTF8(m_sessionMgr.Active()->Target().c_str()));
 
     if (m_activeProfile && IsModified()) {
         const int ret = wxMessageBox(

@@ -1,0 +1,22 @@
+# =========================================================================
+# 行尾规范化
+#
+# Windows 上 core.autocrlf=true 会把检出文件转成 CRLF。
+# 对 C++ 源码无所谓，但 shell 脚本必须是 LF，否则 MSYS2/git-bash 会报
+#   bash: ./scripts/build.sh: /bin/bash^M: bad interpreter
+# =========================================================================
+
+# shell 脚本一律 LF
+*.sh            text eol=lf
+
+# gettext 目录文件用 LF，避免 diff 噪声
+*.po            text eol=lf
+*.pot           text eol=lf
+
+# C++ 源码与文档保持仓库原有风格（交给 autocrlf 处理）
+*.cpp           text
+*.h             text
+*.md            text
+CMakeLists.txt  text
+*.cmake         text
+*.yml           text

@@ -1,9 +1,9 @@
+#include <string>
+#include <vector>
+
 #include "doctest.h"
 #include "mocks/MockCodec.h"
 #include "mocks/MockTransport.h"
-
-#include <string>
-#include <vector>
 
 using namespace icu;
 using icu::test::MockCodec;

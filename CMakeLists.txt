@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(IndustrialCommunicationUtility LANGUAGES CXX RC)
+project(IndustrialCommunicationUtility
+    VERSION 0.1.0
+    DESCRIPTION "工业通信实用工具（多协议通讯测试/调试工具）"
+    HOMEPAGE_URL "https://github.com/lee-yilong/IndCommUtil"
+    LANGUAGES CXX RC)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -9,6 +13,15 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
 endif()
+
+# =========================================================================
+# 版本信息（cmake/version.h.in → <build>/generated/version.h）
+# =========================================================================
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/version.h"
+    @ONLY
+)
 
 # =========================================================================
 # 依赖路径
@@ -51,6 +64,7 @@ add_executable(IndustrialCommunicationUtility WIN32
 # =========================================================================
 target_include_directories(IndustrialCommunicationUtility PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated"
     "${WX_ROOT}/include"
     "${WX_ROOT}/lib/gcc_dll/${WX_SETUP_DIR}"
     "${SPDLOG_ROOT}/include"

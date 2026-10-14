@@ -11,11 +11,14 @@ enum {
     idTrayExit,
 };
 
+// clang-format off
+// wxWidgets 事件表宏展开后是一条语句，clang-format 会把后续行的缩进逐级累积
 wxBEGIN_EVENT_TABLE(AppTaskBarIcon, wxTaskBarIcon) EVT_MENU(idTrayShow, AppTaskBarIcon::OnMenuShow)
     EVT_MENU(idTrayExit, AppTaskBarIcon::OnMenuExit)
-        EVT_TASKBAR_LEFT_DCLICK(AppTaskBarIcon::OnDoubleClick) wxEND_EVENT_TABLE()
+    EVT_TASKBAR_LEFT_DCLICK(AppTaskBarIcon::OnDoubleClick) wxEND_EVENT_TABLE();
+// clang-format on
 
-            AppTaskBarIcon::AppTaskBarIcon() {
+AppTaskBarIcon::AppTaskBarIcon() {
     SetIcon(wxArtProvider::GetIcon(wxART_INFORMATION, wxART_OTHER, wxSize(16, 16)),
             _("Industrial Communication Utility"));
 }

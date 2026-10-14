@@ -2,7 +2,7 @@
 
 > **文档定位**：本文档既是项目开发文档，也是 AI 辅助开发的 Skill 定义。所有开发按本文档推进，AI 在协助编码时必须遵循本文档的架构、约定和任务清单。
 >
-> **本版重点**：阶段 4.5 全部完成（doctest + Mock + 覆盖率报告）。下一阶段 4.6.1 CI。
+> **本版重点**：阶段 4.6 全部完成（CI + clang-tidy + 版本管理 + CHANGELOG/LICENSE + docs + scripts）。下一阶段 4.7 清理。
 
 ---
 
@@ -478,12 +478,30 @@ IndustrialCommunicationUtility/
 IndustrialCommunicationUtility/
 ├── src/                              （同 5.1）
 ├── tests/                            ✅ 4.5 已建
-├── docs/                             ★ 待建（4.6）
-│   ├── architecture/adr/
+├── docs/                             ✅ 4.6 已建
+│   ├── architecture/
+│   │   ├── overview.md
+│   │   ├── layers.md
+│   │   └── adr/                      （README 索引 + template + 0001~0003）
 │   ├── user/
+│   │   ├── getting-started.md
+│   │   ├── tcp.md
+│   │   └── troubleshooting.md
 │   ├── developer/
+│   │   ├── building.md
+│   │   ├── adding-a-protocol.md
+│   │   ├── adding-a-setting.md
+│   │   └── testing.md
 │   └── api/
-├── scripts/                          ★ 待建（4.6）
+│       └── core.md
+├── scripts/                          ✅ 4.6 已建
+│   ├── build.sh
+│   ├── test.sh
+│   ├── format.sh
+│   ├── coverage.sh
+│   └── update_i18n.sh
+├── cmake/                            ✅ 4.6 已建
+│   └── version.h.in
 ├── packaging/                        ★ 待建（阶段 10）
 ├── resources/
 │   ├── app.rc
@@ -494,15 +512,17 @@ IndustrialCommunicationUtility/
 │   ├── spdlog/
 │   └── doctest/
 ├── .vscode/
+├── .github/workflows/build.yml       ✅ 4.6.1
 ├── CMakeLists.txt
 ├── CMakePresets.json
 ├── .clang-format
-├── .clang-tidy                       ★ 待建（4.6）
+├── .clang-tidy                       ✅ 4.6.2
+├── .gitattributes                    ✅ 4.6（脚本用 LF，防 CRLF 破坏 shebang）
 ├── .gitignore
 ├── README.md
-├── CHANGELOG.md                      ★ 待建（4.6）
-├── LICENSE                           ★ 待建（4.6）
-└── CONTRIBUTING.md                   ★ 待建（4.6）
+├── CHANGELOG.md                      ✅ 4.6.4
+├── LICENSE                           ✅ 4.6.5（MIT）
+└── CONTRIBUTING.md                   ✅ 4.6
 ```
 
 ### 5.3 各目录职责
@@ -886,34 +906,55 @@ msgattrib --only-fuzzy \
 
 ### 11.1 CI
 
-GitHub Actions 每次 push 跑：构建（Debug + Release）、单元测试、集成测试、clang-format 检查。
+GitHub Actions 每次 push / PR 跑四件事：**wxWidgets 构建缓存 → Debug 构建+测试 → Release 构建+测试 → clang-format 检查**。
 
-**`.github/workflows/build.yml`**：
+**`.github/workflows/build.yml`**（实际结构）：
 
 ```yaml
-name: build
-on: [push, pull_request]
-
 jobs:
-  build:
+  wxwidgets:                    # 构建并缓存第三方 GUI 库
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: msys2/setup-msys2@v2
-        with:
-          msystem: UCRT64
-          install: >-
-            mingw-w64-ucrt-x86_64-gcc
-            mingw-w64-ucrt-x86_64-cmake
-            mingw-w64-ucrt-x86_64-ninja
-            mingw-w64-ucrt-x86_64-gettext
-      - run: cmake -S . -B build -G Ninja -DICU_BUILD_TESTS=ON
-        shell: msys2 {0}
-      - run: cmake --build build
-        shell: msys2 {0}
-      - run: ctest --test-dir build --output-on-failure
-        shell: msys2 {0}
+        with: { submodules: recursive }
+      - uses: msys2/setup-msys2@v2     # UCRT64: gcc/cmake/ninja/gettext/make
+      - uses: actions/cache@v4         # path: third_party/wxWidgets/lib
+      - run: |                         # 仅缓存未命中时
+          cd third_party/wxWidgets && mkdir -p build-ci && cd build-ci
+          ../configure --enable-shared --enable-unicode --enable-debug \
+                       --disable-tests --disable-monolithic --with-msw
+          make -j$(nproc)
+
+  build:                        # matrix: [Debug, Release]
+    needs: wxwidgets
+    steps:
+      - uses: actions/cache/restore@v4  # fail-on-cache-miss: true
+      - run: cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DICU_BUILD_TESTS=ON
+      - run: cmake --build build-ci -j$(nproc)
+      - run: ctest --test-dir build-ci --output-on-failure
+
+  format:                       # clang-format 19.1.5（pip 固定版本）
+    steps:
+      - run: pip install "clang-format==19.1.5"
+      - run: clang-format --style=file --dry-run --Werror <src+r tests 下所有 .cpp/.h>
 ```
+
+**几个必须知道的点**：
+
+- `third_party/wxWidgets` 与 `third_party/spdlog` 都是 **submodule**，
+  分别固定到 `469921b9`（wx 3.3.5 开发快照）与 `f544fce0`。
+- **必须用 `submodules: recursive`**：wxWidgets 自身还带 12 个嵌套 submodule
+  （zlib / png / expat / jpeg / tiff / pcre / scintilla / lexilla / libwebp /
+  lunasvg / nanosvg / Catch），它的 `configure` + `make` 需要其中一部分。
+- `third_party/wxWidgets/lib/`（编译产物）被 wxWidgets 自己的 `.gitignore` 忽略，
+  **CI 上必须从源码构建 wxWidgets**，所以有了独立的 `wxwidgets` job 和缓存。
+  本地开发同理，见 [docs/developer/building.md](docs/developer/building.md) 第 2.2 节。
+- 缓存键用 `third_party/wxWidgets/include/wx/version.h` 的内容哈希推导，
+  换了 wx 版本会自动失效。
+- 格式检查用 **pip 装固定版本的 clang-format**，不用 MSYS2 的 clang
+  （后者随滚动更新变化，会导致格式化结果漂移）。本地也要用 19.1.5，
+  见 `scripts/format.sh`。
+- 本地等价命令：`scripts/build.sh`、`scripts/test.sh`、`scripts/format.sh check`。
 
 ### 11.2 静态分析
 
@@ -948,23 +989,31 @@ HeaderFilterRegex: 'src/.*'
 ### 11.4 文档体系
 
 ```
-docs/
+docs/                                 ✅ 4.6 已建
 ├── architecture/
-│   ├── overview.md
-│   ├── layers.md
-│   └── adr/
+│   ├── overview.md                   分层结构、核心抽象
+│   ├── layers.md                     依赖方向 + 自检命令
+│   └── adr/                          架构决策记录
+│       ├── README.md                 索引 + 何时写 ADR
+│       ├── template.md
+│       ├── 0001-protocol-as-first-class-with-modes.md
+│       ├── 0002-ui-data-driven-by-field-descriptors.md
+│       └── 0003-doctest-as-test-framework.md
 ├── user/
 │   ├── getting-started.md
 │   ├── tcp.md
 │   └── troubleshooting.md
 ├── developer/
-│   ├── building.md
+│   ├── building.md                   环境、wxWidgets 构建、常见问题
 │   ├── adding-a-protocol.md
 │   ├── adding-a-setting.md
 │   └── testing.md
 └── api/
-    └── core.md
+    └── core.md                       逐行核对过头文件的接口文档
 ```
+
+**约定**：架构级决策写进 `docs/architecture/adr/`（编号递增，不复用不删除）；
+接口变更先改 `docs/api/`，再改代码。
 
 ### 11.5 `CHANGELOG.md`
 
@@ -985,7 +1034,7 @@ docs/
 - [x] **阶段 4.4：核心类型合并**
 - [x] **阶段 4.5：测试模块**
 
-### 阶段 4：目录结构与设置模块重构 🟡 **进行中**
+### 阶段 4：目录结构与设置模块重构 🟡 **进行中（剩 4.7 清理）**
 
 **4.4 核心类型合并** ✅
 
@@ -1005,17 +1054,29 @@ docs/
 - [x] 4.5.7 单测：`RawCodec`
 - [x] 4.5.8 覆盖率报告（gcovr 集成）
 
-**4.6 工程化配套** 🟡 **当前阶段**
+**4.6 工程化配套** ✅
 
-- [ ] 4.6.1 CI  ← 下一步
-- [ ] 4.6.2 `.clang-tidy`
-- [ ] 4.6.3 `cmake/version.h.in`
-- [ ] 4.6.4 `CHANGELOG.md`
-- [ ] 4.6.5 `LICENSE`
-- [ ] 4.6.6 `docs/adr/`
-- [ ] 4.6.7 `scripts/`
+- [x] 4.6.1 CI（`.github/workflows/build.yml`：wxWidgets 缓存 + Debug/Release 构建 + ctest + clang-format）
+- [x] 4.6.2 `.clang-tidy`
+- [x] 4.6.3 `cmake/version.h.in` + `project(... VERSION 0.1.0)`
+- [x] 4.6.4 `CHANGELOG.md`
+- [x] 4.6.5 `LICENSE`（MIT）
+- [x] 4.6.6 `docs/`（architecture/adr + user + developer + api）
+- [x] 4.6.7 `scripts/`（build/test/format/coverage/update_i18n）
 
-**4.7 清理** ⬜ 未开始
+**4.7 清理** 🟡 **当前阶段**
+
+- [ ] 修正 `en_US.po` 未翻译条目
+- [ ] 把 `DisplayName()` / `ModeNames()` 接到 `_()` 上（当前菜单与模式名不翻译）
+- [ ] 清理 `tests/CMakeLists.txt` 里失效的 DLL 过滤代码（第 68~75 行会重复复制约 1.3 GB 的 DLL）
+- [ ] 补 `tests/fixtures/` 或从文档中删除
+
+**4.6 之后的补充（已完成）**
+
+- [x] `third_party/wxWidgets` 改为**真正的 submodule**，固定到 `469921b9`
+      （3.3.5 开发快照；上游无 `v3.3.5` tag，最新官方 tag 是 `v3.3.4`）
+- [x] `third_party/spdlog` 补上 `.gitmodules` 映射（此前是 gitlink 但无映射，导致
+      `git submodule status` 与 `actions/checkout` 都会失败），固定到 `f544fce0`
 
 ### 阶段 5：串口协议 ⬜ 未开始
 
@@ -1039,13 +1100,29 @@ docs/
 - 阶段 1~3 完成
 - 阶段 4.1~4.4 完成：`settings/` 就位，目录重组，核心类型合并到 `core/ProtocolTypes.h/.cpp`
 - **4.5 全部完成**：
-  - doctest 接入，`tests/` 就位（自动 GLOB 扫描，无需改 CMakeLists）
+  - doctest 2.4.11 接入，`tests/` 就位（自动 GLOB 扫描，无需改 CMakeLists）
   - `MockTransport` / `MockCodec` 就位（`tests/mocks/`，header-only）
-  - 92 个 test case / 300 assertions 全绿
-  - 覆盖率报告机制（gcovr + GCC `--coverage`）
-  - 覆盖率：core/ ~85%、config/ 100%、protocols/ ~40%、settings/ 0%，整体 50.0%
-- **4.6.1 CI 待做**
-- 4.6.2~4.6.7、4.7 待做
+  - **91 个 test case / 300 assertions 全绿**（Debug 与 Release 均通过）
+  - 覆盖率报告机制（gcovr + GCC `--coverage`，`scripts/coverage.sh`）
+  - 最近一次测量：core/ ~85%、config/ 100%、protocols/ ~40%、settings/ 0%，整体 50.0%
+- **4.6 全部完成**：
+  - CI（wxWidgets 缓存 + Debug/Release 构建 + ctest + clang-format）
+  - `.clang-tidy`、`cmake/version.h.in`（`project(VERSION 0.1.0)`）
+  - `CHANGELOG.md`、`LICENSE`（MIT）、`CONTRIBUTING.md`
+  - `docs/`：architecture（含 adr/）、user、developer、api
+  - `scripts/`：build / test / format / coverage / update_i18n
+  - 全量套用 `.clang-format`（clang-format 19.1.5）
+- **4.7 清理** 为当前阶段；阶段 5~10 未开始
+
+**工程命令**（仓库根）：
+
+| 命令 | 作用 |
+|---|---|
+| `scripts/build.sh [debug\|release] [clean]` | 配置 + 编译 |
+| `scripts/test.sh [debug\|release\|--list]` | ctest / 列出用例 |
+| `scripts/format.sh [check]` | 格式化 / 只检查（CI 用 19.1.5） |
+| `scripts/coverage.sh` | 生成 HTML 覆盖率报告 |
+| `scripts/update_i18n.sh` | 提取 + 合并 + 编译翻译 |
 
 **关键文件**：
 - `src/core/IProtocol.h` — 协议接口
@@ -1211,12 +1288,27 @@ tests/unit/protocols/<protocol_id>/
 | 2026-10-13 | 4.5.8 完成：gcovr 集成、`ICU_BUILD_COVERAGE` 开关；覆盖率 core/ ~85%、config/ 100%、protocols/ ~40%、settings/ 0%，整体 50.0% |
 | 2026-10-13 | 全项目日志翻译补齐：所有用户可见字符串 `_()`，无参数 `SPDLOG_*`、有参数 `ICU_SPDLOG_*`；header-only Codec 加 `#include <wx/translation.h>` |
 | 2026-10-13 | `zh_CN.po` 补全所有空翻译 + 消除 fuzzy |
+| 2026-10-14 | 4.6 全部完成：CI（wxWidgets 缓存 + Debug/Release + ctest + clang-format 19.1.5）、`.clang-tidy`、`cmake/version.h.in` + `project(VERSION 0.1.0)`、`CHANGELOG.md`、`LICENSE`（MIT）、`CONTRIBUTING.md`、`docs/`（architecture/adr + user + developer + api）、`scripts/`（build/test/format/coverage/update_i18n）、`.gitattributes` |
+| 2026-10-14 | 全量套用 `.clang-format`（59 个源文件）；`wxBEGIN_EVENT_TABLE` 区域加 `// clang-format off/on` 保护（clang-format 会把宏后的缩进逐级累积） |
+| 2026-10-14 | 修复 `resources/i18n/update_i18n.sh`：原来只扫描 `src/*.cpp src/*/*.cpp`，漏掉 `src/core/` 等更深层级，改为 `find src` 递归并带上 `.h` |
+| 2026-10-14 | `tests/helpers/TestEnv.h` 支持无效 `TEMP`/`TMP`：`temp_directory_path()` 失败时逐个回退，修复受限环境下 6 个集成测试失败 |
+| 2026-10-14 | 修正本文档与代码的漂移：测试用例数 92 → 91、CI 描述、目录结构状态、构建命令改为 `scripts/` |
 
 ---
 
 ## 附录 A：快速命令参考
 
 ### A.1 构建
+
+推荐直接用脚本（仓库根执行）：
+
+```bash
+scripts/build.sh              # Debug + 测试
+scripts/build.sh release      # Release（build-release/）
+scripts/build.sh debug clean  # 先清理再构建
+```
+
+等价的手工命令：
 
 ```bash
 # 在 MSYS2 UCRT64 shell 里
@@ -1229,35 +1321,58 @@ cmake --build build -j16
 
 > MSYS2 UCRT64 里 `cmake` 默认不在 PATH，用绝对路径
 > `"/c/Program Files/CMake/bin/cmake.exe"` 或 `pacman -S mingw-w64-ucrt-x86_64-cmake`。
+>
+> 首次构建前必须先编译 wxWidgets，见 [docs/developer/building.md](docs/developer/building.md) 第 2.2 节。
 
 ### A.2 测试
 
 ```bash
+scripts/test.sh               # ctest（Debug）
+scripts/test.sh release       # ctest（Release）
+scripts/test.sh --list        # 列出所有用例
+
+# 等价手工命令
 ctest --test-dir build --output-on-failure
-# 或直接跑
-build/tests/icu_tests.exe
+# 或直接跑（可用 doctest 过滤参数）
+build/tests/icu_tests.exe --test-case="Session:*"
 ```
 
 ### A.3 覆盖率
 
 ```bash
-cmake -S . -B build -G "MinGW Makefiles" \
+scripts/coverage.sh
+# 报告：build-coverage/coverage/index.html
+```
+
+等价手工命令：
+
+```bash
+cmake -S . -B build-coverage -G "MinGW Makefiles" \
       -DCMAKE_BUILD_TYPE=Debug \
       -DICU_BUILD_TESTS=ON -DICU_BUILD_COVERAGE=ON
-cmake --build build -j16
-cmake --build build --target coverage
-# 报告：build/coverage/index.html
+cmake --build build-coverage -j16
+cmake --build build-coverage --target coverage
 ```
 
 ### A.4 i18n
 
 ```bash
-bash scripts/update_i18n.sh
+scripts/update_i18n.sh
 msgattrib --untranslated resources/i18n/zh_CN/LC_MESSAGES/*.po
 msgattrib --only-fuzzy     resources/i18n/zh_CN/LC_MESSAGES/*.po
 ```
 
-### A.5 自检
+### A.5 格式化与静态分析
+
+```bash
+scripts/format.sh             # 就地格式化 src/ 与 tests/
+scripts/format.sh check       # 只检查（CI 用），需要 clang-format 19.1.5
+
+# 静态分析（需要 clang-tidy + compile_commands.json）
+clang-tidy -p build src/core/Session.cpp
+```
+
+### A.6 自检
 
 ```bash
 # 日志约定
@@ -1276,7 +1391,7 @@ for f in $(find src -name "*.h"); do
 done
 ```
 
-### A.6 残留进程清理
+### A.7 残留进程清理
 
 ```powershell
 Get-Process IndustrialCommunicationUtility -ErrorAction SilentlyContinue | Stop-Process -Force

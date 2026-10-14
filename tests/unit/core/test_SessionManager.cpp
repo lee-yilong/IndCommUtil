@@ -1,10 +1,10 @@
+#include <memory>
+
 #include "core/Session.h"
 #include "core/SessionManager.h"
 #include "doctest.h"
 #include "mocks/MockCodec.h"
 #include "mocks/MockTransport.h"
-
-#include <memory>
 
 using namespace icu;
 using icu::test::MockCodec;
@@ -13,21 +13,21 @@ using icu::test::MockTransport;
 namespace {
 
 struct MockSession {
-    MockTransport*       transport = nullptr;
-    Session*             raw       = nullptr;
+    MockTransport* transport = nullptr;
+    Session* raw = nullptr;
     std::shared_ptr<int> closeCount;
     std::shared_ptr<int> openCount;
-    SessionPtr           session;
+    SessionPtr session;
 
     MockSession() {
         auto t = std::make_unique<MockTransport>();
-        transport  = t.get();
+        transport = t.get();
         closeCount = t->closeCount;
-        openCount  = t->openCount;
+        openCount = t->openCount;
 
         auto c = std::make_unique<MockCodec>();
         session = std::make_unique<Session>(std::move(t), std::move(c));
-        raw     = session.get();
+        raw = session.get();
     }
 
     SessionPtr Release() { return std::move(session); }

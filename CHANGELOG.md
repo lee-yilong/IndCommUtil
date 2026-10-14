@@ -1,0 +1,103 @@
+# 变更日志
+
+本文件记录本项目所有值得注意的变更。
+
+格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
+版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
+
+版本号在 `CMakeLists.txt` 的 `project(... VERSION x.y.z)` 里维护，
+构建时由 `cmake/version.h.in` 生成 `ICU_VERSION_STRING` 等宏。
+
+## [未发布]
+
+### 计划中
+
+- 阶段 5：串口协议
+- 阶段 6：Modbus RTU 协议
+- 阶段 7：更多协议（MQTT / Modbus TCP 等）
+- 阶段 8：应用设置完善（字体 / 主题 / 图标，`ui/SettingsDialog`）
+- 阶段 9：UI 打磨
+- 阶段 10：发布准备（打包、安装程序）
+
+## [0.1.0] - 2026-10-14
+
+首个可运行版本：协议可插拔框架 + TCP 协议 + 数据驱动 UI + 测试与工程化配套。
+
+### 新增
+
+- **协议抽象层（阶段 1）**：`core/IProtocol.h`、`core/ITransport.h`、`core/ICodec.h`
+  - 协议是一等公民：客户端/服务器是协议内部的 Mode，不是两个协议
+- **协议注册表**：`core/ProtocolRegistry.h/.cpp`，`RegisterBuiltinProtocols()` 注册 TCP
+- **会话层**：`core/Session.h/.cpp`（Transport + Codec 组合、状态机、重连）、
+  `core/SessionManager.h/.cpp`（单活动会话生命周期）
+- **TCP 协议**（阶段 2）：`protocols/tcp/TcpProtocol.h/.cpp`
+  - Client / Server 两种 Mode，字段由 `FieldsForMode()` 描述
+  - `protocols/tcp/TcpTransport.h/.cpp`：`TcpClientTransport`（连接超时 + 自动重连退避）、
+    `TcpServerTransport`（多客户端、广播、`SendTo`）
+- **编解码**：`protocols/codec/RawCodec.h`（透传，header-only）
+- **会话面板通用化（阶段 3）**：`ui/ProtocolSessionPanel.h/.cpp`
+- **数据驱动 UI**：`ui/GenericProtocolDialog.h/.cpp`，从 `FieldDescriptor` 列表自动生成控件；
+  新增协议不需要改动任何 UI 代码
+- **配置文件**：`config/ConnectionProfile.h/.cpp`（`.conn` INI 格式，协议无关，含 Mode 名回退）
+- **设置模块（阶段 4.1~4.2）**：`settings/`
+  - `Settings` 是唯一直接访问 `wxConfigBase` 的类
+  - `LanguageSettings`（中文 / 英文，GNU gettext）、`UISettings`（窗口几何、最近连接、UI 开关）
+  - `FontSettings` / `ThemeSettings` / `IconSettings` 预留接口
+- **日志**：`log/Log.h/.cpp`，spdlog + GUI sink；`ICU_SPDLOG_*` / `SPDLOG_*` 宏，日志文本全部可翻译
+- **主窗口**：`app/MainFrame.h/.cpp`，菜单、`wxSimplebook` 页面切换、`.conn` 打开/保存/另存/关闭、
+  最近连接（上限 5）、修改标记、关闭最小化到托盘（`ui/AppTaskBarIcon`）
+- **i18n**：`resources/i18n/`（zh_CN / en_US），构建时自动 `xgettext` → `msgmerge` → `msgfmt`
+- **测试（阶段 4.5）**：doctest 2.4.11
+  - `tests/unit/`：`FieldValue`、`ActiveProfile`、`ProtocolRegistry`、`Session`、`SessionManager`、
+    `MockTransport`/`MockCodec`、`RawCodec`
+  - `tests/integration/`：`ConnectionProfile` roundtrip
+  - `tests/mocks/`：`MockTransport`、`MockCodec`（header-only）
+  - `tests/helpers/TestEnv.h`：临时目录 RAII
+  - 共 91 个 test case / 300 个 assertion
+- **工程化（阶段 4.6）**：
+  - GitHub Actions CI：wxWidgets 构建缓存 + Debug/Release 构建 + ctest + clang-format 检查
+  - `.clang-tidy` 配置
+  - `cmake/version.h.in` + `project(VERSION)` 版本宏
+  - `docs/`（架构、ADR、用户手册、开发者文档、API）
+  - `scripts/`（构建、测试、覆盖率、格式化、i18n）
+  - `LICENSE`（MIT）、`CONTRIBUTING.md`
+
+### 变更
+
+- **第三方依赖统一为 submodule**：
+  - `third_party/wxWidgets` 从「被提交的普通目录」改为真正的 submodule，
+    固定到上游 `469921b9`（`master` 上的 3.3.5 开发快照）。
+    经逐文件校验，该 commit 的 `include/wx/**` 1447 个文件与仓库原有头文件**完全一致**，
+    因此升级过程对代码零影响。
+    背景：上游**没有** `v3.3.5` tag（最新官方 tag 是 `v3.3.4`），
+    原来的 `.gitmodules` 声明了 submodule 但索引里是普通目录，两者不一致。
+  - `third_party/spdlog` 此前是 gitlink 却**没有 `.gitmodules` 映射**，
+    导致 `git submodule status` 直接报 fatal、`actions/checkout` 也会失败；
+    现补上映射并固定到 `f544fce0`（内容与原有工作区逐文件一致，同样零影响）。
+  - 两个 submodule 都标记 `shallow = true`，CI 拉取体积很小（wx 约 20 MB）。
+- **CI（4.6.1）修正**：wxWidgets 自带 12 个嵌套 submodule，构建需要其中一部分，
+  因此 CI 使用 `submodules: recursive`，并补充了 `src/zlib` 非空的校验。
+- **目录重组（阶段 4.3）**：源码按 `app/` `core/` `protocols/` `ui/` `settings/` `config/` `log/` 分层
+- **核心类型合并（阶段 4.4）**：`FieldValue` / `FieldDescriptor` / `ActiveProfile`
+  合并进 `core/ProtocolTypes.h/.cpp`，删除三个旧头文件
+- **代码格式化**：全量套用 `.clang-format`（clang-format 19.1.5）；
+  `wxBEGIN_EVENT_TABLE` 宏区域用 `// clang-format off` 保护，避免缩进逐级累积
+
+### 修复
+
+- 修正 `MockTransport::Open()` 语义：只切到 `Opening`，对齐真实异步 Transport
+- Mock 计数器改用 `shared_ptr<int>`，避免对象销毁后 use-after-free
+- `zh_CN.po` 补全空翻译并消除 fuzzy 条目
+
+### 已知问题
+
+- `en_US.po` 仍有部分条目未翻译（中文 msgid 回退显示原文）
+- `DisplayName()` / `ModeNames()` 未接 `_()`，菜单项与模式名当前不翻译
+- 覆盖率报告需要手动 `-DICU_BUILD_COVERAGE=ON` 生成，仓库内不保留产物
+- `tests/CMakeLists.txt` 第 68~75 行的 DLL 过滤是失效代码，会让约 1.3 GB 的 DLL 被复制两次
+- 本地执行 `git submodule update --init --recursive` 可能较慢（会拉 wxWidgets 的 12 个嵌套
+  submodule）；只更新本项目需要的两个可用
+  `git submodule update --init third_party/wxWidgets third_party/spdlog`
+
+[未发布]: https://github.com/lee-yilong/IndCommUtil/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/lee-yilong/IndCommUtil/releases/tag/v0.1.0

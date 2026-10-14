@@ -5,8 +5,8 @@
 #include <map>
 #include <string>
 
-#include "core/ProtocolTypes.h"
 #include "core/IProtocol.h"
+#include "core/ProtocolTypes.h"
 
 namespace icu {
 

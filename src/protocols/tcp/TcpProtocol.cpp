@@ -1,8 +1,8 @@
 #include "TcpProtocol.h"
 
-#include "protocols/codec/RawCodec.h"
-#include "core/Session.h"
 #include "TcpTransport.h"
+#include "core/Session.h"
+#include "protocols/codec/RawCodec.h"
 
 namespace icu {
 

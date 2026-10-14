@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-14 10:23+0800\n"
+"POT-Creation-Date: 2026-10-14 11:48+0800\n"
 "PO-Revision-Date: 2026-10-10 10:49+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -21,7 +21,7 @@ msgstr ""
 msgid "Application initializing..."
 msgstr ""
 
-#: src/app/App.cpp:27 src/app/MainFrame.cpp:509 src/ui/AppTaskBarIcon.cpp:20
+#: src/app/App.cpp:27 src/app/MainFrame.cpp:511 src/ui/AppTaskBarIcon.cpp:23
 msgid "Industrial Communication Utility"
 msgstr "Industrial Communication Utility"
 
@@ -58,175 +58,175 @@ msgstr "Quit the application"
 msgid "Language will be applied on next start"
 msgstr ""
 
-#: src/app/MainFrame.cpp:76
+#: src/app/MainFrame.cpp:77
 #, fuzzy
 msgid "Industrial Communication Utility started"
 msgstr "Industrial Communication Utility"
 
-#: src/app/MainFrame.cpp:81
+#: src/app/MainFrame.cpp:82
 msgid "MainFrame destroyed"
 msgstr ""
 
-#: src/app/MainFrame.cpp:95
+#: src/app/MainFrame.cpp:96
 msgid "Too many protocols, menu ID overflow"
 msgstr ""
 
-#: src/app/MainFrame.cpp:105
+#: src/app/MainFrame.cpp:106
 msgid "&New Connection"
 msgstr "&New Connection"
 
-#: src/app/MainFrame.cpp:105
+#: src/app/MainFrame.cpp:106
 msgid "Create a new connection"
 msgstr "Create a new connection"
 
-#: src/app/MainFrame.cpp:108
+#: src/app/MainFrame.cpp:109
 msgid "Recent &Connections"
 msgstr "Recent &Connections"
 
-#: src/app/MainFrame.cpp:109
+#: src/app/MainFrame.cpp:110
 msgid "Recently used connections"
 msgstr "Recently used connections"
 
-#: src/app/MainFrame.cpp:111
+#: src/app/MainFrame.cpp:112
 msgid "&Open Connection\tCtrl+O"
 msgstr "&Open Connection\tCtrl+O"
 
-#: src/app/MainFrame.cpp:112
+#: src/app/MainFrame.cpp:113
 msgid "Open a saved connection"
 msgstr "Open a saved connection"
 
-#: src/app/MainFrame.cpp:114
+#: src/app/MainFrame.cpp:115
 #, fuzzy
 msgid "&Save Connection\tCtrl+S"
 msgstr "&Open Connection\tCtrl+O"
 
-#: src/app/MainFrame.cpp:115
+#: src/app/MainFrame.cpp:116
 #, fuzzy
 msgid "Save the current connection profile"
 msgstr "Close the current connection"
 
-#: src/app/MainFrame.cpp:117
+#: src/app/MainFrame.cpp:118
 #, fuzzy
 msgid "Save Connection &As...\tCtrl+Shift+S"
 msgstr "&Open Connection\tCtrl+O"
 
-#: src/app/MainFrame.cpp:118
+#: src/app/MainFrame.cpp:119
 #, fuzzy
 msgid "Save the current connection profile to a new file"
 msgstr "Please close the current connection first."
 
-#: src/app/MainFrame.cpp:120
+#: src/app/MainFrame.cpp:121
 msgid "&Close Connection\tCtrl+W"
 msgstr "&Close Connection\tCtrl+W"
 
-#: src/app/MainFrame.cpp:121
+#: src/app/MainFrame.cpp:122
 msgid "Close the current connection"
 msgstr "Close the current connection"
 
-#: src/app/MainFrame.cpp:124
+#: src/app/MainFrame.cpp:125
 msgid "&Quit\tAlt+F4"
 msgstr "&Quit\tAlt+F4"
 
-#: src/app/MainFrame.cpp:124
+#: src/app/MainFrame.cpp:125
 msgid "Quit the application"
 msgstr "Quit the application"
 
-#: src/app/MainFrame.cpp:126
+#: src/app/MainFrame.cpp:127
 msgid "&File"
 msgstr "&File"
 
-#: src/app/MainFrame.cpp:129
+#: src/app/MainFrame.cpp:130
 msgid "&Show Log\tF2"
 msgstr "&Show Log\tF2"
 
-#: src/app/MainFrame.cpp:129
+#: src/app/MainFrame.cpp:130
 msgid "Show application logs"
 msgstr "Show application logs"
 
-#: src/app/MainFrame.cpp:130
+#: src/app/MainFrame.cpp:131
 msgid "&View"
 msgstr ""
 
-#: src/app/MainFrame.cpp:134
+#: src/app/MainFrame.cpp:135
 msgid "Simplified Chinese"
 msgstr "Simplified Chinese"
 
-#: src/app/MainFrame.cpp:135
+#: src/app/MainFrame.cpp:136
 msgid "English"
 msgstr "English"
 
-#: src/app/MainFrame.cpp:142
+#: src/app/MainFrame.cpp:143
 msgid "Language"
 msgstr ""
 
-#: src/app/MainFrame.cpp:143
+#: src/app/MainFrame.cpp:144
 msgid "&Settings"
 msgstr "&Settings"
 
-#: src/app/MainFrame.cpp:146
+#: src/app/MainFrame.cpp:147
 msgid "&About\tF1"
 msgstr "&About\tF1"
 
-#: src/app/MainFrame.cpp:146
+#: src/app/MainFrame.cpp:147
 msgid "Show info about this application"
 msgstr "Show info about this application"
 
-#: src/app/MainFrame.cpp:147
+#: src/app/MainFrame.cpp:148
 msgid "&Help"
 msgstr "&Help"
 
-#: src/app/MainFrame.cpp:151
+#: src/app/MainFrame.cpp:152
 msgid "Ready"
 msgstr "Ready"
 
-#: src/app/MainFrame.cpp:164
+#: src/app/MainFrame.cpp:165
 msgid ""
 "No active connection.\n"
 "Use File → New Connection to get started."
 msgstr ""
 
-#: src/app/MainFrame.cpp:171
+#: src/app/MainFrame.cpp:172
 msgid "Welcome"
 msgstr ""
 
-#: src/app/MainFrame.cpp:173 src/app/MainFrame.cpp:185
-#: src/app/MainFrame.cpp:194
+#: src/app/MainFrame.cpp:174 src/app/MainFrame.cpp:186
+#: src/app/MainFrame.cpp:195
 msgid "Session"
 msgstr ""
 
-#: src/app/MainFrame.cpp:203 src/app/MainFrame.cpp:254
+#: src/app/MainFrame.cpp:204 src/app/MainFrame.cpp:255
 #, fuzzy
 msgid "Application exiting"
 msgstr "Show application logs"
 
-#: src/app/MainFrame.cpp:224 src/app/MainFrame.cpp:336
+#: src/app/MainFrame.cpp:225 src/app/MainFrame.cpp:338
 #, c-format
 msgid "Save changes to '%s' before closing?"
 msgstr ""
 
-#: src/app/MainFrame.cpp:225 src/app/MainFrame.cpp:337
-#: src/app/MainFrame.cpp:553
+#: src/app/MainFrame.cpp:226 src/app/MainFrame.cpp:339
+#: src/app/MainFrame.cpp:555
 #, fuzzy
 msgid "Save Connection Profile"
 msgstr "&New Connection"
 
-#: src/app/MainFrame.cpp:229 src/app/MainFrame.cpp:340
+#: src/app/MainFrame.cpp:230 src/app/MainFrame.cpp:342
 msgid "Close cancelled by user"
 msgstr ""
 
-#: src/app/MainFrame.cpp:236 src/app/MainFrame.cpp:346
+#: src/app/MainFrame.cpp:237 src/app/MainFrame.cpp:348
 msgid "Save cancelled, close aborted"
 msgstr ""
 
-#: src/app/MainFrame.cpp:242
+#: src/app/MainFrame.cpp:243
 msgid "Minimize to system tray instead of exiting?"
 msgstr ""
 
-#: src/app/MainFrame.cpp:242
+#: src/app/MainFrame.cpp:243
 msgid "Close"
 msgstr ""
 
-#: src/app/MainFrame.cpp:277
+#: src/app/MainFrame.cpp:278
 msgid ""
 "Industrial Communication Utility\n"
 "A tool for testing industrial protocols."
@@ -234,195 +234,195 @@ msgstr ""
 "Industrial Communication Utility\n"
 "A tool for testing industrial protocols."
 
-#: src/app/MainFrame.cpp:278
+#: src/app/MainFrame.cpp:279
 msgid "About"
 msgstr "About"
 
-#: src/app/MainFrame.cpp:279
+#: src/app/MainFrame.cpp:280
 msgid "About dialog shown"
 msgstr ""
 
-#: src/app/MainFrame.cpp:291
+#: src/app/MainFrame.cpp:292
 #, fuzzy
 msgid "User invoked Open Connection"
 msgstr "New Siemens TIA Connection"
 
-#: src/app/MainFrame.cpp:294 src/app/MainFrame.cpp:367
-#: src/app/MainFrame.cpp:607 src/app/MainFrame.cpp:745
+#: src/app/MainFrame.cpp:295 src/app/MainFrame.cpp:369
+#: src/app/MainFrame.cpp:609 src/app/MainFrame.cpp:747
 msgid "Please close the current connection first."
 msgstr "Please close the current connection first."
 
-#: src/app/MainFrame.cpp:294 src/app/MainFrame.cpp:367
-#: src/app/MainFrame.cpp:607 src/app/MainFrame.cpp:745
+#: src/app/MainFrame.cpp:295 src/app/MainFrame.cpp:369
+#: src/app/MainFrame.cpp:609 src/app/MainFrame.cpp:747
 msgid "Notice"
 msgstr "Notice"
 
-#: src/app/MainFrame.cpp:299
+#: src/app/MainFrame.cpp:300
 msgid "Open Connection Configuration"
 msgstr "Open Connection Configuration"
 
-#: src/app/MainFrame.cpp:303
+#: src/app/MainFrame.cpp:304
 msgid "Open connection cancelled by user"
 msgstr ""
 
-#: src/app/MainFrame.cpp:311 src/app/MainFrame.cpp:385
+#: src/app/MainFrame.cpp:312 src/app/MainFrame.cpp:387
 #, c-format
 msgid ""
 "Failed to load connection profile:\n"
 "%s"
 msgstr ""
 
-#: src/app/MainFrame.cpp:312 src/app/MainFrame.cpp:375
-#: src/app/MainFrame.cpp:386 src/app/MainFrame.cpp:536
-#: src/app/MainFrame.cpp:567
+#: src/app/MainFrame.cpp:313 src/app/MainFrame.cpp:377
+#: src/app/MainFrame.cpp:388 src/app/MainFrame.cpp:538
+#: src/app/MainFrame.cpp:569
 msgid "Error"
 msgstr ""
 
-#: src/app/MainFrame.cpp:323
+#: src/app/MainFrame.cpp:324
 #, c-format
 msgid "Opening connection from file: %s"
 msgstr ""
 
-#: src/app/MainFrame.cpp:332
+#: src/app/MainFrame.cpp:333
 #, fuzzy, c-format
 msgid "Closing connection: %s"
 msgstr "Close the current connection"
 
-#: src/app/MainFrame.cpp:359 src/app/MainFrame.cpp:691
+#: src/app/MainFrame.cpp:361 src/app/MainFrame.cpp:693
 #: src/ui/ProtocolSessionPanel.cpp:162 src/ui/ProtocolSessionPanel.cpp:195
 msgid "Disconnected"
 msgstr "Disconnected"
 
-#: src/app/MainFrame.cpp:375
+#: src/app/MainFrame.cpp:377
 #, c-format
 msgid ""
 "Connection profile not found:\n"
 "%s"
 msgstr ""
 
-#: src/app/MainFrame.cpp:414
+#: src/app/MainFrame.cpp:416
 #, c-format
 msgid "AddRecentConnection: not a .conn path, ignored: %s"
 msgstr ""
 
-#: src/app/MainFrame.cpp:436
+#: src/app/MainFrame.cpp:438
 msgid "(None)"
 msgstr "(None)"
 
-#: src/app/MainFrame.cpp:441
+#: src/app/MainFrame.cpp:443
 #, c-format
 msgid "&%d %s"
 msgstr "&%d %s"
 
-#: src/app/MainFrame.cpp:450
+#: src/app/MainFrame.cpp:452
 #, fuzzy
 msgid "User selected Simplified Chinese"
 msgstr "Simplified Chinese"
 
-#: src/app/MainFrame.cpp:455 src/app/MainFrame.cpp:464
+#: src/app/MainFrame.cpp:457 src/app/MainFrame.cpp:466
 msgid "wxTheApp is not icu::App"
 msgstr ""
 
-#: src/app/MainFrame.cpp:459
+#: src/app/MainFrame.cpp:461
 msgid "User selected English"
 msgstr ""
 
-#: src/app/MainFrame.cpp:504
+#: src/app/MainFrame.cpp:506
 msgid "Untitled"
 msgstr ""
 
-#: src/app/MainFrame.cpp:534
+#: src/app/MainFrame.cpp:536
 #, c-format
 msgid "Profile saved: %s"
 msgstr ""
 
-#: src/app/MainFrame.cpp:536 src/app/MainFrame.cpp:567
+#: src/app/MainFrame.cpp:538 src/app/MainFrame.cpp:569
 #, fuzzy
 msgid "Failed to save connection profile."
 msgstr "Open a saved connection"
 
-#: src/app/MainFrame.cpp:565
+#: src/app/MainFrame.cpp:567
 #, c-format
 msgid "Profile saved as: %s"
 msgstr ""
 
-#: src/app/MainFrame.cpp:573
+#: src/app/MainFrame.cpp:575
 #, fuzzy
 msgid "User clicked Save Connection"
 msgstr "Open a saved connection"
 
-#: src/app/MainFrame.cpp:578
+#: src/app/MainFrame.cpp:580
 #, fuzzy
 msgid "User clicked Save Connection As"
 msgstr "Recent &Connections"
 
-#: src/app/MainFrame.cpp:584
+#: src/app/MainFrame.cpp:586
 msgid "Minimized to system tray"
 msgstr ""
 
-#: src/app/MainFrame.cpp:591
+#: src/app/MainFrame.cpp:593
 msgid "Restored from system tray"
 msgstr ""
 
-#: src/app/MainFrame.cpp:598
+#: src/app/MainFrame.cpp:600
 #, c-format
 msgid "Unknown protocol menu id: %d"
 msgstr ""
 
-#: src/app/MainFrame.cpp:603
+#: src/app/MainFrame.cpp:605
 #, c-format
 msgid "User invoked New Connection for protocol: %s"
 msgstr ""
 
-#: src/app/MainFrame.cpp:657
+#: src/app/MainFrame.cpp:659
 msgid "Failed to open session"
 msgstr ""
 
-#: src/app/MainFrame.cpp:660
+#: src/app/MainFrame.cpp:662
 #, c-format
 msgid "Creating session: %s"
 msgstr ""
 
-#: src/app/MainFrame.cpp:661 src/app/MainFrame.cpp:685
+#: src/app/MainFrame.cpp:663 src/app/MainFrame.cpp:687
 #: src/ui/ProtocolSessionPanel.cpp:37 src/ui/ProtocolSessionPanel.cpp:172
 #, c-format
 msgid "Connecting to %s ..."
 msgstr ""
 
-#: src/app/MainFrame.cpp:678 src/ui/ProtocolSessionPanel.cpp:183
+#: src/app/MainFrame.cpp:680 src/ui/ProtocolSessionPanel.cpp:183
 #, c-format
 msgid "Listening on %s"
 msgstr ""
 
-#: src/app/MainFrame.cpp:681
+#: src/app/MainFrame.cpp:683
 #, c-format
 msgid "Connected [%s]: %s"
 msgstr "Connected [%s]: %s"
 
-#: src/app/MainFrame.cpp:688
+#: src/app/MainFrame.cpp:690
 #, c-format
 msgid "Reconnecting to %s ..."
 msgstr ""
 
-#: src/app/MainFrame.cpp:724 src/ui/ProtocolSessionPanel.cpp:264
+#: src/app/MainFrame.cpp:726 src/ui/ProtocolSessionPanel.cpp:264
 #, fuzzy
 msgid "User clicked Open Connection"
 msgstr "Recent &Connections"
 
-#: src/app/MainFrame.cpp:739
+#: src/app/MainFrame.cpp:741
 msgid "User clicked Configure Connection"
 msgstr ""
 
-#: src/app/MainFrame.cpp:763
+#: src/app/MainFrame.cpp:765
 #, c-format
 msgid "Configuration updated (modified=%s)"
 msgstr ""
 
-#: src/app/MainFrame.cpp:764
+#: src/app/MainFrame.cpp:766
 msgid "yes"
 msgstr ""
 
-#: src/app/MainFrame.cpp:764
+#: src/app/MainFrame.cpp:766
 msgid "no"
 msgstr ""
 
@@ -529,41 +529,41 @@ msgstr ""
 msgid "Settings shutdown"
 msgstr "&Settings"
 
-#: src/ui/AppTaskBarIcon.cpp:25
+#: src/ui/AppTaskBarIcon.cpp:28
 msgid "Show Window"
 msgstr ""
 
-#: src/ui/AppTaskBarIcon.cpp:27
+#: src/ui/AppTaskBarIcon.cpp:30
 msgid "Exit"
 msgstr ""
 
-#: src/ui/GenericProtocolDialog.cpp:13
+#: src/ui/GenericProtocolDialog.cpp:16
 #, fuzzy
 msgid "New Connection"
 msgstr "&New Connection"
 
-#: src/ui/GenericProtocolDialog.cpp:29
+#: src/ui/GenericProtocolDialog.cpp:32
 msgid "Mode"
 msgstr "Mode"
 
-#: src/ui/LogFrame.cpp:12
+#: src/ui/LogFrame.cpp:14
 #, fuzzy
 msgid "Log"
 msgstr "&Log"
 
-#: src/ui/LogFrame.cpp:19
+#: src/ui/LogFrame.cpp:21
 msgid "Log window opened"
 msgstr ""
 
-#: src/ui/LogFrame.cpp:32
+#: src/ui/LogFrame.cpp:34
 msgid "Clear"
 msgstr ""
 
-#: src/ui/LogFrame.cpp:35
+#: src/ui/LogFrame.cpp:37
 msgid "Auto Scroll"
 msgstr ""
 
-#: src/ui/LogFrame.cpp:60
+#: src/ui/LogFrame.cpp:62
 msgid "Log window hidden"
 msgstr ""
 

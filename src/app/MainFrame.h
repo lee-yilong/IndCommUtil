@@ -6,8 +6,8 @@
 #include <map>
 #include <optional>
 
-#include "core/ProtocolTypes.h"
 #include "core/IProtocol.h"
+#include "core/ProtocolTypes.h"
 #include "core/SessionManager.h"
 
 namespace icu {

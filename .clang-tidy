@@ -1,0 +1,39 @@
+# =========================================================================
+# clang-tidy 配置
+#
+# 用法（先让 CMake 生成 compile_commands.json）：
+#   cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+#   clang-tidy -p build src/core/Session.cpp
+#
+# 参考：README 第 11.2 节
+# =========================================================================
+Checks: >
+  -*,
+  bugprone-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  -modernize-use-trailing-return-type,
+  -readability-magic-numbers
+
+WarningsAsErrors: ''
+
+HeaderFilterRegex: '.*[\\/]src[\\/].*'
+
+FormatStyle: file
+
+CheckOptions:
+  # 成员变量统一 m_ 前缀（项目既有约定）
+  - key: readability-identifier-naming.MemberPrefix
+    value: 'm_'
+  - key: readability-identifier-naming.MemberCase
+    value: camelBack
+  # 常量统一 k 前缀（项目既有约定，如 kCatalog）
+  - key: readability-identifier-naming.ConstantPrefix
+    value: 'k'
+  # 接口/抽象基类统一 I 前缀（IProtocol / ITransport / ICodec）
+  - key: readability-identifier-naming.ClassPrefix
+    value: ''
+  # 标题里的中文注释很常见，别因为宽度报警
+  - key: readability-function-cognitive-complexity.Threshold
+    value: '35'

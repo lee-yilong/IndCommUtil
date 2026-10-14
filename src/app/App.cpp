@@ -4,8 +4,8 @@
 #include <wx/stdpaths.h>
 
 #include "app/MainFrame.h"
-#include "log/Log.h"
 #include "core/ProtocolRegistry.h"
+#include "log/Log.h"
 #include "settings/LanguageSettings.h"
 #include "settings/Settings.h"
 #include "spdlog/spdlog.h"

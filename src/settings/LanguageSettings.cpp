@@ -82,8 +82,8 @@ bool LanguageSettings::ApplyLanguage(const wxString& canonicalName) {
         ICU_SPDLOG_WARN(_("Failed to load catalog '%s' for lang '%s'"),
                         wxString::FromUTF8(kCatalog), canonicalName);
     } else {
-        ICU_SPDLOG_INFO(_("Catalog '%s' loaded for lang '%s'"),
-                        wxString::FromUTF8(kCatalog), canonicalName);
+        ICU_SPDLOG_INFO(_("Catalog '%s' loaded for lang '%s'"), wxString::FromUTF8(kCatalog),
+                        canonicalName);
     }
 
     m_currentLang = canonicalName;
