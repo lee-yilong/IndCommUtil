@@ -2,7 +2,7 @@
 
 > **文档定位**：本文档既是项目开发文档，也是 AI 辅助开发的 Skill 定义。所有开发按本文档推进，AI 在协助编码时必须遵循本文档的架构、约定和任务清单。
 >
-> **本版重点**：阶段 4.6 全部完成（CI + clang-tidy + 版本管理 + CHANGELOG/LICENSE + docs + scripts）。下一阶段 4.7 清理。
+> **本版重点**：阶段 4 全部完成（含 4.7 清理），新增 ADR 0004 / 0005。**下一阶段 5：串口协议 + 会话面板通用增强**。阶段 6 计划接入 Modbus。
 
 ---
 
@@ -61,11 +61,12 @@
 | 测试 | doctest（header-only） |
 | i18n | GNU gettext（.po / .mo） |
 | 网络 | wxSocket（内置） |
+| 串口 | 自实现（`SerialPort`，Windows 优先） |
 | 静态分析 | clang-tidy + clang-format |
 | CI | GitHub Actions |
 | 覆盖率 | gcovr + GCC `--coverage` |
 | 调试器 | LLDB-DAP（GDB 17.2 与 cpptools MI 握手失败） |
-| 串口 | 待定（wxWidgets 无内置，需自实现或第三方库） |
+| Modbus（阶段 6） | serhmarch/ModbusLib（事务型 API） |
 
 ---
 
@@ -207,6 +208,15 @@ Session::Open() → Transport::Open() → 建立连接/监听
            ▼
 数据回调 → Session → UI 面板刷新
 ```
+
+**协议分类**：`ProtocolRegistry` 中的协议分为两类，各自使用不同的抽象：
+
+| 类型 | 协议 | 抽象 |
+|---|---|---|
+| **字节流** | TCP / 串口 / MQTT | `IProtocol + ITransport + ICodec + Session` |
+| **事务型**（阶段 6） | Modbus / OPC UA | `ITransactionProtocol + ITransactionSession` |
+
+详见 [ADR 0004](docs/architecture/adr/0004-transaction-protocol-separation.md)。
 
 ### 3.2 消息生命周期
 
@@ -394,11 +404,13 @@ public:
 };
 ```
 
+> **阶段 6 计划**：新增 `ITransactionProtocol` / `ITransactionSession` 用于 Modbus，与上面的字节流抽象并列。详见 [ADR 0004](docs/architecture/adr/0004-transaction-protocol-separation.md)。
+
 ---
 
 ## 5. 目录结构
 
-### 5.1 当前目录（阶段 4.5 完成后）
+### 5.1 当前目录（阶段 4 完成，阶段 5 未开始）
 
 ```
 IndustrialCommunicationUtility/
@@ -411,7 +423,7 @@ IndustrialCommunicationUtility/
 │   │   ├── ICodec.h
 │   │   ├── ITransport.h
 │   │   ├── IProtocol.h
-│   │   ├── ProtocolTypes.h/.cpp      ← 4.4 合并（FieldValue / FieldDescriptor / ActiveProfile）
+│   │   ├── ProtocolTypes.h/.cpp      ← FieldValue / FieldDescriptor / ActiveProfile
 │   │   ├── ProtocolRegistry.h/.cpp
 │   │   ├── Session.h/.cpp
 │   │   └── SessionManager.h/.cpp
@@ -419,12 +431,16 @@ IndustrialCommunicationUtility/
 │   │   ├── tcp/
 │   │   │   ├── TcpProtocol.h/.cpp
 │   │   │   └── TcpTransport.h/.cpp
+│   │   ├── serial/                    ★ 阶段 5 待建
+│   │   │   ├── SerialProtocol.h/.cpp
+│   │   │   ├── SerialTransport.h/.cpp
+│   │   │   └── SerialPort.h/.cpp
 │   │   └── codec/
 │   │       ├── RawCodec.h/.cpp
-│   │       └── ModbusRtuCodec.h/.cpp （.cpp 待阶段 6 实现）
+│   │       └── ModbusRtuCodec.h/.cpp （.cpp 待阶段 6）
 │   ├── ui/
 │   │   ├── GenericProtocolDialog.h/.cpp
-│   │   ├── ProtocolSessionPanel.h/.cpp
+│   │   ├── ProtocolSessionPanel.h/.cpp  ★ 阶段 5 增强
 │   │   ├── LogFrame.h/.cpp
 │   │   └── AppTaskBarIcon.h/.cpp
 │   ├── settings/
@@ -442,7 +458,7 @@ IndustrialCommunicationUtility/
 │       └── Log.h/.cpp
 ├── tests/
 │   ├── CMakeLists.txt
-│   ├── main.cpp                       ← doctest 实现 + main
+│   ├── main.cpp
 │   ├── unit/
 │   │   ├── core/
 │   │   │   ├── test_FieldValue.cpp
@@ -452,14 +468,15 @@ IndustrialCommunicationUtility/
 │   │   │   ├── test_Session.cpp
 │   │   │   └── test_SessionManager.cpp
 │   │   └── protocols/
-│   │       └── codec/
-│   │           └── test_RawCodec.cpp
+│   │       ├── codec/
+│   │       │   └── test_RawCodec.cpp
+│   │       └── serial/               ★ 阶段 5 待建
+│   │           └── test_SerialProtocol.cpp
 │   ├── integration/
 │   │   └── test_ConnectionProfile.cpp
 │   ├── mocks/
 │   │   ├── MockTransport.h
 │   │   └── MockCodec.h
-│   ├── fixtures/
 │   └── helpers/
 │       └── TestEnv.h
 ├── resources/
@@ -468,24 +485,33 @@ IndustrialCommunicationUtility/
 ├── third_party/
 │   ├── wxWidgets/
 │   ├── spdlog/
-│   └── doctest/
+│   ├── doctest/
+│   └── ModbusLib/                    ★ 阶段 6 待建
 └── CMakeLists.txt
 ```
 
-### 5.2 完整目标结构（含未来模块）
+### 5.2 完整目标结构
 
 ```
 IndustrialCommunicationUtility/
 ├── src/                              （同 5.1）
-├── tests/                            ✅ 4.5 已建
-├── docs/                             ✅ 4.6 已建
+├── tests/                            ✅ 已完成
+├── docs/                             ✅ 已完成
 │   ├── architecture/
 │   │   ├── overview.md
 │   │   ├── layers.md
-│   │   └── adr/                      （README 索引 + template + 0001~0003）
+│   │   └── adr/
+│   │       ├── README.md
+│   │       ├── template.md
+│   │       ├── 0001-protocol-as-first-class-with-modes.md
+│   │       ├── 0002-ui-data-driven-by-field-descriptors.md
+│   │       ├── 0003-doctest-as-test-framework.md
+│   │       ├── 0004-transaction-protocol-separation.md
+│   │       └── 0005-serial-protocol-and-common-panel-enhancement.md
 │   ├── user/
 │   │   ├── getting-started.md
 │   │   ├── tcp.md
+│   │   ├── serial.md                 ★ 阶段 5 待建
 │   │   └── troubleshooting.md
 │   ├── developer/
 │   │   ├── building.md
@@ -494,35 +520,29 @@ IndustrialCommunicationUtility/
 │   │   └── testing.md
 │   └── api/
 │       └── core.md
-├── scripts/                          ✅ 4.6 已建
+├── scripts/                          ✅ 已完成
 │   ├── build.sh
 │   ├── test.sh
 │   ├── format.sh
 │   ├── coverage.sh
 │   └── update_i18n.sh
-├── cmake/                            ✅ 4.6 已建
+├── cmake/                            ✅ 已完成
 │   └── version.h.in
 ├── packaging/                        ★ 待建（阶段 10）
 ├── resources/
-│   ├── app.rc
-│   ├── icons/
-│   └── i18n/
 ├── third_party/
-│   ├── wxWidgets/
-│   ├── spdlog/
-│   └── doctest/
 ├── .vscode/
-├── .github/workflows/build.yml       ✅ 4.6.1
+├── .github/workflows/build.yml       ✅ 已完成
 ├── CMakeLists.txt
 ├── CMakePresets.json
 ├── .clang-format
-├── .clang-tidy                       ✅ 4.6.2
-├── .gitattributes                    ✅ 4.6（脚本用 LF，防 CRLF 破坏 shebang）
+├── .clang-tidy
+├── .gitattributes
 ├── .gitignore
 ├── README.md
-├── CHANGELOG.md                      ✅ 4.6.4
-├── LICENSE                           ✅ 4.6.5（MIT）
-└── CONTRIBUTING.md                   ✅ 4.6
+├── CHANGELOG.md
+├── LICENSE
+└── CONTRIBUTING.md
 ```
 
 ### 5.3 各目录职责
@@ -531,12 +551,12 @@ IndustrialCommunicationUtility/
 |---|---|---|---|
 | `src/app/` | 启动、主窗口骨架、菜单 | 业务逻辑、协议细节 | `ui/ core/ settings/ config/ log/` |
 | `src/core/` | 接口、基础类型、Session | wxWidgets UI、具体协议 | C++ STL、wxBase |
-| `src/protocols/` | 具体协议实现、Codec | UI 代码 | `core/`、`log/` |
+| `src/protocols/` | 具体协议实现、Transport、Codec | UI 代码 | `core/`、`log/` |
 | `src/ui/` | 窗口、对话框、面板 | 协议逻辑、socket 操作 | `core/ settings/` |
 | `src/settings/` | 应用级设置 | 协议配置、业务逻辑 | `log/` |
 | `src/config/` | `.conn` 协议配置文件读写 | UI、传输 | `core/` |
 | `src/log/` | 日志初始化、GUI sink | 业务逻辑 | wxBase、spdlog |
-| `tests/` | 单元 / 集成测试 | 生产代码 | `core/`、`protocols/`、`settings/`、`config/` |
+| `tests/` | 单元 / 集成测试 | 生产代码 | `core/ protocols/ settings/ config/` |
 | `docs/` | 文档、ADR | 代码 | — |
 
 ### 5.4 分层规则
@@ -553,7 +573,7 @@ IndustrialCommunicationUtility/
 | 框架接口扩展 | `core/` |
 | 菜单项调整 | `app/MainFrame` |
 | 新增测试 | `tests/unit/` 或 `tests/integration/` |
-| 新增决策 | `docs/adr/` |
+| 新增决策 | `docs/architecture/adr/` |
 
 ---
 
@@ -571,7 +591,7 @@ IndustrialCommunicationUtility/
 | | `settings/` | `config/` |
 |---|---|---|
 | 内容 | 应用级偏好（语言、窗口、字体、主题） | 协议配置（.conn 文件） |
-| 存储 | wxConfig（注册表 / ini） | 独立 `.conn` 文件 |
+| 存储 | INI 文件（`wxFileConfig`，候选位置探测） | 独立 `.conn` 文件 |
 | 用户感知 | 隐式 | 显式 |
 | 生命周期 | 应用级 | 会话级 |
 
@@ -592,6 +612,8 @@ settings/
 ### 6.4 关键约定
 
 - **`Settings` 是唯一允许直接操作 `wxConfigBase` 的类**
+- 存储位置按优先级探测：`%APPDATA%/IndustrialCommunicationUtility` → `%LOCALAPPDATA%` → exe 目录 → 当前目录。第一个真正可写的作为存储位置
+- 探测阶段用 `wxLogNull` 屏蔽 wx 内部错误弹框
 - 所有 key 在 `SettingsKeys.h` 集中定义
 - 新设置项 = 加 key + 加接口 + 加实现
 
@@ -605,8 +627,9 @@ settings/
 | **窗口** | 关闭时最小化到托盘 | 🟡 待迁移 |
 | **UI** | 字体（UI / 日志 / 数据） | ⬜ 预留 |
 | **UI** | 主题（浅色 / 深色） | ⬜ 预留 |
-| **UI** | 十六进制显示 | ⬜ 预留 |
-| **UI** | 自动滚动 | ⬜ 预留 |
+| **UI** | 十六进制显示 | ⬜ 预留（阶段 5 会用到） |
+| **UI** | 自动滚动 | ⬜ 预留（阶段 5 会用到） |
+| **UI** | 时间戳显示 | ⬜ 预留（阶段 5 会用到） |
 | **图标** | 协议图标 | ⬜ 预留 |
 | **图标** | UI 图标 | ⬜ 预留 |
 | **最近连接** | 最近打开的 `.conn` 列表 | ✅ 已实现 |
@@ -620,7 +643,7 @@ settings/
 1. **加 key** —— `SettingsKeys.h`
 2. **加接口** —— `UISettings.h`
 3. **加实现** —— `UISettings.cpp`
-4. **加 UI** —— `ui/SettingsDialog`
+4. **加 UI** —— `ui/SettingsDialog`（阶段 8 待建）
 5. **加使用** —— 使用点调用
 
 **全程只改 `settings/` + `SettingsDialog` + 使用点，不触碰 `core/` 和 `protocols/`。**
@@ -672,7 +695,22 @@ MaxClients=10
 ListenBacklog=5
 ```
 
-### 7.4 文件命名约定
+### 7.4 串口（阶段 5 计划）
+
+```ini
+[Connection]
+Protocol=serial
+PortName=COM3
+BaudRate=9600
+DataBits=8
+Parity=N
+StopBits=1
+FlowControl=None
+ReadTimeoutMs=100
+WriteTimeoutMs=1000
+```
+
+### 7.5 文件命名约定
 
 ```
 <协议>_<模式>_<主标识>_<次标识>.conn
@@ -680,7 +718,8 @@ ListenBacklog=5
 例：
   TCP_Client_127_0_0_1_502.conn
   TCP_Server_0_0_0_0_502.conn
-  ModbusRTU_Master_COM3_9600.conn
+  Serial_COM3_9600.conn
+  ModbusTCP_192_168_1_10_502.conn
 ```
 
 由 `IProtocol::MakeDefaultFileName()` 生成。
@@ -692,9 +731,8 @@ ListenBacklog=5
 | 协议 | ID | 模式 | 传输 | 编解码 | 状态 |
 |---|---|---|---|---|---|
 | **TCP/IP** | `tcp` | Client / Server | TcpClient / TcpServer | Raw | ✅ 完成 |
-| 串口 | `serial` | — | SerialTransport | Raw | ⬜ 待实现 |
-| Modbus RTU | `modbus-rtu` | Master / Slave | SerialTransport | ModbusRtu | ⬜ 待实现 |
-| Modbus TCP | `modbus-tcp` | Master / Slave | TcpClient / TcpServer | ModbusTcp | ⬜ 待实现 |
+| **串口** | `serial` | — | SerialTransport | Raw | 🟡 进行中（阶段 5） |
+| Modbus | `modbus` | TCP / RTU / ASCII | 内置 | 内置（事务型） | ⬜ 待实现（阶段 6） |
 | MQTT | `mqtt` | Pub / Sub | TcpClient | MqttCodec | ⬜ 待实现 |
 | OPC UA | `opcua` | Client / Server | 专用 | 专用 | ⬜ 待实现 |
 | Siemens TIA | `tia` | Client | TcpClient | S7Codec | ⬜ 待实现 |
@@ -728,14 +766,13 @@ tests/
 ├── unit/         # 单测（镜像 src/ 结构）
 ├── integration/  # 集成
 ├── mocks/        # Mock 对象（header-only）
-├── fixtures/     # 测试数据
 └── helpers/      # 测试辅助
 ```
 
 ### 9.4 构建集成
 
 ```cmake
-option(ICU_BUILD_TESTS "Build tests" ON)
+option(ICU_BUILD_TESTS "Build unit/integration tests" OFF)   # 注意：默认 OFF，命令行需显式打开
 option(ICU_BUILD_COVERAGE "Enable code coverage instrumentation" OFF)
 
 if(ICU_BUILD_TESTS)
@@ -750,37 +787,33 @@ endif()
 
 ```bash
 # 构建 + 跑测试
+scripts/build.sh
+scripts/test.sh
+
+# 或手工
 cmake -S . -B build -G "MinGW Makefiles" \
       -DCMAKE_BUILD_TYPE=Debug -DICU_BUILD_TESTS=ON
 cmake --build build -j16
 ctest --test-dir build --output-on-failure
-
-# 覆盖率（可选，会显著拖慢编译）
-cmake -S . -B build -G "MinGW Makefiles" \
-      -DCMAKE_BUILD_TYPE=Debug \
-      -DICU_BUILD_TESTS=ON -DICU_BUILD_COVERAGE=ON
-cmake --build build -j16
-cmake --build build --target coverage
-# 报告：build/coverage/index.html
 ```
 
 ### 9.6 覆盖要求
 
-| 模块 | 覆盖率目标 | 当前（4.5 结束） |
+| 模块 | 覆盖率目标 | 当前 |
 |---|---|---|
 | `src/core/` | ≥ 80% | ~85% ✅ |
-| `src/protocols/` | ≥ 70% | ~40% ⚠️（TcpTransport 0%） |
-| `src/settings/` | ≥ 60% | 0% ⚠️（阶段 8 补） |
+| `src/protocols/` | ≥ 70% | ~40% ⚠️ |
+| `src/settings/` | ≥ 60% | 0% ⚠️ |
 | `src/config/` | ≥ 70% | 100% ✅ |
 | `src/ui/` / `src/app/` | 手动测试 | — |
-| **整体** | — | **50.0%** |
 
 **已知缺口及处理计划**：
 
 | 缺口 | 原因 | 补测时机 |
 |---|---|---|
-| `TcpTransport.cpp` 0% | 依赖真实 wxSocket 事件循环，单测成本高 | 阶段 5/6 引入串口/Modbus 时统一评估 |
-| `settings/*.cpp` 0% | 依赖 `wxApp` 初始化 | 阶段 8 应用设置完善时补 |
+| `TcpTransport.cpp` 0% | 依赖真实 wxSocket 事件循环 | 阶段 5/6 统一评估 |
+| `settings/*.cpp` 0% | 依赖 `wxApp` 初始化 | 阶段 8 |
+| `SerialPort.cpp` | 依赖真实串口硬件 | 手工回归（com0com） |
 
 ### 9.7 什么必须测
 
@@ -802,14 +835,13 @@ cmake --build build --target coverage
 
 放在 `tests/mocks/`（header-only）：
 
-- `MockTransport` —— 内存假 Transport；`Open()` 只切到 `Opening`（对齐真实异步语义）；计数用 `std::shared_ptr<int>` 存储，跨对象生命周期可读
+- `MockTransport` —— 内存假 Transport；`Open()` 只切到 `Opening`；计数用 `std::shared_ptr<int>` 存储
 - `MockCodec` —— 直通 / 定长切帧两模式
-- `MockProtocol` —— 简单协议（暂未使用）
 
 ### 9.10 覆盖率工具
 
-- **gcovr 8.6+**（MSYS2 UCRT64：`pacman -S mingw-w64-ucrt-x86_64-python-gcovr`）
-- filter 用 `.*/src/.*` 正则（绝对路径在 MinGW 下匹配失败）
+- **gcovr 8.6+**（MSYS2 UCRT64）
+- filter 用 `.*/src/.*` 正则
 - `--coverage` 插桩仅对 `icu_core_test` / `icu_tests`，**不影响主程序**
 - **日常构建不开覆盖率**，`ICU_BUILD_COVERAGE=OFF` 是默认
 
@@ -835,14 +867,6 @@ cmake --build build --target coverage
 - `ICU_SPDLOG_*` **只认 `%s` / `%d` / `%llu`**
 - **禁止**用 `{}`
 
-**自检命令**：
-
-```bash
-grep -rn 'SPDLOG_\(INFO\|WARN\|ERROR\|DEBUG\)("'  src/ | grep -v '_('
-grep -rn 'ICU_SPDLOG_.*".*{.*}'  src/
-grep -rn 'SPDLOG_\(INFO\|WARN\|ERROR\|DEBUG\)(_.*,'  src/ | grep -v 'ICU_'
-```
-
 ### 10.3 字符串
 
 - 用户可见字符串**必须**用 `_()` 包裹
@@ -863,14 +887,15 @@ grep -rn 'SPDLOG_\(INFO\|WARN\|ERROR\|DEBUG\)(_.*,'  src/ | grep -v 'ICU_'
 | 对象 | 注意事项 |
 |---|---|
 | `wxTaskBarIcon` | 不要 `delete`，只 `RemoveIcon()` |
-| `wxSocketBase` | 销毁前先 `Notify(false)`，**没有** `RemoveEventHandler` |
+| `wxSocketBase` | 销毁前先 `Notify(false)` |
 | `wxEvtHandler` | 用 `Bind` 或 `SetEventHandler` |
 | **UI 自毁场景** | **必须用 `CallAfter` 延迟**（见 2.5） |
+| **后台读线程** | `Close()` 时先 `Interrupt()` 打断阻塞读，再 `join()` |
 
 ### 10.6 线程安全
 
 - 所有 UI 操作必须在主线程
-- 从 socket / 定时器回调更新 UI 用 `CallAfter`
+- 从 socket / 定时器 / 读线程回调更新 UI 用 `CallAfter`
 - 跨线程传递数据**必须复制**到堆上再 `CallAfter`
 
 ### 10.7 提交前自检
@@ -908,53 +933,14 @@ msgattrib --only-fuzzy \
 
 GitHub Actions 每次 push / PR 跑四件事：**wxWidgets 构建缓存 → Debug 构建+测试 → Release 构建+测试 → clang-format 检查**。
 
-**`.github/workflows/build.yml`**（实际结构）：
-
-```yaml
-jobs:
-  wxwidgets:                    # 构建并缓存第三方 GUI 库
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-        with: { submodules: recursive }
-      - uses: msys2/setup-msys2@v2     # UCRT64: gcc/cmake/ninja/gettext/make
-      - uses: actions/cache@v4         # path: third_party/wxWidgets/lib
-      - run: |                         # 仅缓存未命中时
-          cd third_party/wxWidgets && mkdir -p build-ci && cd build-ci
-          ../configure --enable-shared --enable-unicode --enable-debug \
-                       --disable-tests --disable-monolithic --with-msw
-          make -j$(nproc)
-
-  build:                        # matrix: [Debug, Release]
-    needs: wxwidgets
-    steps:
-      - uses: actions/cache/restore@v4  # fail-on-cache-miss: true
-      - run: cmake -S . -B build-ci -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DICU_BUILD_TESTS=ON
-      - run: cmake --build build-ci -j$(nproc)
-      - run: ctest --test-dir build-ci --output-on-failure
-
-  format:                       # clang-format 19.1.5（pip 固定版本）
-    steps:
-      - run: pip install "clang-format==19.1.5"
-      - run: clang-format --style=file --dry-run --Werror <src+r tests 下所有 .cpp/.h>
-```
-
 **几个必须知道的点**：
 
-- `third_party/wxWidgets` 与 `third_party/spdlog` 都是 **submodule**，
-  分别固定到 `469921b9`（wx 3.3.5 开发快照）与 `f544fce0`。
+- `third_party/wxWidgets` 与 `third_party/spdlog` 都是 **submodule**
 - **必须用 `submodules: recursive`**：wxWidgets 自身还带 12 个嵌套 submodule
-  （zlib / png / expat / jpeg / tiff / pcre / scintilla / lexilla / libwebp /
-  lunasvg / nanosvg / Catch），它的 `configure` + `make` 需要其中一部分。
-- `third_party/wxWidgets/lib/`（编译产物）被 wxWidgets 自己的 `.gitignore` 忽略，
-  **CI 上必须从源码构建 wxWidgets**，所以有了独立的 `wxwidgets` job 和缓存。
-  本地开发同理，见 [docs/developer/building.md](docs/developer/building.md) 第 2.2 节。
-- 缓存键用 `third_party/wxWidgets/include/wx/version.h` 的内容哈希推导，
-  换了 wx 版本会自动失效。
-- 格式检查用 **pip 装固定版本的 clang-format**，不用 MSYS2 的 clang
-  （后者随滚动更新变化，会导致格式化结果漂移）。本地也要用 19.1.5，
-  见 `scripts/format.sh`。
-- 本地等价命令：`scripts/build.sh`、`scripts/test.sh`、`scripts/format.sh check`。
+- wxWidgets 的 configure 参数 **不带 `--enable-debug`**，产出 release 库名（`libwx_mswu_*`），与 `CMakeLists.txt` 链接的一致
+- 缓存键用 `wx-3.3.5-release-${os}-ucrt64-gcc-${hashFiles('version.h')}`，换 wx 版本或改配置会自动失效
+- 格式检查用 **pip 装固定版本的 clang-format 19.1.5**
+- 本地等价命令：`scripts/build.sh`、`scripts/test.sh`、`scripts/format.sh check`
 
 ### 11.2 静态分析
 
@@ -989,31 +975,33 @@ HeaderFilterRegex: 'src/.*'
 ### 11.4 文档体系
 
 ```
-docs/                                 ✅ 4.6 已建
+docs/
 ├── architecture/
-│   ├── overview.md                   分层结构、核心抽象
-│   ├── layers.md                     依赖方向 + 自检命令
-│   └── adr/                          架构决策记录
+│   ├── overview.md
+│   ├── layers.md
+│   └── adr/
 │       ├── README.md                 索引 + 何时写 ADR
 │       ├── template.md
 │       ├── 0001-protocol-as-first-class-with-modes.md
 │       ├── 0002-ui-data-driven-by-field-descriptors.md
-│       └── 0003-doctest-as-test-framework.md
+│       ├── 0003-doctest-as-test-framework.md
+│       ├── 0004-transaction-protocol-separation.md
+│       └── 0005-serial-protocol-and-common-panel-enhancement.md
 ├── user/
 │   ├── getting-started.md
 │   ├── tcp.md
+│   ├── serial.md                      ★ 阶段 5 待建
 │   └── troubleshooting.md
 ├── developer/
-│   ├── building.md                   环境、wxWidgets 构建、常见问题
+│   ├── building.md
 │   ├── adding-a-protocol.md
 │   ├── adding-a-setting.md
 │   └── testing.md
 └── api/
-    └── core.md                       逐行核对过头文件的接口文档
+    └── core.md
 ```
 
-**约定**：架构级决策写进 `docs/architecture/adr/`（编号递增，不复用不删除）；
-接口变更先改 `docs/api/`，再改代码。
+**约定**：架构级决策写进 `docs/architecture/adr/`（编号递增，不复用不删除）；接口变更先改 `docs/api/`，再改代码。
 
 ### 11.5 `CHANGELOG.md`
 
@@ -1033,60 +1021,59 @@ docs/                                 ✅ 4.6 已建
 - [x] **阶段 4.3：目录重组**
 - [x] **阶段 4.4：核心类型合并**
 - [x] **阶段 4.5：测试模块**
+- [x] **阶段 4.6：工程化配套**
+- [x] **阶段 4.7：清理**
 
-### 阶段 4：目录结构与设置模块重构 🟡 **进行中（剩 4.7 清理）**
+### 阶段 4：目录结构与设置模块重构 **已完成**
 
-**4.4 核心类型合并** ✅
+- [x] 4.4 核心类型合并
+- [x] 4.5 测试模块
+- [x] 4.6 工程化配套（CI / clang-tidy / version.h / CHANGELOG / LICENSE / docs / scripts）
+- [x] 4.7 清理（i18n / DLL 过滤 / 文档同步 / 设置存储改用 wxFileConfig）
 
-- [x] 4.4.1 建 `core/ProtocolTypes.h/.cpp`
-- [x] 4.4.2 删 `core/FieldValue.h/.cpp` / `FieldDescriptor.h` / `ActiveProfile.h`
-- [x] 4.4.3 全局替换 include
-- [x] 4.4.4 编译 + 功能回归
+### 阶段 5：串口协议 + 会话面板通用增强 🟡 进行中
 
-**4.5 测试模块** ✅
+- [ ] 5.0 写 ADR 0005（已完成）
+- [ ] 5.1 `protocols/serial/SerialPort.h/.cpp`（Windows 实现，Linux 留骨架）
+- [ ] 5.2 `protocols/serial/SerialTransport.h/.cpp`（后台线程 + 同步 I/O）
+- [ ] 5.3 `protocols/serial/SerialProtocol.h/.cpp`（单模式 IProtocol）
+- [ ] 5.4 `ProtocolRegistry` 注册 SerialProtocol
+- [ ] 5.5 `ProtocolSessionPanel` 通用增强：
+      - HEX 接收显示切换
+      - 时间戳开关
+      - 自动滚动
+      - 清空接收按钮
+      - 发送新行开关
+- [ ] 5.6 单测：`test_SerialProtocol.cpp`
+- [ ] 5.7 手工回归：com0com 或两台机器串口对接
+- [ ] 5.8 更新 README 第 8 / 12 节、新建 `docs/user/serial.md`
 
-- [x] 4.5.1 引入 doctest
-- [x] 4.5.2 `tests/CMakeLists.txt` + `ICU_BUILD_TESTS`
-- [x] 4.5.3 单测：`FieldValue` / `ActiveProfile` / `ProtocolRegistry`
-- [x] 4.5.4 集成测试：`ConnectionProfile` roundtrip
-- [x] 4.5.5 引入 `MockTransport` / `MockCodec`
-- [x] 4.5.6 单测：`Session` 状态机 + `SessionManager` 生命周期
-- [x] 4.5.7 单测：`RawCodec`
-- [x] 4.5.8 覆盖率报告（gcovr 集成）
+### 阶段 6：Modbus 协议（TCP / RTU / ASCII） ⬜ 未开始
 
-**4.6 工程化配套** ✅
+- [ ] 6.1 添加 ModbusLib submodule
+- [ ] 6.2 新增 `core/ITransactionProtocol.h` / `core/ITransactionSession.h`
+- [ ] 6.3 `ProtocolRegistry` 支持 `ProtocolKind` 分类
+- [ ] 6.4 `MainFrame` 按 Kind 分派会话面板
+- [ ] 6.5 `protocols/modbus/` 目录
+- [ ] 6.6 `ui/ModbusPanel.h/.cpp`：事务面板
+- [ ] 6.7 `.conn` 读写适配新字段
+- [ ] 6.8 单测 + 集成测试
 
-- [x] 4.6.1 CI（`.github/workflows/build.yml`：wxWidgets 缓存 + Debug/Release 构建 + ctest + clang-format）
-- [x] 4.6.2 `.clang-tidy`
-- [x] 4.6.3 `cmake/version.h.in` + `project(... VERSION 0.1.0)`
-- [x] 4.6.4 `CHANGELOG.md`
-- [x] 4.6.5 `LICENSE`（MIT）
-- [x] 4.6.6 `docs/`（architecture/adr + user + developer + api）
-- [x] 4.6.7 `scripts/`（build/test/format/coverage/update_i18n）
-
-**4.7 清理** 🟡 **当前阶段**
-
-- [ ] 修正 `en_US.po` 未翻译条目
-- [ ] 把 `DisplayName()` / `ModeNames()` 接到 `_()` 上（当前菜单与模式名不翻译）
-- [ ] 清理 `tests/CMakeLists.txt` 里失效的 DLL 过滤代码（第 68~75 行会重复复制约 1.3 GB 的 DLL）
-- [ ] 补 `tests/fixtures/` 或从文档中删除
-
-**4.6 之后的补充（已完成）**
-
-- [x] `third_party/wxWidgets` 改为**真正的 submodule**，固定到 `469921b9`
-      （3.3.5 开发快照；上游无 `v3.3.5` tag，最新官方 tag 是 `v3.3.4`）
-- [x] `third_party/spdlog` 补上 `.gitmodules` 映射（此前是 gitlink 但无映射，导致
-      `git submodule status` 与 `actions/checkout` 都会失败），固定到 `f544fce0`
-
-### 阶段 5：串口协议 ⬜ 未开始
-
-### 阶段 6：Modbus RTU 协议 ⬜ 未开始
+详见 [ADR 0004](docs/architecture/adr/0004-transaction-protocol-separation.md)。
 
 ### 阶段 7：更多协议 ⬜ 未开始
 
 ### 阶段 8：应用设置完善 ⬜ 未开始
 
 ### 阶段 9：UI 打磨 ⬜ 未开始
+
+- [ ] HEX 发送输入模式
+- [ ] 循环发送（周期 ms）
+- [ ] 保存接收到文件
+- [ ] 从文件发送
+- [ ] 转义字符解析（`\r\n`）
+- [ ] 自动换行
+- [ ] 端口枚举下拉
 
 ### 阶段 10：发布准备 ⬜ 未开始
 
@@ -1097,22 +1084,9 @@ docs/                                 ✅ 4.6 已建
 ### 13.1 上下文理解
 
 **当前状态**：
-- 阶段 1~3 完成
-- 阶段 4.1~4.4 完成：`settings/` 就位，目录重组，核心类型合并到 `core/ProtocolTypes.h/.cpp`
-- **4.5 全部完成**：
-  - doctest 2.4.11 接入，`tests/` 就位（自动 GLOB 扫描，无需改 CMakeLists）
-  - `MockTransport` / `MockCodec` 就位（`tests/mocks/`，header-only）
-  - **91 个 test case / 300 assertions 全绿**（Debug 与 Release 均通过）
-  - 覆盖率报告机制（gcovr + GCC `--coverage`，`scripts/coverage.sh`）
-  - 最近一次测量：core/ ~85%、config/ 100%、protocols/ ~40%、settings/ 0%，整体 50.0%
-- **4.6 全部完成**：
-  - CI（wxWidgets 缓存 + Debug/Release 构建 + ctest + clang-format）
-  - `.clang-tidy`、`cmake/version.h.in`（`project(VERSION 0.1.0)`）
-  - `CHANGELOG.md`、`LICENSE`（MIT）、`CONTRIBUTING.md`
-  - `docs/`：architecture（含 adr/）、user、developer、api
-  - `scripts/`：build / test / format / coverage / update_i18n
-  - 全量套用 `.clang-format`（clang-format 19.1.5）
-- **4.7 清理** 为当前阶段；阶段 5~10 未开始
+- 阶段 1~4 全部完成
+- **阶段 5 进行中**：串口协议 + 会话面板通用增强
+- **阶段 6 计划**：Modbus（TCP / RTU / ASCII），基于 serhmarch/ModbusLib
 
 **工程命令**（仓库根）：
 
@@ -1130,10 +1104,10 @@ docs/                                 ✅ 4.6 已建
 - `src/protocols/tcp/TcpProtocol.cpp` — 协议范例
 - `src/protocols/tcp/TcpTransport.cpp` — Transport 范例
 - `src/ui/GenericProtocolDialog.cpp` — UI 数据驱动核心
+- `src/ui/ProtocolSessionPanel.cpp` — 会话面板（阶段 5 会增强）
 - `src/core/ProtocolRegistry.cpp` — 协议注册
 - `src/settings/Settings.h` — 设置入口
-- `tests/CMakeLists.txt` — 测试构建入口（GLOB + 覆盖率开关）
-- `tests/main.cpp` — doctest 实现 + main
+- `tests/CMakeLists.txt` — 测试构建入口
 - `tests/mocks/MockTransport.h` — 内存假 Transport 范例
 - `tests/helpers/TestEnv.h` — 临时目录 RAII
 
@@ -1146,16 +1120,15 @@ docs/                                 ✅ 4.6 已建
 | 报告编译错误 | 定位根因，给最小修复 |
 | 要求加 UI 功能 | 先问"能否通过 `FieldDescriptor` 描述" |
 | 要求加 App 设置 | 走 `settings/` 模块 |
-| 要求加测试 | 放 `tests/unit/` 或 `tests/integration/`，用 doctest；Mock 放 `tests/mocks/` |
+| 要求加测试 | 放 `tests/unit/` 或 `tests/integration/`，用 doctest |
 | 讨论需求 | 更新本文档路线图 |
 
 **检查清单**：
 - [ ] 改动是否在正确的层？
 - [ ] 是否引入硬编码？
-- [ ] 日志是否符合约定？（`SPDLOG_*(_("..."))` 或 `ICU_SPDLOG_*(_("... %s"), x)`）
+- [ ] 日志是否符合约定？
 - [ ] 设置是否走 `settings/`？
 - [ ] 是否需要同步加测试？
-- [ ] header-only 类里用 `_()` 是否 include 了 `<wx/translation.h>`？
 
 ### 13.3 代码生成规范
 
@@ -1180,6 +1153,7 @@ tests/unit/protocols/<protocol_id>/
 - 硬编码菜单项
 - 绕过 `settings/` 直接调 `wxConfigBase`
 - 在 `core/` 或 `protocols/` 里 include `ui/` 或 `settings/`
+- 在 `ProtocolSessionPanel` 里写 `if (protocolId == "serial")`
 
 ### 13.4 修复编译错误的准则
 
@@ -1211,6 +1185,7 @@ tests/unit/protocols/<protocol_id>/
 | 禁止 | 理由 |
 |---|---|
 | 拆分 TCP 为 TCPClientProtocol / TCPServerProtocol | 协议是一个整体 |
+| 拆分串口为 Master / Slave 两个协议 | 裸串口无角色语义 |
 | 在 UI 层加 `if (protocol == "xxx")` | 破坏数据驱动 |
 | 直接 `delete m_trayIcon` | 触发断言 |
 | `ICU_SPDLOG_*` 里用 `{}` | 格式不支持 |
@@ -1222,6 +1197,8 @@ tests/unit/protocols/<protocol_id>/
 | 在 `add_executable` 之前 `target_*_options` | CMake 报"target not built" |
 | 在 `mgr.Close()` / `SetActive(new)` 之后访问旧对象裸指针 | use-after-free |
 | `--coverage` 默认开启 | 显著拖慢日常开发 |
+| 串口读线程 `Close()` 时不 `Interrupt` 直接 `join` | 死锁 |
+| `SerialPort` 依赖 wxWidgets | 破坏可移植性和可测性 |
 
 ---
 
@@ -1245,24 +1222,32 @@ tests/unit/protocols/<protocol_id>/
 | **`config/` 用 INI（wxFileConfig）** | 跨平台、易读 |
 | **`settings/` 与 `config/` 分离** | App 级偏好 vs 协议级配置 |
 | **`Settings` 是唯一 `wxConfigBase` 消费者** | 单一数据源 |
-| **`settings/` 预留字体/主题/图标空壳** | 提前定型接口 |
+| **设置改用 `wxFileConfig`** | 注册表在非管理员下权限受限，改用文件 + 多候选位置探测 |
 | **用 doctest 做测试框架** | header-only，零配置，编译快 |
 | **`tests/main.cpp` 提供 doctest 实现** | header-only 必须在一个 TU 展开 |
 | **测试与 src 镜像** | 找测试文件路径直觉化 |
 | **Mock 对象放 `tests/mocks/`（header-only）** | 不污染 `core/`，可被多测试复用 |
 | **`tests/CMakeLists.txt` 用 GLOB + `CONFIGURE_DEPENDS`** | 新增测试无需改 CMakeLists |
-| **`icu_core_test` 显式列源文件（不用 GLOB）** | 精确控制，避免误编 |
 | **UI 不做单测** | 投入产出比低 |
 | **目录重组分批次** | 每批可回滚 |
 | **include 路径用 `src/` 前缀** | `target_include_directories` 已含 `src` |
-| **主程序用 `file(GLOB_RECURSE CONFIGURE_DEPENDS)`** | 新增文件自动被拾取 |
 | **"打开连接" 直接重连不弹框** | 用户已配置好，直接复用 |
 | **"配置连接" 只在未连接状态可用** | 避免连上后改配置造成混乱 |
 | **测试用 LLDB-DAP 调试** | GDB 17.2 与 cpptools MI 握手失败 |
 | **覆盖率用 gcovr，`ICU_BUILD_COVERAGE=OFF` 默认** | 插桩拖慢编译，日常不开 |
 | **gcovr filter 用 `.*/src/.*`** | MinGW 下绝对路径匹配失败 |
 | **`MockTransport::Open()` 只切到 `Opening`** | 对齐真实异步 Transport 语义 |
-| **Mock 计数用 `shared_ptr<int>` 存储** | 跨对象生命周期可读，避免 use-after-free |
+| **Mock 计数用 `shared_ptr<int>` 存储** | 跨对象生命周期可读 |
+| **保存对话框只过滤 `*.conn`** | Shell 枚举所有文件会触发部分环境缩略图缓存异常 |
+| **测试临时目录优先用 cwd** | 系统 `%TEMP%` 在 MSYS2 等环境权限受限 |
+| **CI wxWidgets 不启用 `--enable-debug`** | 只产 release 库名，与 CMakeLists 链接一致 |
+| **串口单模式** | 裸串口无 Client/Server 语义 |
+| **串口后台线程 + 同步 I/O** | 延迟低，跨平台清晰，关闭可控 |
+| **不引入第三方串口库** | 边界自己掌握 |
+| **不做 RTS/DTR 控制** | 场景少，会污染 Transport 抽象 |
+| **事务型协议与字节流协议分离**（阶段 6） | ModbusLib 是事务型 API，与 ITransport 字节流抽象不兼容 |
+
+**完整 ADR 列表**：[docs/architecture/adr/](docs/architecture/adr/README.md)
 
 ---
 
@@ -1277,22 +1262,18 @@ tests/unit/protocols/<protocol_id>/
 | 2026-10-12 | 新增第 9 节测试策略；新增第 11 节 CI |
 | 2026-10-13 | 4.1~4.3 完成：settings 模块、App 层切换、目录重组 |
 | 2026-10-13 | 新增附录 E：标准测试流程 |
-| 2026-10-13 | 新增"UI 生命周期安全"原则（2.5 节）；"打开连接"改为直接重连；"配置连接"限制在未连接状态；协议面板加模式标签 |
-| 2026-10-13 | 4.4 完成：核心类型合并到 `core/ProtocolTypes.h/.cpp` |
-| 2026-10-13 | 4.5.1~4.5.3 完成：doctest 接入、`tests/` 就位、3 个 core 单测全绿 |
-| 2026-10-13 | 调试器从 GDB 切换到 LLDB-DAP（GDB 17.2 与 cpptools MI 握手失败） |
-| 2026-10-13 | 4.5.4 完成：`ConnectionProfile` roundtrip 集成测试 |
-| 2026-10-13 | 4.5.5 完成：`MockTransport` / `MockCodec` 就位（header-only） |
-| 2026-10-13 | 4.5.6 完成：`Session` 状态机 + `SessionManager` 生命周期单测；修正 `MockTransport::Open` 语义（只到 `Opening`）；Mock 计数改为 `shared_ptr<int>` |
-| 2026-10-13 | 4.5.7 完成：`RawCodec` 单测（ModbusRtuCodec 待阶段 6） |
-| 2026-10-13 | 4.5.8 完成：gcovr 集成、`ICU_BUILD_COVERAGE` 开关；覆盖率 core/ ~85%、config/ 100%、protocols/ ~40%、settings/ 0%，整体 50.0% |
-| 2026-10-13 | 全项目日志翻译补齐：所有用户可见字符串 `_()`，无参数 `SPDLOG_*`、有参数 `ICU_SPDLOG_*`；header-only Codec 加 `#include <wx/translation.h>` |
-| 2026-10-13 | `zh_CN.po` 补全所有空翻译 + 消除 fuzzy |
-| 2026-10-14 | 4.6 全部完成：CI（wxWidgets 缓存 + Debug/Release + ctest + clang-format 19.1.5）、`.clang-tidy`、`cmake/version.h.in` + `project(VERSION 0.1.0)`、`CHANGELOG.md`、`LICENSE`（MIT）、`CONTRIBUTING.md`、`docs/`（architecture/adr + user + developer + api）、`scripts/`（build/test/format/coverage/update_i18n）、`.gitattributes` |
-| 2026-10-14 | 全量套用 `.clang-format`（59 个源文件）；`wxBEGIN_EVENT_TABLE` 区域加 `// clang-format off/on` 保护（clang-format 会把宏后的缩进逐级累积） |
-| 2026-10-14 | 修复 `resources/i18n/update_i18n.sh`：原来只扫描 `src/*.cpp src/*/*.cpp`，漏掉 `src/core/` 等更深层级，改为 `find src` 递归并带上 `.h` |
-| 2026-10-14 | `tests/helpers/TestEnv.h` 支持无效 `TEMP`/`TMP`：`temp_directory_path()` 失败时逐个回退，修复受限环境下 6 个集成测试失败 |
-| 2026-10-14 | 修正本文档与代码的漂移：测试用例数 92 → 91、CI 描述、目录结构状态、构建命令改为 `scripts/` |
+| 2026-10-13 | 新增"UI 生命周期安全"原则（2.5 节） |
+| 2026-10-13 | 4.4 完成：核心类型合并 |
+| 2026-10-13 | 4.5 完成：测试模块 |
+| 2026-10-13 | 调试器从 GDB 切换到 LLDB-DAP |
+| 2026-10-13 | 4.6 完成：CI / clang-tidy / version.h / CHANGELOG / LICENSE / CONTRIBUTING / docs / scripts |
+| 2026-10-14 | 修复设置存储在受限权限下无法初始化：`Settings` 改用 `wxFileConfig`，多候选位置探测 |
+| 2026-10-14 | 修复保存连接对话框在 Shell 异常环境下卡死：过滤器收窄为 `*.conn` |
+| 2026-10-14 | 修复测试临时目录权限问题：`TestEnv` 优先用 cwd |
+| 2026-10-14 | 修复 CI wxWidgets 构建参数：去掉 `--enable-debug`，缓存 key 加 `-release` |
+| 2026-10-14 | 新增 ADR 0004：事务型协议与字节流协议分离（阶段 6 用） |
+| 2026-10-14 | 新增 ADR 0005：串口协议实现与通用会话面板增强（阶段 5 用） |
+| 2026-10-14 | 路线图更新：阶段 5 改为串口 + 面板增强，Modbus 移到阶段 6 |
 
 ---
 
@@ -1300,29 +1281,11 @@ tests/unit/protocols/<protocol_id>/
 
 ### A.1 构建
 
-推荐直接用脚本（仓库根执行）：
-
 ```bash
 scripts/build.sh              # Debug + 测试
 scripts/build.sh release      # Release（build-release/）
 scripts/build.sh debug clean  # 先清理再构建
 ```
-
-等价的手工命令：
-
-```bash
-# 在 MSYS2 UCRT64 shell 里
-cmake -S . -B build -G "MinGW Makefiles" \
-      -DCMAKE_BUILD_TYPE=Debug \
-      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-      -DICU_BUILD_TESTS=ON
-cmake --build build -j16
-```
-
-> MSYS2 UCRT64 里 `cmake` 默认不在 PATH，用绝对路径
-> `"/c/Program Files/CMake/bin/cmake.exe"` 或 `pacman -S mingw-w64-ucrt-x86_64-cmake`。
->
-> 首次构建前必须先编译 wxWidgets，见 [docs/developer/building.md](docs/developer/building.md) 第 2.2 节。
 
 ### A.2 测试
 
@@ -1331,9 +1294,7 @@ scripts/test.sh               # ctest（Debug）
 scripts/test.sh release       # ctest（Release）
 scripts/test.sh --list        # 列出所有用例
 
-# 等价手工命令
-ctest --test-dir build --output-on-failure
-# 或直接跑（可用 doctest 过滤参数）
+# 或直接跑
 build/tests/icu_tests.exe --test-case="Session:*"
 ```
 
@@ -1342,16 +1303,6 @@ build/tests/icu_tests.exe --test-case="Session:*"
 ```bash
 scripts/coverage.sh
 # 报告：build-coverage/coverage/index.html
-```
-
-等价手工命令：
-
-```bash
-cmake -S . -B build-coverage -G "MinGW Makefiles" \
-      -DCMAKE_BUILD_TYPE=Debug \
-      -DICU_BUILD_TESTS=ON -DICU_BUILD_COVERAGE=ON
-cmake --build build-coverage -j16
-cmake --build build-coverage --target coverage
 ```
 
 ### A.4 i18n
@@ -1365,10 +1316,9 @@ msgattrib --only-fuzzy     resources/i18n/zh_CN/LC_MESSAGES/*.po
 ### A.5 格式化与静态分析
 
 ```bash
-scripts/format.sh             # 就地格式化 src/ 与 tests/
-scripts/format.sh check       # 只检查（CI 用），需要 clang-format 19.1.5
+scripts/format.sh             # 就地格式化
+scripts/format.sh check       # 只检查（CI 用 19.1.5）
 
-# 静态分析（需要 clang-tidy + compile_commands.json）
 clang-tidy -p build src/core/Session.cpp
 ```
 
@@ -1421,7 +1371,7 @@ Get-Process icu_tests -ErrorAction SilentlyContinue | Stop-Process -Force
 - [ ] Key 定义在 `SettingsKeys.h`
 - [ ] 类型化接口加在对应的 `XxxSettings.h`
 - [ ] 实现走 `Settings::Instance()`
-- [ ] 在 `SettingsDialog` 里加 UI
+- [ ] 在 `SettingsDialog` 里加 UI（阶段 8 之后）
 - [ ] 在使用点调用
 - [ ] 未在 `core/` 或 `protocols/` 里直接访问 settings
 - [ ] 已在本 README 第 6.5 节设置项清单里更新状态
@@ -1502,16 +1452,34 @@ nc -h                       # 验证
 | 10 | 关闭客户端 2 | Clients=0，状态"监听中" |
 | 11 | 点"停止监听" | 状态"已断开" |
 
-**多客户端并发测试**：
+### E.5 串口测试（阶段 5）
 
-```bash
-for i in 1 2 3; do
-    (echo "hello from #$i"; sleep 5) | nc 127.0.0.1 5030 &
-done
-wait
-```
+**准备**：
+- 方案 1：用 com0com 创建虚拟串口对（`COM3` ↔ `COM4`）
+- 方案 2：两台机器物理串口对接
 
-### E.5 配置文件测试
+**基础流程**：
+
+| 序 | 操作 | 期望 |
+|---|---|---|
+| 1 | `文件 → 新建连接 → 串口` | 弹配置对话框 |
+| 2 | 选 `COM3`，9600 8N1，OK | 状态"已连接" |
+| 3 | 另一软件打开 `COM4` | — |
+| 4 | 本程序发 `hello` | 对端收到 `hello` |
+| 5 | 对端发 `world` | 本程序收到 `world` |
+| 6 | 点"断开连接" | 状态"已断开" |
+
+**面板增强验证**：
+
+| 场景 | 操作 | 期望 |
+|---|---|---|
+| HEX 显示 | 勾选"HEX 显示" | 接收区字节以十六进制显示 |
+| 时间戳 | 勾选"时间戳" | 每条消息带 `[HH:MM:SS.mmm]` |
+| 自动滚动 | 取消勾选 | 新消息到达时视图不滚动 |
+| 清空接收 | 点"清空" | 接收区清空 |
+| 发送新行 | 取消勾选 | 发送不加 `\n` |
+
+### E.6 配置文件测试
 
 | 序 | 操作 | 期望 |
 |---|---|---|
@@ -1522,7 +1490,7 @@ wait
 | 5 | 关闭连接 | 无提示 |
 | 6 | `文件 → 打开连接` 选该文件 | 恢复 |
 
-### E.6 最近连接测试
+### E.7 最近连接测试
 
 | 序 | 操作 | 期望 |
 |---|---|---|
@@ -1532,7 +1500,7 @@ wait
 | 4 | 手动删除一个 → 重启 | 该项消失 |
 | 5 | 添加第 6 个 | 只保留 5 个 |
 
-### E.7 窗口与 UI 测试
+### E.8 窗口与 UI 测试
 
 | 序 | 操作 | 期望 |
 |---|---|---|
@@ -1543,7 +1511,7 @@ wait
 | 5 | 关闭日志窗口 | 隐藏，主窗口正常 |
 | 6 | 再次打开日志 | 历史保留 |
 
-### E.8 语言切换测试
+### E.9 语言切换测试
 
 | 序 | 操作 | 期望 |
 |---|---|---|
@@ -1551,7 +1519,7 @@ wait
 | 2 | 点"是" | 全英文界面 |
 | 3 | `Settings → Language → 简体中文` | 中文界面 |
 
-### E.9 关闭与托盘测试
+### E.10 关闭与托盘测试
 
 | 序 | 操作 | 期望 |
 |---|---|---|
@@ -1565,15 +1533,17 @@ wait
 | 8 | 托盘右键 → 退出 | **无断言**，干净退出 |
 | 9 | `Get-Process IndustrialCommunicationUtility` | 无输出 |
 
-### E.10 异常场景
+### E.11 异常场景
 
 | 场景 | 操作 | 期望 |
 |---|---|---|
 | 打开损坏的 `.conn` | 手动改 `Type=XYZ` | 提示"加载失败" |
 | 保存到只读路径 | `C:\Windows\System32\test.conn` | 提示"保存失败" |
 | 配置不完整 | 手动删除 `RemoteHost` | 加载后使用默认值 |
+| 串口被占用 | 别的软件已打开 | 提示"打开失败" |
+| 串口拔掉 | 运行中拔 USB 转串口 | 状态"已断开" |
 
-### E.11 测试结果记录
+### E.12 测试结果记录
 
 ```markdown
 ## 测试日期：2026-XX-XX
@@ -1585,12 +1555,13 @@ wait
 | E.2 启动 | ✅ | — |
 | E.3 TCP Client | ✅ | — |
 | E.4 TCP Server | ✅ | — |
-| E.5 配置文件 | ✅ | — |
-| E.6 最近连接 | ✅ | — |
-| E.7 窗口与 UI | ✅ | — |
-| E.8 语言切换 | ✅ | — |
-| E.9 关闭与托盘 | ✅ | — |
-| E.10 异常场景 | ✅ | — |
+| E.5 串口 | ✅ | — |
+| E.6 配置文件 | ✅ | — |
+| E.7 最近连接 | ✅ | — |
+| E.8 窗口与 UI | ✅ | — |
+| E.9 语言切换 | ✅ | — |
+| E.10 关闭与托盘 | ✅ | — |
+| E.11 异常场景 | ✅ | — |
 
 **结论**：全部通过。
 ```

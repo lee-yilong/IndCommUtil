@@ -42,7 +42,7 @@ bool Session::Send(const std::vector<uint8_t>& message) {
 
     std::vector<uint8_t> bytes;
     if (!m_codec->Encode(message, bytes)) {
-        SPDLOG_WARN("Codec '{}' encode failed", m_codec->Name());
+        ICU_SPDLOG_WARN(_("Codec '%s' encode failed"), wxString::FromUTF8(m_codec->Name()));
         return false;
     }
     if (bytes.empty()) return true;

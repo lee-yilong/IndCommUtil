@@ -8,13 +8,11 @@ on:
   workflow_dispatch:
 
 env:
-  # 与 .clang-format 的校验版本保持一致；改动这里要同步更新 docs/developer/building.md
   CLANG_FORMAT_VERSION: "19.1.5"
 
 jobs:
   # =======================================================================
   # wxWidgets：先构建并缓存（build 矩阵的 Debug / Release 共用）
-  # third_party/wxWidgets/lib/ 被 .gitignore 忽略，CI 上必须从源码构建
   # =======================================================================
   wxwidgets:
     name: wxWidgets 3.3.5
@@ -24,9 +22,6 @@ jobs:
         shell: msys2 {0}
 
     steps:
-      # wxWidgets 自身带 12 个嵌套 submodule（zlib / png / expat / jpeg / tiff /
-      # pcre / scintilla / lexilla / libwebp / lunasvg / nanosvg / Catch），
-      # wxWidgets 的 configure+make 需要其中一部分（zlib、expat 等），所以必须递归拉取。
       - name: Checkout (with submodules)
         uses: actions/checkout@v4
         with:
@@ -37,7 +32,6 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
-          # update 会让每次 CI 多花数分钟，这里保持关闭
           install: >-
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-cmake
@@ -47,44 +41,43 @@ jobs:
 
       - name: Verify submodules
         run: |
-          test -f third_party/wxWidgets/configure || (echo "wxWidgets source missing (submodule not checked out)" && exit 1)
+          test -f third_party/wxWidgets/configure || (echo "wxWidgets source missing" && exit 1)
           test -d third_party/wxWidgets/src || (echo "wxWidgets src/ missing" && exit 1)
           test -f third_party/spdlog/include/spdlog/spdlog.h || (echo "spdlog missing" && exit 1)
           test -f third_party/doctest/doctest.h || (echo "doctest missing" && exit 1)
-          test -d third_party/wxWidgets/src/zlib && test -n "$(ls -A third_party/wxWidgets/src/zlib)" \
-            || (echo "wxWidgets nested submodule src/zlib is empty (need submodules: recursive)" && exit 1)
 
-      # 缓存键含 wx 版本号与 version.h 内容哈希；换 wx 版本或改编译选项时
-      # 同步调整 key 前缀，避免命中过期的编译产物
       - name: Cache wxWidgets build
         id: wx-cache
         uses: actions/cache@v4
         with:
           path: third_party/wxWidgets/lib
-          key: wx-3.3.5-${{ runner.os }}-ucrt64-gcc-${{ hashFiles('third_party/wxWidgets/include/wx/version.h') }}
+          key: wx-3.3.5-release-cc-${{ runner.os }}-ucrt64-gcc-${{ hashFiles('third_party/wxWidgets/include/wx/version.h') }}
 
-      - name: Build wxWidgets (shared, unicode, debug, release)
+      - name: Build wxWidgets (shared, release, in-tree)
         if: steps.wx-cache.outputs.cache-hit != 'true'
         run: |
           cd third_party/wxWidgets
-          mkdir -p build-ci
-          cd build-ci
-          ../configure \
+          ./configure \
             --enable-shared \
-            --enable-unicode \
-            --enable-debug \
+            --disable-debug \
             --disable-tests \
             --disable-monolithic \
             --with-msw \
+            CC=gcc CXX=g++ \
             CFLAGS="-O2" CXXFLAGS="-O2"
           make -j$(nproc)
 
       - name: Verify wxWidgets libraries
         run: |
-          test -f third_party/wxWidgets/lib/gcc_dll/libwx_mswu_core-3.3.dll.a \
-            || (echo "wxWidgets core import library missing" && exit 1)
-          test -f third_party/wxWidgets/lib/gcc_dll/libwx_baseu-3.3.dll.a \
-            || (echo "wxWidgets base import library missing" && exit 1)
+          if [ -f third_party/wxWidgets/lib/gcc_dll/libwx_mswu_core-3.3.dll.a ]; then
+            echo "wxWidgets layout: legacy (lib/gcc_dll)"
+          elif [ -f third_party/wxWidgets/lib/libwx_mswu_core-3.3.dll.a ]; then
+            echo "wxWidgets layout: standard (lib/)"
+          else
+            echo "wxWidgets core import library missing"
+            find third_party/wxWidgets/lib -name "libwx*mswu*core*" || true
+            exit 1
+          fi
 
   # =======================================================================
   # Debug / Release：构建 + 测试
@@ -122,15 +115,16 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: third_party/wxWidgets/lib
-          key: wx-3.3.5-${{ runner.os }}-ucrt64-gcc-${{ hashFiles('third_party/wxWidgets/include/wx/version.h') }}
+          key: wx-3.3.5-release-cc-${{ runner.os }}-ucrt64-gcc-${{ hashFiles('third_party/wxWidgets/include/wx/version.h') }}
           fail-on-cache-miss: true
 
       - name: Configure
-        run: >
-          cmake -S . -B build-ci -G Ninja
-          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -DICU_BUILD_TESTS=ON
-          -DICU_BUILD_COVERAGE=OFF
+        run: |
+          rm -rf build-ci
+          cmake -S . -B build-ci -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DICU_BUILD_TESTS=ON \
+            -DICU_BUILD_COVERAGE=OFF
 
       - name: Build
         run: cmake --build build-ci -j$(nproc)
@@ -140,7 +134,6 @@ jobs:
 
   # =======================================================================
   # 代码格式：clang-format
-  # 用 pip 固定版本，避免 MSYS2 滚动更新导致格式化结果漂移
   # =======================================================================
   format:
     name: clang-format
@@ -167,7 +160,7 @@ jobs:
           $code = $LASTEXITCODE
           $out | ForEach-Object { Write-Host $_ }
           if ($code -ne 0) {
-            Write-Error "clang-format found formatting violations. Run 'scripts/format.sh' locally."
+            Write-Error "clang-format found formatting violations."
             exit 1
           }
           Write-Host "clang-format: all files clean"

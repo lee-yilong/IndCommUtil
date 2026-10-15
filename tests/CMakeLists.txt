@@ -23,20 +23,24 @@ add_library(icu_core_test STATIC
     "${CMAKE_SOURCE_DIR}/src/protocols/tcp/TcpTransport.cpp"
 )
 
+# 同 CMakeLists.txt：强制 wxDEBUG_LEVEL=0
+# PUBLIC 让 icu_tests 也继承，避免 TcpTransport.cpp 引用 wxOnAssert
+target_compile_definitions(icu_core_test PUBLIC wxDEBUG_LEVEL=0)
+
 target_include_directories(icu_core_test PUBLIC
     "${CMAKE_SOURCE_DIR}/src"
     "${WX_ROOT}/include"
-    "${WX_ROOT}/lib/gcc_dll/${WX_SETUP_DIR}"
+    "${WX_SETUP_DIR}"                     # ← 原来是 "${WX_ROOT}/lib/gcc_dll/${WX_SETUP_DIR}"
     "${SPDLOG_ROOT}/include"
 )
 
 target_link_directories(icu_core_test PUBLIC
-    "${WX_ROOT}/lib/gcc_dll"
+    "${WX_LIB_DIR}"                       # ← 原来是 "${WX_ROOT}/lib/gcc_dll"
 )
 
 target_link_libraries(icu_core_test PUBLIC
-    "${WX_ROOT}/lib/gcc_dll/libwx_baseu-3.3.dll.a"
-    "${WX_ROOT}/lib/gcc_dll/libwx_baseu_net-3.3.dll.a"
+    "${WX_LIB_DIR}/libwx_baseu-3.3.dll.a"
+    "${WX_LIB_DIR}/libwx_baseu_net-3.3.dll.a"
     ws2_32
 )
 
@@ -65,14 +69,12 @@ target_link_libraries(icu_tests PRIVATE
 )
 
 # 复制 wxWidgets DLL 到 build/tests/
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    file(GLOB WX_DLLS_TEST "${WX_ROOT}/lib/gcc_dll/*ud*.dll")
-else()
-    file(GLOB WX_DLLS_TEST "${WX_ROOT}/lib/gcc_dll/*u*.dll")
-    list(FILTER WX_DLLS_TEST EXCLUDE REGEX "ud")
-endif()
+# 不做 build type 过滤，全量复制。理由：
+#   icu_tests 链接的是 release 导入库（libwx_mswu_*，不带 d），
+#   运行时需要 release DLL；过滤逻辑在 Debug 构建下只复制带 d 的，
+#   会导致 STATUS_DLL_NOT_FOUND (0xc0000135)。
+file(GLOB WX_DLLS_TEST "${WX_LIB_DIR}/*.dll")
 
-file(GLOB WX_DLLS_TEST "${WX_ROOT}/lib/gcc_dll/*.dll")
 add_custom_command(TARGET icu_tests POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${WX_DLLS_TEST}

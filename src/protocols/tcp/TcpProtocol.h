@@ -1,5 +1,7 @@
 #pragma once
 
+#include <wx/translation.h>
+
 #include "core/IProtocol.h"
 
 namespace icu {
@@ -9,7 +11,7 @@ namespace icu {
 class TcpProtocol : public IProtocol {
 public:
     std::string Id() const override { return "tcp"; }
-    std::string DisplayName() const override { return "&TCP/IP"; }
+    std::string DisplayName() const override { return _("&TCP/IP").utf8_string(); }
 
     bool HasModes() const override { return true; }
     std::vector<std::string> ModeNames() const override;

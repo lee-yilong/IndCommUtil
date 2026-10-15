@@ -19,6 +19,19 @@
 - 阶段 9：UI 打磨
 - 阶段 10：发布准备（打包、安装程序）
 
+### 已完成（阶段 4.7 清理）
+
+- 补齐 `en_US.po` 全部翻译，并清除 fuzzy / untranslated 条目。
+- 菜单、模式名与字段标签接入 gettext：`DisplayName()` 运行时翻译；`ModeNames()` 与
+  `FieldDescriptor` 保持稳定 key，由 UI 通过 `wxGetTranslation()` 翻译，避免语言影响 `.conn` 持久化值。
+- 修复 `tests/CMakeLists.txt` 中失效的 DLL 过滤：按 Debug / Release 只复制匹配的 wxWidgets DLL。
+- README 目录树移除不存在的 `tests/fixtures/` 说明。
+
+### 修复
+
+- Windows 下非管理员启动时，`wxFileConfig` 在用户配置目录创建临时文件失败会导致
+  can't open user configuration file. 弹窗。应用设置改用 `wxRegConfig`（HKCU 注册表）。
+
 ## [0.1.0] - 2026-10-14
 
 首个可运行版本：协议可插拔框架 + TCP 协议 + 数据驱动 UI + 测试与工程化配套。
@@ -88,13 +101,19 @@
 - 修正 `MockTransport::Open()` 语义：只切到 `Opening`，对齐真实异步 Transport
 - Mock 计数器改用 `shared_ptr<int>`，避免对象销毁后 use-after-free
 - `zh_CN.po` 补全空翻译并消除 fuzzy 条目
+- Windows 非管理员权限下设置无法初始化：`wxRegConfig` 写 `HKCU` 返回 `0x5`
+  拒绝访问，导致启动和退出各弹一次错误框。`Settings` 改用 `wxFileConfig`，
+  按 `%APPDATA%` → `%LOCALAPPDATA%` → exe 目录 → 当前目录的顺序探测可写位置，
+  探测阶段用 `wxLogNull` 屏蔽 wx 内部弹框，并用写探针验证真实可写。
+- 修复保存连接对话框在部分环境（Windows Shell 缩略图缓存或 COM 组件异常）下
+  卡在「正在处理…」：保存对话框过滤器从 `*.conn|*.*` 收窄为仅 `*.conn`，
+  避免 Shell 枚举目录下所有文件并尝试加载缩略图。同时补 `path` 为空检查和
+  `.conn` 扩展名兜底。
+- `Session::Send` 的 Codec 编码失败日志补翻译（`SPDLOG_WARN` → `ICU_SPDLOG_WARN`）。
 
 ### 已知问题
 
-- `en_US.po` 仍有部分条目未翻译（中文 msgid 回退显示原文）
-- `DisplayName()` / `ModeNames()` 未接 `_()`，菜单项与模式名当前不翻译
 - 覆盖率报告需要手动 `-DICU_BUILD_COVERAGE=ON` 生成，仓库内不保留产物
-- `tests/CMakeLists.txt` 第 68~75 行的 DLL 过滤是失效代码，会让约 1.3 GB 的 DLL 被复制两次
 - 本地执行 `git submodule update --init --recursive` 可能较慢（会拉 wxWidgets 的 12 个嵌套
   submodule）；只更新本项目需要的两个可用
   `git submodule update --init third_party/wxWidgets third_party/spdlog`

@@ -27,54 +27,68 @@ bool GetBool(const std::map<std::string, FieldValue>& f, const char* key, bool d
 }  // namespace
 
 std::vector<std::string> TcpProtocol::ModeNames() const {
-    return {"Client", "Server"};
+    return {wxTRANSLATE("Client"), wxTRANSLATE("Server")};
 }
 
 std::vector<FieldDescriptor> TcpProtocol::ClientFields() const {
     return {
-        {"remoteHost", "Remote Host:", FieldValue::Type::String,
+        {"remoteHost", wxTRANSLATE("Remote Host:"), FieldValue::Type::String,
          FieldValue(std::string("127.0.0.1"))},
 
-        {"remotePort", "Remote Port:", FieldValue::Type::Int, FieldValue(502), 1, 65535},
+        {"remotePort", wxTRANSLATE("Remote Port:"), FieldValue::Type::Int, FieldValue(502), 1,
+         65535},
 
-        {"localHost", "Local Host (optional):", FieldValue::Type::String,
+        {"localHost", wxTRANSLATE("Local Host (optional):"), FieldValue::Type::String,
          FieldValue(std::string("0.0.0.0"))},
 
-        {"localPort", "Local Port (0 = auto):", FieldValue::Type::Int, FieldValue(0), 0, 65535},
+        {"localPort", wxTRANSLATE("Local Port (0 = auto):"), FieldValue::Type::Int, FieldValue(0),
+         0, 65535},
 
-        {"timeoutMs", "Connect Timeout (ms):", FieldValue::Type::Int, FieldValue(3000), 100,
-         600000},
+        {"timeoutMs", wxTRANSLATE("Connect Timeout (ms):"), FieldValue::Type::Int, FieldValue(3000),
+         100, 600000},
 
-        {"autoReconnect", "Auto reconnect on disconnect", FieldValue::Type::Bool, FieldValue(true)},
+        {"autoReconnect", wxTRANSLATE("Auto reconnect on disconnect"), FieldValue::Type::Bool,
+         FieldValue(true)},
 
         {"reconnectMaxAttempts",
-         "Max reconnect attempts:",
+         wxTRANSLATE("Max reconnect attempts:"),
          FieldValue::Type::Choice,
          FieldValue(std::string("0")),
          0,
          0,
-         {{"0", "Unlimited"}, {"1", "1"}, {"3", "3"}, {"5", "5"}, {"10", "10"}, {"30", "30"}}},
+         {{"0", wxTRANSLATE("Unlimited")},
+          {"1", wxTRANSLATE("1")},
+          {"3", wxTRANSLATE("3")},
+          {"5", wxTRANSLATE("5")},
+          {"10", wxTRANSLATE("10")},
+          {"30", wxTRANSLATE("30")}}},
 
         {"reconnectDelaySec",
-         "Reconnect delay:",
+         wxTRANSLATE("Reconnect delay:"),
          FieldValue::Type::Choice,
          FieldValue(std::string("0")),
          0,
          0,
-         {{"0", "Auto"}, {"1", "1 s"}, {"3", "3 s"}, {"5", "5 s"}, {"10", "10 s"}, {"30", "30 s"}}},
+         {{"0", wxTRANSLATE("Auto")},
+          {"1", wxTRANSLATE("1 s")},
+          {"3", wxTRANSLATE("3 s")},
+          {"5", wxTRANSLATE("5 s")},
+          {"10", wxTRANSLATE("10 s")},
+          {"30", wxTRANSLATE("30 s")}}},
     };
 }
 
 std::vector<FieldDescriptor> TcpProtocol::ServerFields() const {
     return {
-        {"listenHost", "Listen Host:", FieldValue::Type::String,
+        {"listenHost", wxTRANSLATE("Listen Host:"), FieldValue::Type::String,
          FieldValue(std::string("0.0.0.0"))},
 
-        {"listenPort", "Listen Port:", FieldValue::Type::Int, FieldValue(502), 1, 65535},
+        {"listenPort", wxTRANSLATE("Listen Port:"), FieldValue::Type::Int, FieldValue(502), 1,
+         65535},
 
-        {"maxClients", "Max Clients:", FieldValue::Type::Int, FieldValue(10), 1, 1000},
+        {"maxClients", wxTRANSLATE("Max Clients:"), FieldValue::Type::Int, FieldValue(10), 1, 1000},
 
-        {"backlog", "Listen Backlog:", FieldValue::Type::Int, FieldValue(5), 1, 1000},
+        {"backlog", wxTRANSLATE("Listen Backlog:"), FieldValue::Type::Int, FieldValue(5), 1, 1000},
     };
 }
 

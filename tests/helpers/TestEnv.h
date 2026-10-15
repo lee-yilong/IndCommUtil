@@ -4,6 +4,8 @@
 // TestEnv —— 测试用临时目录
 //
 // 构造时创建一个唯一命名的临时目录，析构时递归删除。
+// 临时根优先用当前工作目录（ctest 下是 build/tests/，一定可写），
+// 避免系统 %TEMP% 在受限环境下不可写（如 C:\msys64\tmp）。
 // =========================================================================
 
 #include <chrono>
@@ -21,7 +23,12 @@ public:
         namespace fs = std::filesystem;
         const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
         m_dir = TempRoot() / ("icu_test_" + std::to_string(stamp));
-        fs::create_directories(m_dir);
+        std::error_code ec;
+        fs::create_directories(m_dir, ec);
+        if (ec) {
+            // 建不出来就让 m_dir 留空，测试用例会自然失败并报错
+            m_dir.clear();
+        }
     }
 
     ~TestEnv() {
@@ -37,29 +44,18 @@ public:
     std::string Dir() const { return m_dir.string(); }
 
 private:
-    // 系统临时目录：TEMP/TMP 无效时逐个回退，保证测试在任何环境下都能跑
+    // 临时根：优先当前工作目录，兜底系统 temp
     static std::filesystem::path TempRoot() {
         namespace fs = std::filesystem;
         std::error_code ec;
 
-        const fs::path systemTemp = fs::temp_directory_path(ec);
-        if (!ec && !systemTemp.empty()) {
-            return systemTemp;
+        const fs::path cwd = fs::current_path(ec);
+        if (!ec && !cwd.empty()) {
+            return cwd;
         }
 
-        for (const char* var : {"TEMP", "TMP"}) {
-            const char* value = std::getenv(var);
-            if (value == nullptr || *value == '\0') {
-                continue;
-            }
-            const fs::path candidate(value);
-            if (fs::is_directory(candidate, ec) && !ec) {
-                return candidate;
-            }
-            ec.clear();
-        }
-
-        return fs::current_path(ec);
+        ec.clear();
+        return fs::temp_directory_path(ec);
     }
 
     std::filesystem::path m_dir;

@@ -79,9 +79,10 @@ git submodule status
 cd third_party/wxWidgets
 mkdir -p build-ci && cd build-ci
 
+# 注意：wxWidgets 3.3 起 Unicode 是强制的，--enable-unicode 已不是合法选项
+# （configure 会报 "unrecognized options: --enable-unicode" 直接退出）
 ../configure \
     --enable-shared \
-    --enable-unicode \
     --enable-debug \
     --disable-tests \
     --disable-monolithic \

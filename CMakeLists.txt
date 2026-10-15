@@ -23,14 +23,31 @@ configure_file(
     @ONLY
 )
 
-# =========================================================================
-# 依赖路径
-# =========================================================================
 set(WX_ROOT     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/wxWidgets")
 set(SPDLOG_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/spdlog")
 
-# wxWidgets 3.3.5（-O0 -g Debug 编译，库名统一 u 后缀）
-set(WX_SETUP_DIR "mswu")
+# -------------------------------------------------------------------------
+# 探测 wxWidgets 布局：wx 3.3 有两种
+#   老式（in-tree build）：lib/gcc_dll/libwx_mswu_core-3.3.dll.a
+#                         lib/gcc_dll/mswu/wx/setup.h
+#   新式（std layout）：   lib/libwx_mswu_core-3.3.dll.a
+#                         lib/wx/include/msw-unicode-3.3/wx/setup.h
+# -------------------------------------------------------------------------
+if(EXISTS "${WX_ROOT}/lib/gcc_dll/libwx_mswu_core-3.3.dll.a")
+    set(WX_LIB_DIR   "${WX_ROOT}/lib/gcc_dll")
+    set(WX_SETUP_DIR "${WX_ROOT}/lib/gcc_dll/mswu")
+    message(STATUS "wxWidgets layout: legacy (lib/gcc_dll)")
+elseif(EXISTS "${WX_ROOT}/lib/libwx_mswu_core-3.3.dll.a")
+    set(WX_LIB_DIR   "${WX_ROOT}/lib")
+    set(WX_SETUP_DIR "${WX_ROOT}/lib/wx/include/msw-unicode-3.3")
+    message(STATUS "wxWidgets layout: standard (lib/)")
+else()
+    message(FATAL_ERROR
+        "wxWidgets libraries not found. Looked in:\n"
+        "  ${WX_ROOT}/lib/gcc_dll/libwx_mswu_core-3.3.dll.a\n"
+        "  ${WX_ROOT}/lib/libwx_mswu_core-3.3.dll.a\n"
+        "See docs/developer/building.md")
+endif()
 
 # =========================================================================
 # 源文件：递归扫描 src/ 下所有 .cpp 和 .h
@@ -59,6 +76,12 @@ add_executable(IndustrialCommunicationUtility WIN32
     resources/app.rc
 )
 
+# wx 3.3 在非 NDEBUG 构建下默认 wxDEBUG_LEVEL=1，
+# 会让 wxASSERT 展开成对 wxOnAssert 的引用（只在 debug 库里有）。
+# 项目链接的是 release wx 库，需要强制 wxDEBUG_LEVEL=0 才能链接。
+# 不影响项目自己的 assert（<cassert> 依赖 NDEBUG，与此无关）。
+target_compile_definitions(IndustrialCommunicationUtility PRIVATE wxDEBUG_LEVEL=0)
+
 # =========================================================================
 # 头文件搜索路径
 # =========================================================================
@@ -66,24 +89,22 @@ target_include_directories(IndustrialCommunicationUtility PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
     "${CMAKE_CURRENT_BINARY_DIR}/generated"
     "${WX_ROOT}/include"
-    "${WX_ROOT}/lib/gcc_dll/${WX_SETUP_DIR}"
+    "${WX_SETUP_DIR}"
     "${SPDLOG_ROOT}/include"
 )
 
 target_link_directories(IndustrialCommunicationUtility PRIVATE
-    "${WX_ROOT}/lib/gcc_dll"
+    "${WX_LIB_DIR}"
 )
 
 # =========================================================================
 # 链接 wxWidgets 与系统库
 # =========================================================================
 target_link_libraries(IndustrialCommunicationUtility PRIVATE
-    # ---------- wxWidgets 3.3.5 导入库 ----------
-    "${WX_ROOT}/lib/gcc_dll/libwx_mswu_core-3.3.dll.a"
-    "${WX_ROOT}/lib/gcc_dll/libwx_baseu-3.3.dll.a"
-    "${WX_ROOT}/lib/gcc_dll/libwx_baseu_net-3.3.dll.a"
+    "${WX_LIB_DIR}/libwx_mswu_core-3.3.dll.a"
+    "${WX_LIB_DIR}/libwx_baseu-3.3.dll.a"
+    "${WX_LIB_DIR}/libwx_baseu_net-3.3.dll.a"
 
-    # ---------- Windows 系统库 ----------
     kernel32 user32 gdi32 comdlg32 winspool winmm
     shell32 ole32 oleaut32 uuid comctl32 rpcrt4
     wsock32 odbc32 ws2_32
@@ -102,7 +123,7 @@ endif()
 # =========================================================================
 # 构建后复制 wxWidgets DLL
 # =========================================================================
-file(GLOB WX_DLLS "${WX_ROOT}/lib/gcc_dll/*.dll")
+file(GLOB WX_DLLS "${WX_LIB_DIR}/*.dll")
 
 add_custom_command(TARGET IndustrialCommunicationUtility POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different

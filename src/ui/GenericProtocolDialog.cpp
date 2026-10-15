@@ -27,7 +27,7 @@ void GenericProtocolDialog::BuildUi() {
     if (m_protocol->HasModes()) {
         auto names = m_protocol->ModeNames();
         wxArrayString modeArr;
-        for (auto& n : names) modeArr.Add(wxString::FromUTF8(n));
+        for (auto& n : names) modeArr.Add(wxGetTranslation(wxString::FromUTF8(n)));
 
         m_modeRadio = new wxRadioBox(this, wxID_ANY, _("Mode"), wxDefaultPosition, wxDefaultSize,
                                      modeArr, 1, wxRA_SPECIFY_COLS);
@@ -68,8 +68,8 @@ wxPanel* GenericProtocolDialog::BuildFieldsPanel(wxWindow* parent,
     grid->AddGrowableCol(1, 1);
 
     for (const auto& fd : fields) {
-        grid->Add(new wxStaticText(panel, wxID_ANY, wxString::FromUTF8(fd.label)), 0,
-                  wxALIGN_CENTER_VERTICAL);
+        grid->Add(new wxStaticText(panel, wxID_ANY, wxGetTranslation(wxString::FromUTF8(fd.label))),
+                  0, wxALIGN_CENTER_VERTICAL);
 
         wxWindow* ctrl = CreateControl(panel, fd);
         grid->Add(ctrl, 1, wxEXPAND);
@@ -102,7 +102,7 @@ wxWindow* GenericProtocolDialog::CreateControl(wxWindow* parent, const FieldDesc
             wxArrayString labels;
             int sel = 0;
             for (size_t i = 0; i < fd.choices.size(); ++i) {
-                labels.Add(wxString::FromUTF8(fd.choices[i].second));
+                labels.Add(wxGetTranslation(wxString::FromUTF8(fd.choices[i].second)));
                 if (fd.choices[i].first == fd.defaultValue.AsString()) sel = (int)i;
             }
             auto* ch = new wxChoice(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, labels);

@@ -556,7 +556,16 @@ void MainFrame::SaveCurrentProfileAs() {
                      "Connection files (*.conn)|*.conn", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
     if (dlg.ShowModal() != wxID_OK) return;
 
-    const wxString path = dlg.GetPath();
+    wxString path = dlg.GetPath();
+    if (path.IsEmpty()) return;
+
+    // 扩展名兜底（在 ShowModal 之后，不影响对话框）
+    wxFileName fn(path);
+    if (fn.GetExt().Lower() != "conn") {
+        fn.SetExt("conn");
+        path = fn.GetFullPath();
+    }
+
     if (ConnectionProfile::Save(path, m_activeProfile->protocolId, m_activeProfile->modeIndex,
                                 proto, m_activeProfile->fields)) {
         m_currentProfilePath = path;
