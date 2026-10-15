@@ -33,8 +33,7 @@ ProtocolSessionPanel::ProtocolSessionPanel(wxWindow* parent, Session* session)
             wxString::Format(_("Target: %s"), wxString::FromUTF8(m_session->Target().c_str())));
 
         if (m_lastState == SessionState::Connecting) {
-            const wxString ts = wxDateTime::Now().Format("[%Y-%m-%d %H:%M:%S]");
-            AppendLine(ts, wxString::Format(_("Connecting to %s ..."),
+            AppendLine("", wxString::Format(_("Connecting to %s ..."),
                                             wxString::FromUTF8(m_session->Target().c_str())));
         }
     }
@@ -78,6 +77,27 @@ void ProtocolSessionPanel::BuildUi() {
     main->Add(stats, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
 
     auto* logBox = new wxStaticBoxSizer(wxVERTICAL, this, _("Data Log"));
+
+    // 阶段 5.5：显示工具栏（HEX / 时间戳 / 自动滚动 / 清空）
+    auto* logToolbar = new wxBoxSizer(wxHORIZONTAL);
+    m_hexDisplay = new wxCheckBox(logBox->GetStaticBox(), wxID_ANY, _("HEX Display"));
+    m_showTimestamp = new wxCheckBox(logBox->GetStaticBox(), wxID_ANY, _("Timestamp"));
+    m_autoScroll = new wxCheckBox(logBox->GetStaticBox(), wxID_ANY, _("Auto Scroll"));
+    m_clearBtn = new wxButton(logBox->GetStaticBox(), wxID_ANY, _("Clear"));
+
+    m_hexDisplay->SetValue(false);
+    m_showTimestamp->SetValue(true);
+    m_autoScroll->SetValue(true);
+
+    m_clearBtn->Bind(wxEVT_BUTTON, &ProtocolSessionPanel::OnClear, this);
+
+    logToolbar->Add(m_hexDisplay, 0, wxALIGN_CENTER_VERTICAL | wxALL, 4);
+    logToolbar->Add(m_showTimestamp, 0, wxALIGN_CENTER_VERTICAL | wxALL, 4);
+    logToolbar->Add(m_autoScroll, 0, wxALIGN_CENTER_VERTICAL | wxALL, 4);
+    logToolbar->AddStretchSpacer();
+    logToolbar->Add(m_clearBtn, 0, wxALIGN_CENTER_VERTICAL | wxALL, 4);
+    logBox->Add(logToolbar, 0, wxEXPAND);
+
     m_dataLogTextCtrl =
         new wxTextCtrl(logBox->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition,
                        wxDefaultSize, wxTE_MULTILINE | wxTE_READONLY | wxTE_RICH2);
@@ -92,7 +112,11 @@ void ProtocolSessionPanel::BuildUi() {
     m_sendBtn = new wxButton(sendBox->GetStaticBox(), wxID_ANY, _("Send"));
     m_sendBtn->Bind(wxEVT_BUTTON, &ProtocolSessionPanel::OnSend, this);
 
+    m_appendNewline = new wxCheckBox(sendBox->GetStaticBox(), wxID_ANY, _("Append newline"));
+    m_appendNewline->SetValue(true);
+
     sendBox->Add(m_sendTextCtrl, 1, wxALIGN_CENTER_VERTICAL | wxALL, 4);
+    sendBox->Add(m_appendNewline, 0, wxALIGN_CENTER_VERTICAL | wxALL, 4);
     sendBox->Add(m_sendBtn, 0, wxALIGN_CENTER_VERTICAL | wxALL, 4);
     main->Add(sendBox, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
 
@@ -198,35 +222,48 @@ void ProtocolSessionPanel::AppendNotice(SessionState oldSt, SessionState newSt) 
             return;
     }
 
-    const wxString ts = wxDateTime::Now().Format("[%Y-%m-%d %H:%M:%S]");
-    AppendLine(ts, notice);
+    AppendLine("", notice);
 }
 
 void ProtocolSessionPanel::AppendLine(const wxString& prefix, const wxString& content) {
     if (!m_dataLogTextCtrl) return;
-    m_dataLogTextCtrl->AppendText(prefix + " " + content + "\n");
-    m_dataLogTextCtrl->SetInsertionPointEnd();
+
+    wxString line;
+    if (m_showTimestamp && m_showTimestamp->IsChecked()) {
+        line = wxDateTime::Now().Format("[%Y-%m-%d %H:%M:%S] ");
+    }
+    if (!prefix.IsEmpty()) {
+        line += prefix + " ";
+    }
+    line += content + "\n";
+
+    m_dataLogTextCtrl->AppendText(line);
+
+    const bool shouldScroll = (!m_autoScroll || m_autoScroll->IsChecked());
+    if (shouldScroll) {
+        m_dataLogTextCtrl->SetInsertionPointEnd();
+    }
+}
+
+wxString ProtocolSessionPanel::FormatMessage(const std::vector<uint8_t>& msg) {
+    if (m_hexDisplay && m_hexDisplay->IsChecked()) {
+        wxString text;
+        for (uint8_t b : msg) {
+            text += wxString::Format("%02X ", b);
+        }
+        if (!text.IsEmpty()) {
+            text.RemoveLast();  // 去尾空格
+        }
+        return text;
+    }
+    return wxString::FromUTF8(reinterpret_cast<const char*>(msg.data()), msg.size());
 }
 
 void ProtocolSessionPanel::OnMessage(int clientId, const std::vector<uint8_t>& msg) {
     m_rxBytes += msg.size();
     m_rxLabel->SetLabel(wxString::Format(_("Received: %llu bytes"), (unsigned long long)m_rxBytes));
 
-    wxString text;
-    bool hasNonPrintable = false;
-    for (uint8_t b : msg) {
-        if (b < 0x09 || (b > 0x0D && b < 0x20)) {
-            hasNonPrintable = true;
-            break;
-        }
-    }
-
-    if (hasNonPrintable) {
-        for (uint8_t b : msg) text += wxString::Format("%02X ", b);
-    } else {
-        text = wxString::FromUTF8(reinterpret_cast<const char*>(msg.data()), msg.size());
-    }
-
+    const wxString text = FormatMessage(msg);
     const wxString prefix = (clientId > 0) ? wxString::Format("<#%d", clientId) : "<";
 
     AppendLine(prefix, text);
@@ -238,7 +275,10 @@ void ProtocolSessionPanel::OnSend(wxCommandEvent&) {
     const wxString text = m_sendTextCtrl->GetValue();
     if (text.IsEmpty()) return;
 
-    const std::string utf8 = std::string(text.utf8_str()) + "\n";
+    std::string utf8 = std::string(text.utf8_str());
+    if (m_appendNewline && m_appendNewline->IsChecked()) {
+        utf8 += "\n";
+    }
     std::vector<uint8_t> bytes(utf8.begin(), utf8.end());
 
     if (m_session->Send(bytes)) {
@@ -253,6 +293,12 @@ void ProtocolSessionPanel::OnSend(wxCommandEvent&) {
 
 void ProtocolSessionPanel::OnSendEnter(wxCommandEvent& evt) {
     OnSend(evt);
+}
+
+void ProtocolSessionPanel::OnClear(wxCommandEvent&) {
+    if (m_dataLogTextCtrl) {
+        m_dataLogTextCtrl->Clear();
+    }
 }
 
 void ProtocolSessionPanel::OnAction(wxCommandEvent&) {
@@ -317,8 +363,7 @@ void ProtocolSessionPanel::UpdateActionButton(SessionState st) {
 }
 
 void ProtocolSessionPanel::OnReconnectAttempt(int attempt) {
-    const wxString ts = wxDateTime::Now().Format("[%Y-%m-%d %H:%M:%S]");
-    AppendLine(ts, wxString::Format(_("Reconnecting (attempt %d) ..."), attempt));
+    AppendLine("", wxString::Format(_("Reconnecting (attempt %d) ..."), attempt));
 }
 
 void ProtocolSessionPanel::OnConfigure(wxCommandEvent&) {
@@ -339,8 +384,7 @@ void ProtocolSessionPanel::OnClientConnected(int clientId) {
 
     if (m_session) UpdateStateLabel(m_session->State());
 
-    const wxString ts = wxDateTime::Now().Format("[%Y-%m-%d %H:%M:%S]");
-    AppendLine(ts, wxString::Format(_("Client #%d connected"), clientId));
+    AppendLine("", wxString::Format(_("Client #%d connected"), clientId));
 }
 
 void ProtocolSessionPanel::OnClientDisconnected(int clientId) {
@@ -349,8 +393,7 @@ void ProtocolSessionPanel::OnClientDisconnected(int clientId) {
 
     if (m_session) UpdateStateLabel(m_session->State());
 
-    const wxString ts = wxDateTime::Now().Format("[%Y-%m-%d %H:%M:%S]");
-    AppendLine(ts, wxString::Format(_("Client #%d disconnected"), clientId));
+    AppendLine("", wxString::Format(_("Client #%d disconnected"), clientId));
 }
 
 void ProtocolSessionPanel::UpdateModeLabel() {

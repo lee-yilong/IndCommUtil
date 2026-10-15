@@ -13,17 +13,19 @@ target_include_directories(doctest INTERFACE
 # -------------------------------------------------------------------------
 # icu_core_test：测试用的生产代码静态库
 # -------------------------------------------------------------------------
-# icu_core_test：可单测的生产代码
-#   GLOB 限定在 core / config / protocols 三个目录，排除 ui / app / log / settings
-#   （ui 需要 wx core；app 依赖 ui；log 有 GUI sink；settings 依赖 wxApp 初始化）
-#   新增协议只要放 protocols/ 下，自动被拾取
-file(GLOB_RECURSE ICU_CORE_TEST_SOURCES CONFIGURE_DEPENDS
-    "${CMAKE_SOURCE_DIR}/src/core/*.cpp"
-    "${CMAKE_SOURCE_DIR}/src/config/*.cpp"
-    "${CMAKE_SOURCE_DIR}/src/protocols/*.cpp"
+add_library(icu_core_test STATIC
+    "${CMAKE_SOURCE_DIR}/src/core/ProtocolTypes.cpp"
+    "${CMAKE_SOURCE_DIR}/src/core/ProtocolRegistry.cpp"
+    "${CMAKE_SOURCE_DIR}/src/core/Session.cpp"
+    "${CMAKE_SOURCE_DIR}/src/core/SessionManager.cpp"
+    "${CMAKE_SOURCE_DIR}/src/config/ConnectionProfile.cpp"
+    "${CMAKE_SOURCE_DIR}/src/protocols/tcp/TcpProtocol.cpp"
+    "${CMAKE_SOURCE_DIR}/src/protocols/tcp/TcpTransport.cpp"
+    "${CMAKE_SOURCE_DIR}/src/protocols/serial/SerialPort.cpp"
+    "${CMAKE_SOURCE_DIR}/src/protocols/serial/SerialTransport.cpp"
+    "${CMAKE_SOURCE_DIR}/src/protocols/serial/SerialProtocol.cpp"
 )
 
-add_library(icu_core_test STATIC ${ICU_CORE_TEST_SOURCES})
 # 同 CMakeLists.txt：强制 wxDEBUG_LEVEL=0
 # PUBLIC 让 icu_tests 也继承，避免 TcpTransport.cpp 引用 wxOnAssert
 target_compile_definitions(icu_core_test PUBLIC wxDEBUG_LEVEL=0)

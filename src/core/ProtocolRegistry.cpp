@@ -11,18 +11,21 @@ ProtocolRegistry& ProtocolRegistry::Instance() {
 }
 
 void ProtocolRegistry::Register(IProtocolPtr proto) {
-    m_protocols[proto->Id()] = std::move(proto);
+    const std::string id = proto->Id();
+    m_protocols.emplace_back(id, std::move(proto));
 }
 
 IProtocol* ProtocolRegistry::Find(const std::string& id) const {
-    auto it = m_protocols.find(id);
-    return it == m_protocols.end() ? nullptr : it->second.get();
+    for (const auto& kv : m_protocols) {
+        if (kv.first == id) return kv.second.get();
+    }
+    return nullptr;
 }
 
 std::vector<IProtocol*> ProtocolRegistry::All() const {
     std::vector<IProtocol*> v;
     v.reserve(m_protocols.size());
-    for (auto& kv : m_protocols) v.push_back(kv.second.get());
+    for (const auto& kv : m_protocols) v.push_back(kv.second.get());
     return v;
 }
 

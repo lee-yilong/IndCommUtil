@@ -1,6 +1,7 @@
 #pragma once
 
 #include <wx/button.h>
+#include <wx/checkbox.h>
 #include <wx/stattext.h>
 #include <wx/textctrl.h>
 #include <wx/wx.h>
@@ -42,6 +43,13 @@ private:
     wxButton* m_actionBtn = nullptr;
     wxButton* m_configBtn = nullptr;
 
+    // 阶段 5.5：通用显示增强
+    wxCheckBox* m_hexDisplay = nullptr;     // HEX 接收显示
+    wxCheckBox* m_showTimestamp = nullptr;  // 时间戳
+    wxCheckBox* m_autoScroll = nullptr;     // 自动滚动
+    wxCheckBox* m_appendNewline = nullptr;  // 发送时追加 \n
+    wxButton* m_clearBtn = nullptr;         // 清空接收
+
     size_t m_rxBytes = 0;
     size_t m_txBytes = 0;
 
@@ -56,10 +64,15 @@ private:
     void UpdateStateLabel(SessionState st);
     void UpdateActionButton(SessionState st);
 
+    // 根据 m_hexDisplay 决定如何格式化消息
+    wxString FormatMessage(const std::vector<uint8_t>& msg);
+
     void OnSend(wxCommandEvent& evt);
     void OnSendEnter(wxCommandEvent& evt);
     void OnAction(wxCommandEvent& evt);
     void OnConfigure(wxCommandEvent& evt);
+    void OnClear(wxCommandEvent& evt);
+
     int m_clientCount = 0;
     wxStaticText* m_clientsLabel = nullptr;
     void UpdateClientsLabel();

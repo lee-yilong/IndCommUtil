@@ -1033,12 +1033,12 @@ docs/
 
 ### 阶段 5：串口协议 + 会话面板通用增强 🟡 进行中
 
-- [ ] 5.0 写 ADR 0005（已完成）
-- [ ] 5.1 `protocols/serial/SerialPort.h/.cpp`（Windows 实现，Linux 留骨架）
-- [ ] 5.2 `protocols/serial/SerialTransport.h/.cpp`（后台线程 + 同步 I/O）
-- [ ] 5.3 `protocols/serial/SerialProtocol.h/.cpp`（单模式 IProtocol）
-- [ ] 5.4 `ProtocolRegistry` 注册 SerialProtocol
-- [ ] 5.5 `ProtocolSessionPanel` 通用增强：
+- [x] 5.0 写 ADR 0005（已完成）
+- [x] 5.1 `protocols/serial/SerialPort.h/.cpp`（Windows 实现，Linux 留骨架）
+- [x] 5.2 `protocols/serial/SerialTransport.h/.cpp`（后台线程 + 同步 I/O）
+- [x] 5.3 `protocols/serial/SerialProtocol.h/.cpp`（单模式 IProtocol）
+- [x] 5.4 `ProtocolRegistry` 注册 SerialProtocol
+- [x] 5.5 `ProtocolSessionPanel` 通用增强：
       - HEX 接收显示切换
       - 时间戳开关
       - 自动滚动
