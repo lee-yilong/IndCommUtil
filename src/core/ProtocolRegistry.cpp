@@ -1,5 +1,6 @@
 #include "ProtocolRegistry.h"
 
+#include "protocols/serial/SerialProtocol.h"
 #include "protocols/tcp/TcpProtocol.h"
 
 namespace icu {
@@ -28,6 +29,7 @@ std::vector<IProtocol*> ProtocolRegistry::All() const {
 void RegisterBuiltinProtocols() {
     auto& reg = ProtocolRegistry::Instance();
     reg.Register(std::make_unique<TcpProtocol>());
+    reg.Register(std::make_unique<SerialProtocol>());
 }
 
 }  // namespace icu

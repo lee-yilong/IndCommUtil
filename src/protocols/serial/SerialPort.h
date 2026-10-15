@@ -21,14 +21,14 @@ public:
     enum class FlowControl { None, RtsCts, XonXoff };
 
     struct Config {
-        std::string portName;      // "COM3"（Windows）/ "/dev/ttyUSB0"（Linux）
-        int baudRate = 9600;       // 任意正整数，支持非标波特率
-        int dataBits = 8;          // 5 / 6 / 7 / 8
+        std::string portName;  // "COM3"（Windows）/ "/dev/ttyUSB0"（Linux）
+        int baudRate = 9600;   // 任意正整数，支持非标波特率
+        int dataBits = 8;      // 5 / 6 / 7 / 8
         Parity parity = Parity::None;
         StopBits stopBits = StopBits::One;
         FlowControl flowControl = FlowControl::None;
-        int readTimeoutMs = 100;   // 单次 Read 最长阻塞时间
-        int writeTimeoutMs = 1000; // 单次 Write 最长阻塞时间
+        int readTimeoutMs = 100;    // 单次 Read 最长阻塞时间
+        int writeTimeoutMs = 1000;  // 单次 Write 最长阻塞时间
     };
 
     SerialPort();
