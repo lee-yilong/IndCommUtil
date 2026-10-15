@@ -21,6 +21,8 @@ add_library(icu_core_test STATIC
     "${CMAKE_SOURCE_DIR}/src/config/ConnectionProfile.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/tcp/TcpProtocol.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/tcp/TcpTransport.cpp"
+    "${CMAKE_SOURCE_DIR}/src/protocols/serial/SerialPort.cpp"
+    "${CMAKE_SOURCE_DIR}/src/protocols/serial/SerialTransport.cpp"
 )
 
 # 同 CMakeLists.txt：强制 wxDEBUG_LEVEL=0
