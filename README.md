@@ -1044,7 +1044,7 @@ docs/
       - 自动滚动
       - 清空接收按钮
       - 发送新行开关
-- [ ] 5.6 单测：`test_SerialProtocol.cpp`
+- [x] 5.6 单测：`test_SerialProtocol.cpp`
 - [ ] 5.7 手工回归：com0com 或两台机器串口对接
 - [ ] 5.8 更新 README 第 8 / 12 节、新建 `docs/user/serial.md`
 
