@@ -2,7 +2,7 @@
 
 > **文档定位**：本文档既是项目开发文档，也是 AI 辅助开发的 Skill 定义。所有开发按本文档推进，AI 在协助编码时必须遵循本文档的架构、约定和任务清单。
 >
-> **本版重点**：阶段 4 全部完成（含 4.7 清理），新增 ADR 0004 / 0005。**下一阶段 5：串口协议 + 会话面板通用增强**。阶段 6 计划接入 Modbus。
+> **本版重点**：阶段 5 全部完成（串口协议 + 会话面板通用增强）。**下一阶段 6：Modbus（TCP / RTU / ASCII）**，基于 serhmarch/ModbusLib。
 
 ---
 
@@ -61,7 +61,7 @@
 | 测试 | doctest（header-only） |
 | i18n | GNU gettext（.po / .mo） |
 | 网络 | wxSocket（内置） |
-| 串口 | 自实现（`SerialPort`，Windows 优先） |
+| 串口 | 自实现（`SerialPort`，Windows 实现） |
 | 静态分析 | clang-tidy + clang-format |
 | CI | GitHub Actions |
 | 覆盖率 | gcovr + GCC `--coverage` |
@@ -227,13 +227,13 @@ UI 面板 Send(text)
     → Session::Send(vector<uint8_t>)
     → ICodec::Encode(message) → bytes
     → ITransport::Send(bytes)
-    → wxSocket::Write
+    → wxSocket::Write 或 SerialPort::Write
 ```
 
 **接收**：
 
 ```
-wxSocket Input 事件
+wxSocket Input 事件 / 串口读线程
     → ITransport::NotifyData(clientId, bytes)
     → Session::HandleTransportData
         ├─→ OnRawData 回调（原始字节视图）
@@ -312,6 +312,10 @@ public:
 };
 ```
 
+> **注意**：`GenericProtocolDialog::CollectValues` 对 `Choice` 字段用 `std::string` 构造 `FieldValue`，
+> 落到 `FieldValue` 里类型是 `String` 而非 `Choice`。协议实现从 `fields` 读 `Choice` 类的值时
+> （如波特率），需要同时兼容 `String` 和 `Choice` 类型。
+
 ### 4.4 `ProtocolRegistry`
 
 ```cpp
@@ -320,14 +324,18 @@ public:
     static ProtocolRegistry& Instance();
     void Register(std::unique_ptr<IProtocol> proto);
     IProtocol* Find(const std::string& id) const;
-    std::vector<IProtocol*> All() const;
+    std::vector<IProtocol*> All() const;    // 按注册顺序返回
 };
 void RegisterBuiltinProtocols();
 ```
 
+**顺序**：内部用 `std::vector<std::pair<std::string, IProtocolPtr>>` 存储，`All()` 按注册顺序返回，菜单按此顺序显示。`RegisterBuiltinProtocols()` 里先注册 TCP，再注册 Serial，所以菜单是 `TCP/IP` → `Serial Port`。
+
 ### 4.5 `ITransport`
 
 ```cpp
+enum class TransportState { Idle, Opening, Reconnecting, Open, Closed };
+
 class ITransport {
 public:
     virtual bool           Open() = 0;
@@ -335,6 +343,7 @@ public:
     virtual TransportState State() const = 0;
     virtual bool           IsOpen() const = 0;
     virtual bool           IsServerMode() const { return false; }
+    virtual std::string    Name() const { return "Transport"; }   // 显示名
     virtual std::string    Target() const = 0;
     virtual size_t         Send(const uint8_t* data, size_t len) = 0;
     virtual int            ClientCount() const { return 0; }
@@ -386,8 +395,8 @@ public:
     bool SendRaw(const uint8_t* data, size_t len);
 
     std::string Target() const;
-    std::string Protocol() const;
-    std::string TransportName() const;
+    std::string Protocol() const;         // Codec 的名字
+    std::string TransportName() const;    // 转发给 ITransport::Name()
 
     using StateCallback       = std::function<void(SessionState)>;
     using MessageCallback     = std::function<void(int clientId, const std::vector<uint8_t>&)>;
@@ -410,7 +419,7 @@ public:
 
 ## 5. 目录结构
 
-### 5.1 当前目录（阶段 4 完成，阶段 5 未开始）
+### 5.1 当前目录
 
 ```
 IndustrialCommunicationUtility/
@@ -431,7 +440,7 @@ IndustrialCommunicationUtility/
 │   │   ├── tcp/
 │   │   │   ├── TcpProtocol.h/.cpp
 │   │   │   └── TcpTransport.h/.cpp
-│   │   ├── serial/                    ★ 阶段 5 待建
+│   │   ├── serial/                   ✅ 已完成（阶段 5）
 │   │   │   ├── SerialProtocol.h/.cpp
 │   │   │   ├── SerialTransport.h/.cpp
 │   │   │   └── SerialPort.h/.cpp
@@ -440,7 +449,7 @@ IndustrialCommunicationUtility/
 │   │       └── ModbusRtuCodec.h/.cpp （.cpp 待阶段 6）
 │   ├── ui/
 │   │   ├── GenericProtocolDialog.h/.cpp
-│   │   ├── ProtocolSessionPanel.h/.cpp  ★ 阶段 5 增强
+│   │   ├── ProtocolSessionPanel.h/.cpp  ✅ 通用增强（阶段 5）
 │   │   ├── LogFrame.h/.cpp
 │   │   └── AppTaskBarIcon.h/.cpp
 │   ├── settings/
@@ -470,7 +479,7 @@ IndustrialCommunicationUtility/
 │   │   └── protocols/
 │   │       ├── codec/
 │   │       │   └── test_RawCodec.cpp
-│   │       └── serial/               ★ 阶段 5 待建
+│   │       └── serial/               ✅ 已完成（阶段 5）
 │   │           └── test_SerialProtocol.cpp
 │   ├── integration/
 │   │   └── test_ConnectionProfile.cpp
@@ -511,7 +520,7 @@ IndustrialCommunicationUtility/
 │   ├── user/
 │   │   ├── getting-started.md
 │   │   ├── tcp.md
-│   │   ├── serial.md                 ★ 阶段 5 待建
+│   │   ├── serial.md                 ✅ 已完成（阶段 5）
 │   │   └── troubleshooting.md
 │   ├── developer/
 │   │   ├── building.md
@@ -627,14 +636,14 @@ settings/
 | **窗口** | 关闭时最小化到托盘 | 🟡 待迁移 |
 | **UI** | 字体（UI / 日志 / 数据） | ⬜ 预留 |
 | **UI** | 主题（浅色 / 深色） | ⬜ 预留 |
-| **UI** | 十六进制显示 | ⬜ 预留（阶段 5 会用到） |
-| **UI** | 自动滚动 | ⬜ 预留（阶段 5 会用到） |
-| **UI** | 时间戳显示 | ⬜ 预留（阶段 5 会用到） |
+| **UI** | 十六进制显示 | 🟡 会话面板内存（阶段 9 持久化） |
+| **UI** | 自动滚动 | 🟡 会话面板内存（阶段 9 持久化） |
+| **UI** | 时间戳显示 | 🟡 会话面板内存（阶段 9 持久化） |
 | **图标** | 协议图标 | ⬜ 预留 |
 | **图标** | UI 图标 | ⬜ 预留 |
 | **最近连接** | 最近打开的 `.conn` 列表 | ✅ 已实现 |
 
-**图例**：✅ 已实现 / 🟡 待迁移 / ⬜ 预留
+**图例**：✅ 已实现 / 🟡 部分实现或待迁移 / ⬜ 预留
 
 ### 6.6 怎么加新设置
 
@@ -695,7 +704,7 @@ MaxClients=10
 ListenBacklog=5
 ```
 
-### 7.4 串口（阶段 5 计划）
+### 7.4 串口
 
 ```ini
 [Connection]
@@ -731,7 +740,7 @@ WriteTimeoutMs=1000
 | 协议 | ID | 模式 | 传输 | 编解码 | 状态 |
 |---|---|---|---|---|---|
 | **TCP/IP** | `tcp` | Client / Server | TcpClient / TcpServer | Raw | ✅ 完成 |
-| **串口** | `serial` | — | SerialTransport | Raw | 🟡 进行中（阶段 5） |
+| **串口** | `serial` | — | SerialTransport | Raw | ✅ 完成 |
 | Modbus | `modbus` | TCP / RTU / ASCII | 内置 | 内置（事务型） | ⬜ 待实现（阶段 6） |
 | MQTT | `mqtt` | Pub / Sub | TcpClient | MqttCodec | ⬜ 待实现 |
 | OPC UA | `opcua` | Client / Server | 专用 | 专用 | ⬜ 待实现 |
@@ -772,7 +781,7 @@ tests/
 ### 9.4 构建集成
 
 ```cmake
-option(ICU_BUILD_TESTS "Build unit/integration tests" OFF)   # 注意：默认 OFF，命令行需显式打开
+option(ICU_BUILD_TESTS "Build unit/integration tests" OFF)
 option(ICU_BUILD_COVERAGE "Enable code coverage instrumentation" OFF)
 
 if(ICU_BUILD_TESTS)
@@ -782,6 +791,8 @@ endif()
 ```
 
 `tests/CMakeLists.txt` 用 `file(GLOB_RECURSE CONFIGURE_DEPENDS)` 自动扫描 `unit/*.cpp` 和 `integration/*.cpp`，**新增测试文件无需改 CMakeLists**。
+
+`icu_core_test` 显式列源文件（core / config / protocols），**新增协议要在其中追加**，避免 GLOB 误拾取未来可能引入的重依赖（如 ModbusLib）。
 
 ### 9.5 运行
 
@@ -802,7 +813,7 @@ ctest --test-dir build --output-on-failure
 | 模块 | 覆盖率目标 | 当前 |
 |---|---|---|
 | `src/core/` | ≥ 80% | ~85% ✅ |
-| `src/protocols/` | ≥ 70% | ~40% ⚠️ |
+| `src/protocols/` | ≥ 70% | ~50% ⚠️ |
 | `src/settings/` | ≥ 60% | 0% ⚠️ |
 | `src/config/` | ≥ 70% | 100% ✅ |
 | `src/ui/` / `src/app/` | 手动测试 | — |
@@ -811,9 +822,9 @@ ctest --test-dir build --output-on-failure
 
 | 缺口 | 原因 | 补测时机 |
 |---|---|---|
-| `TcpTransport.cpp` 0% | 依赖真实 wxSocket 事件循环 | 阶段 5/6 统一评估 |
+| `TcpTransport.cpp` 0% | 依赖真实 wxSocket 事件循环 | 阶段 6 统一评估 |
+| `SerialPort.cpp` / `SerialTransport.cpp` | 依赖真实串口硬件 | 手工回归（com0com） |
 | `settings/*.cpp` 0% | 依赖 `wxApp` 初始化 | 阶段 8 |
-| `SerialPort.cpp` | 依赖真实串口硬件 | 手工回归（com0com） |
 
 ### 9.7 什么必须测
 
@@ -886,7 +897,7 @@ ctest --test-dir build --output-on-failure
 
 | 对象 | 注意事项 |
 |---|---|
-| `wxTaskBarIcon` | 不要 `delete`，只 `RemoveIcon()` |
+| `wxTaskBarIcon` | 不要 `delete`，只 `RemoveIcon()`（见下方"遗留问题"） |
 | `wxSocketBase` | 销毁前先 `Notify(false)` |
 | `wxEvtHandler` | 用 `Bind` 或 `SetEventHandler` |
 | **UI 自毁场景** | **必须用 `CallAfter` 延迟**（见 2.5） |
@@ -937,8 +948,12 @@ GitHub Actions 每次 push / PR 跑四件事：**wxWidgets 构建缓存 → Debu
 
 - `third_party/wxWidgets` 与 `third_party/spdlog` 都是 **submodule**
 - **必须用 `submodules: recursive`**：wxWidgets 自身还带 12 个嵌套 submodule
-- wxWidgets 的 configure 参数 **不带 `--enable-debug`**，产出 release 库名（`libwx_mswu_*`），与 `CMakeLists.txt` 链接的一致
-- 缓存键用 `wx-3.3.5-release-${os}-ucrt64-gcc-${hashFiles('version.h')}`，换 wx 版本或改配置会自动失效
+- wxWidgets 的 configure 参数 **不带 `--enable-debug`**，产出 release 库名（`libwx_mswu_*`）
+- 缓存键用 `wx-3.3.5-release-cc-${os}-ucrt64-gcc-${hashFiles('version.h')}`
+- CI 上 wx 采用"标准布局"（`lib/*.dll.a` + `lib/wx/include/msw-unicode-3.3/wx/setup.h`）
+- 本地（手工 in-tree build）是"老式布局"（`lib/gcc_dll/*.dll.a` + `lib/gcc_dll/mswu/wx/setup.h`）
+- **CMakeLists.txt 自动探测两种布局**
+- 强制 `wxDEBUG_LEVEL=0`（release wx 库没有 debug 符号）
 - 格式检查用 **pip 装固定版本的 clang-format 19.1.5**
 - 本地等价命令：`scripts/build.sh`、`scripts/test.sh`、`scripts/format.sh check`
 
@@ -990,7 +1005,7 @@ docs/
 ├── user/
 │   ├── getting-started.md
 │   ├── tcp.md
-│   ├── serial.md                      ★ 阶段 5 待建
+│   ├── serial.md
 │   └── troubleshooting.md
 ├── developer/
 │   ├── building.md
@@ -1016,24 +1031,12 @@ docs/
 - [x] **阶段 1：协议抽象层**
 - [x] **阶段 2：MainFrame 切换到协议层**
 - [x] **阶段 3：会话面板通用化**
-- [x] **阶段 4.1：抽出 `settings/` 模块**
-- [x] **阶段 4.2：App 层切换到 Settings**
-- [x] **阶段 4.3：目录重组**
-- [x] **阶段 4.4：核心类型合并**
-- [x] **阶段 4.5：测试模块**
-- [x] **阶段 4.6：工程化配套**
-- [x] **阶段 4.7：清理**
+- [x] **阶段 4：目录结构与设置模块重构**（含 4.7 清理）
+- [x] **阶段 5：串口协议 + 会话面板通用增强**
 
-### 阶段 4：目录结构与设置模块重构 **已完成**
+### 阶段 5：串口协议 + 会话面板通用增强 ✅ 已完成
 
-- [x] 4.4 核心类型合并
-- [x] 4.5 测试模块
-- [x] 4.6 工程化配套（CI / clang-tidy / version.h / CHANGELOG / LICENSE / docs / scripts）
-- [x] 4.7 清理（i18n / DLL 过滤 / 文档同步 / 设置存储改用 wxFileConfig）
-
-### 阶段 5：串口协议 + 会话面板通用增强 🟡 进行中
-
-- [x] 5.0 写 ADR 0005（已完成）
+- [x] 5.0 写 ADR 0005
 - [x] 5.1 `protocols/serial/SerialPort.h/.cpp`（Windows 实现，Linux 留骨架）
 - [x] 5.2 `protocols/serial/SerialTransport.h/.cpp`（后台线程 + 同步 I/O）
 - [x] 5.3 `protocols/serial/SerialProtocol.h/.cpp`（单模式 IProtocol）
@@ -1045,8 +1048,15 @@ docs/
       - 清空接收按钮
       - 发送新行开关
 - [x] 5.6 单测：`test_SerialProtocol.cpp`
-- [ ] 5.7 手工回归：com0com 或两台机器串口对接
-- [ ] 5.8 更新 README 第 8 / 12 节、新建 `docs/user/serial.md`
+- [x] 5.7 手工回归：com0com 串口对接
+- [x] 5.8 更新 README 第 8 / 12 节、新建 `docs/user/serial.md`
+
+**阶段 5 附带完成**：
+
+- 菜单顺序按注册顺序（TCP 在 Serial 之前）
+- Port 下拉框自动枚举系统串口
+- `ITransport::Name()` 泛化，会话面板顶部显示传输类型（不再硬编码 TCP）
+- 消息显示支持 HEX / 时间戳 / 自动滚动 / 清空 / 发送新行
 
 ### 阶段 6：Modbus 协议（TCP / RTU / ASCII） ⬜ 未开始
 
@@ -1073,7 +1083,8 @@ docs/
 - [ ] 从文件发送
 - [ ] 转义字符解析（`\r\n`）
 - [ ] 自动换行
-- [ ] 端口枚举下拉
+- [ ] HEX / 时间戳 / 自动滚动等偏好持久化
+- [ ] 端口枚举在 Linux 上实现
 
 ### 阶段 10：发布准备 ⬜ 未开始
 
@@ -1084,9 +1095,15 @@ docs/
 ### 13.1 上下文理解
 
 **当前状态**：
-- 阶段 1~4 全部完成
-- **阶段 5 进行中**：串口协议 + 会话面板通用增强
-- **阶段 6 计划**：Modbus（TCP / RTU / ASCII），基于 serhmarch/ModbusLib
+- 阶段 1~5 全部完成
+- **阶段 6 计划**：Modbus（TCP / RTU / ASCII），基于 serhmarch/ModbusLib，采用"事务型协议"独立抽象
+
+**遗留问题**（不阻塞，需单独排查）：
+
+| 问题 | 影响 |
+|---|---|
+| `文件 → 退出` / `X 关闭 → 否` 偶发崩溃 | 退出路径不可靠 |
+| 托盘图标在部分环境不显示（`Shell_NotifyIcon` 权限拒绝） | 系统层问题 |
 
 **工程命令**（仓库根）：
 
@@ -1101,11 +1118,13 @@ docs/
 **关键文件**：
 - `src/core/IProtocol.h` — 协议接口
 - `src/core/ITransport.h` / `src/core/ICodec.h` — 传输/编解码接口
-- `src/protocols/tcp/TcpProtocol.cpp` — 协议范例
-- `src/protocols/tcp/TcpTransport.cpp` — Transport 范例
+- `src/protocols/tcp/TcpProtocol.cpp` — 多模式协议范例
+- `src/protocols/serial/SerialProtocol.cpp` — 单模式协议范例
+- `src/protocols/serial/SerialPort.cpp` — 平台相关封装范例
+- `src/protocols/serial/SerialTransport.cpp` — 后台读线程范例
 - `src/ui/GenericProtocolDialog.cpp` — UI 数据驱动核心
-- `src/ui/ProtocolSessionPanel.cpp` — 会话面板（阶段 5 会增强）
-- `src/core/ProtocolRegistry.cpp` — 协议注册
+- `src/ui/ProtocolSessionPanel.cpp` — 会话面板
+- `src/core/ProtocolRegistry.cpp` — 协议注册（vector 保序）
 - `src/settings/Settings.h` — 设置入口
 - `tests/CMakeLists.txt` — 测试构建入口
 - `tests/mocks/MockTransport.h` — 内存假 Transport 范例
@@ -1116,7 +1135,7 @@ docs/
 | 用户意图 | AI 应做什么 |
 |---|---|
 | 询问设计/架构 | 引用本文档，不发明新架构 |
-| 要求实现某协议 | 按 `TcpProtocol` 模板，只写 `protocols/<name>/` |
+| 要求实现某协议 | 按 `TcpProtocol`（多模式）或 `SerialProtocol`（单模式）模板，只写 `protocols/<name>/` |
 | 报告编译错误 | 定位根因，给最小修复 |
 | 要求加 UI 功能 | 先问"能否通过 `FieldDescriptor` 描述" |
 | 要求加 App 设置 | 走 `settings/` 模块 |
@@ -1129,6 +1148,7 @@ docs/
 - [ ] 日志是否符合约定？
 - [ ] 设置是否走 `settings/`？
 - [ ] 是否需要同步加测试？
+- [ ] 新增协议是否要在 `tests/CMakeLists.txt` 的 `icu_core_test` 里追加源文件？
 
 ### 13.3 代码生成规范
 
@@ -1163,6 +1183,7 @@ tests/unit/protocols/<protocol_id>/
 4. **不要发明 API**
 5. **循环包含：`.h` 里不要 include 自己**
 6. **CMake target 引用必须在 `add_library` / `add_executable` 之后**
+7. **手写对齐的 `//` 注释会被 clang-format 报错**，不要在 `//` 前手动加空格对齐
 
 ### 13.5 日志和 i18n 准则
 
@@ -1187,18 +1208,21 @@ tests/unit/protocols/<protocol_id>/
 | 拆分 TCP 为 TCPClientProtocol / TCPServerProtocol | 协议是一个整体 |
 | 拆分串口为 Master / Slave 两个协议 | 裸串口无角色语义 |
 | 在 UI 层加 `if (protocol == "xxx")` | 破坏数据驱动 |
-| 直接 `delete m_trayIcon` | 触发断言 |
+| 直接 `delete m_trayIcon` | 触发断言 / 崩溃（详见遗留问题） |
 | `ICU_SPDLOG_*` 里用 `{}` | 格式不支持 |
 | 头文件 include 自己 | 循环包含 |
 | 绕过 `settings/` 直接调 `wxConfigBase` | 破坏单一数据源 |
 | `core/` 或 `protocols/` 里 include `ui/` / `settings/` | 破坏分层 |
 | **在按钮回调里同步销毁宿主面板** | **闪退**（见 2.5） |
 | 新增协议不加测试 | 违背 9.7 |
+| 新增协议不追加到 `icu_core_test` 源文件列表 | 链接失败（vtable undefined） |
 | 在 `add_executable` 之前 `target_*_options` | CMake 报"target not built" |
 | 在 `mgr.Close()` / `SetActive(new)` 之后访问旧对象裸指针 | use-after-free |
 | `--coverage` 默认开启 | 显著拖慢日常开发 |
 | 串口读线程 `Close()` 时不 `Interrupt` 直接 `join` | 死锁 |
 | `SerialPort` 依赖 wxWidgets | 破坏可移植性和可测性 |
+| `//` 注释手动对齐 | clang-format 报错 |
+| 把 `ProtocolRegistry` 实现粘到 `ProtocolTypes.cpp` | 重复定义 |
 
 ---
 
@@ -1213,6 +1237,7 @@ tests/unit/protocols/<protocol_id>/
 | **`ITransport` 的 `clientId` 参数** | 统一客户端和服务器 |
 | **Transport 层保留 Client / Server 两个实现** | wxWidgets API 差异大 |
 | **UI 层不区分 Client / Server** | 通过 `IsServerMode()` 适配 |
+| **`ITransport::Name()` 虚函数** | 显示名由具体 Transport 提供，不再硬编码 |
 | **日志全翻译** | 用户可见 |
 | **测试代码不翻译** | 开发者向 |
 | **`wxTaskBarIcon` 不直接 delete** | 内部窗口销毁时机问题 |
@@ -1223,11 +1248,12 @@ tests/unit/protocols/<protocol_id>/
 | **`settings/` 与 `config/` 分离** | App 级偏好 vs 协议级配置 |
 | **`Settings` 是唯一 `wxConfigBase` 消费者** | 单一数据源 |
 | **设置改用 `wxFileConfig`** | 注册表在非管理员下权限受限，改用文件 + 多候选位置探测 |
+| **`ProtocolRegistry` 用 `vector<pair>` 保序** | 菜单按注册顺序显示，不受 id 字母序影响 |
 | **用 doctest 做测试框架** | header-only，零配置，编译快 |
 | **`tests/main.cpp` 提供 doctest 实现** | header-only 必须在一个 TU 展开 |
 | **测试与 src 镜像** | 找测试文件路径直觉化 |
 | **Mock 对象放 `tests/mocks/`（header-only）** | 不污染 `core/`，可被多测试复用 |
-| **`tests/CMakeLists.txt` 用 GLOB + `CONFIGURE_DEPENDS`** | 新增测试无需改 CMakeLists |
+| **`icu_core_test` 显式列源文件** | 精确控制，避免未来 GLOB 误拾取重依赖协议 |
 | **UI 不做单测** | 投入产出比低 |
 | **目录重组分批次** | 每批可回滚 |
 | **include 路径用 `src/` 前缀** | `target_include_directories` 已含 `src` |
@@ -1241,6 +1267,8 @@ tests/unit/protocols/<protocol_id>/
 | **保存对话框只过滤 `*.conn`** | Shell 枚举所有文件会触发部分环境缩略图缓存异常 |
 | **测试临时目录优先用 cwd** | 系统 `%TEMP%` 在 MSYS2 等环境权限受限 |
 | **CI wxWidgets 不启用 `--enable-debug`** | 只产 release 库名，与 CMakeLists 链接一致 |
+| **CMakeLists 自动探测 wx 布局** | 兼容本地 in-tree build 与 CI 标准布局 |
+| **强制 `wxDEBUG_LEVEL=0`** | Debug 构建不引用 release wx 库中缺失的 `wxOnAssert` |
 | **串口单模式** | 裸串口无 Client/Server 语义 |
 | **串口后台线程 + 同步 I/O** | 延迟低，跨平台清晰，关闭可控 |
 | **不引入第三方串口库** | 边界自己掌握 |
@@ -1274,6 +1302,10 @@ tests/unit/protocols/<protocol_id>/
 | 2026-10-14 | 新增 ADR 0004：事务型协议与字节流协议分离（阶段 6 用） |
 | 2026-10-14 | 新增 ADR 0005：串口协议实现与通用会话面板增强（阶段 5 用） |
 | 2026-10-14 | 路线图更新：阶段 5 改为串口 + 面板增强，Modbus 移到阶段 6 |
+| 2026-10-15 | CI 修复：wxWidgets 改 in-tree 构建，CMakeLists 自动探测 wx 布局，`wxDEBUG_LEVEL=0` |
+| 2026-10-15 | 阶段 5 完成：`SerialPort` / `SerialTransport` / `SerialProtocol` + 单测 + 面板增强 + 用户文档 |
+| 2026-10-15 | 菜单顺序按注册顺序（TCP 在 Serial 之前），ProtocolRegistry 用 `vector<pair>` |
+| 2026-10-15 | Port 下拉框自动枚举系统串口，`ITransport::Name()` 泛化 |
 
 ---
 
@@ -1348,6 +1380,14 @@ Get-Process IndustrialCommunicationUtility -ErrorAction SilentlyContinue | Stop-
 Get-Process icu_tests -ErrorAction SilentlyContinue | Stop-Process -Force
 ```
 
+### A.8 虚拟串口（com0com）
+
+```
+# 在 com0com Setup Command Prompt（管理员）里
+list
+install PortName=COM5 PortName=COM6
+```
+
 ---
 
 ## 附录 B：协议实现检查清单
@@ -1358,7 +1398,8 @@ Get-Process icu_tests -ErrorAction SilentlyContinue | Stop-Process -Force
 - [ ] `FieldsForMode()` 返回的 label 都是翻译 key
 - [ ] `CreateSession()` 不依赖具体 UI
 - [ ] `MakeDefaultFileName()` 生成的名称可跨平台
-- [ ] 已注册到 `ProtocolRegistry`
+- [ ] 已注册到 `ProtocolRegistry`（`RegisterBuiltinProtocols()`）
+- [ ] 已追加到 `tests/CMakeLists.txt` 的 `icu_core_test` 源文件列表
 - [ ] 新增的 label 已在 `.po` 里翻译
 - [ ] 已在本 README 第 8 节协议清单表格里更新状态
 - [ ] 已加 `tests/unit/protocols/<id>/` 单测
@@ -1404,6 +1445,14 @@ pacman -S netcat            # MSYS2 UCRT64
 nc -h                       # 验证
 ```
 
+com0com 虚拟串口：
+
+```
+# 在 com0com Setup Command Prompt（管理员）里
+install PortName=COM5 PortName=COM6
+list
+```
+
 ### E.2 通用启动检查
 
 | 序 | 操作 | 期望 |
@@ -1411,6 +1460,7 @@ nc -h                       # 验证
 | 1 | 启动程序 | 主窗口出现，标题正确 |
 | 2 | 查看标题栏 | 未加载配置时无 `*` |
 | 3 | 菜单栏 | `文件 / 视图 / 设置 / 帮助` 完整 |
+| 4 | `文件 → 新建连接` | 子菜单顺序：`TCP/IP` → `Serial Port` |
 
 ### E.3 TCP 客户端测试（nc 做服务器）
 
@@ -1452,32 +1502,42 @@ nc -h                       # 验证
 | 10 | 关闭客户端 2 | Clients=0，状态"监听中" |
 | 11 | 点"停止监听" | 状态"已断开" |
 
-### E.5 串口测试（阶段 5）
+### E.5 串口测试
 
 **准备**：
-- 方案 1：用 com0com 创建虚拟串口对（`COM3` ↔ `COM4`）
-- 方案 2：两台机器物理串口对接
+- com0com 创建虚拟串口对（`COM5` ↔ `COM6`）
+- 或两台机器物理串口对接
 
 **基础流程**：
 
 | 序 | 操作 | 期望 |
 |---|---|---|
-| 1 | `文件 → 新建连接 → 串口` | 弹配置对话框 |
-| 2 | 选 `COM3`，9600 8N1，OK | 状态"已连接" |
-| 3 | 另一软件打开 `COM4` | — |
-| 4 | 本程序发 `hello` | 对端收到 `hello` |
-| 5 | 对端发 `world` | 本程序收到 `world` |
-| 6 | 点"断开连接" | 状态"已断开" |
+| 1 | `文件 → 新建连接 → Serial Port` | 弹配置对话框，Port 下拉框列出系统串口 |
+| 2 | 选 `COM5`，9600 8N1，None 流控，OK | 状态"已连接"，Target 显示 `COM5 @ 9600` |
+| 3 | 另一软件（XCOM / UartAssist）打开 `COM6` | — |
+| 4 | 本程序发 `hello` | 对端收到 `hello`（带换行） |
+| 5 | 对端发 `world` | 本程序接收区 `< world` |
+| 6 | 取消 Append newline，再发 `hello` | 对端收到 `hello`（无换行） |
+| 7 | 点"断开连接" | 状态"已断开" |
+| 8 | 点"打开连接" | 重连成功（不弹配置对话框） |
 
 **面板增强验证**：
 
 | 场景 | 操作 | 期望 |
 |---|---|---|
-| HEX 显示 | 勾选"HEX 显示" | 接收区字节以十六进制显示 |
-| 时间戳 | 勾选"时间戳" | 每条消息带 `[HH:MM:SS.mmm]` |
+| HEX 显示 | 勾选"HEX Display" | 接收区字节以十六进制显示 |
+| 时间戳 | 取消勾选 | 消息前无时间戳 |
 | 自动滚动 | 取消勾选 | 新消息到达时视图不滚动 |
-| 清空接收 | 点"清空" | 接收区清空 |
-| 发送新行 | 取消勾选 | 发送不加 `\n` |
+| 清空接收 | 点"Clear" | 接收区清空 |
+| 发送新行 | 取消勾选"Append newline" | 发送不加 `\n` |
+
+**会话面板顶部**：
+
+| 协议 | 期望显示 |
+|---|---|
+| TCP Client | `TCP Client`（中文环境：`TCP 客户端`） |
+| TCP Server | `TCP Server`（中文环境：`TCP 服务器`） |
+| Serial | `Serial`（中文环境：`串口`） |
 
 ### E.6 配置文件测试
 
@@ -1530,8 +1590,10 @@ nc -h                       # 验证
 | 5 | 无未保存配置时点 X | 弹框"是否最小化到托盘？" |
 | 6 | 点"是" | 窗口隐藏，托盘出现 |
 | 7 | 双击托盘图标 | 窗口恢复 |
-| 8 | 托盘右键 → 退出 | **无断言**，干净退出 |
+| 8 | 托盘右键 → 退出 | 干净退出 |
 | 9 | `Get-Process IndustrialCommunicationUtility` | 无输出 |
+
+> ⚠️ **已知问题**：步骤 8 及 `文件 → 退出` 路径在部分环境偶发崩溃，见 13.1 遗留问题。
 
 ### E.11 异常场景
 
@@ -1542,6 +1604,7 @@ nc -h                       # 验证
 | 配置不完整 | 手动删除 `RemoteHost` | 加载后使用默认值 |
 | 串口被占用 | 别的软件已打开 | 提示"打开失败" |
 | 串口拔掉 | 运行中拔 USB 转串口 | 状态"已断开" |
+| 串口不存在 | Port 填 `COM99` | 打开失败，日志有错误 |
 
 ### E.12 测试结果记录
 
@@ -1560,10 +1623,10 @@ nc -h                       # 验证
 | E.7 最近连接 | ✅ | — |
 | E.8 窗口与 UI | ✅ | — |
 | E.9 语言切换 | ✅ | — |
-| E.10 关闭与托盘 | ✅ | — |
+| E.10 关闭与托盘 | ⚠️ | 退出偶发崩溃（已知） |
 | E.11 异常场景 | ✅ | — |
 
-**结论**：全部通过。
+**结论**：主体通过，退出崩溃问题待单独修复。
 ```
 
 ---
