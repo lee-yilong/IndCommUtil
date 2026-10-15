@@ -399,14 +399,8 @@ void ProtocolSessionPanel::OnClientDisconnected(int clientId) {
 void ProtocolSessionPanel::UpdateModeLabel() {
     if (!m_session || !m_modeLabel) return;
 
-    const bool isServer = m_session->IsServerMode();
-    wxString transport = wxString::FromUTF8(m_session->TransportName().c_str());
-
-    if (transport.EndsWith("-Server")) transport = transport.Left(transport.Length() - 7);
-
-    wxString mode = isServer ? _("Server Mode") : _("Client Mode");
-
-    m_modeLabel->SetLabel(wxString::Format("%s  %s", transport, mode));
+    const wxString name = wxGetTranslation(wxString::FromUTF8(m_session->TransportName().c_str()));
+    m_modeLabel->SetLabel(name);
 }
 
 }  // namespace icu

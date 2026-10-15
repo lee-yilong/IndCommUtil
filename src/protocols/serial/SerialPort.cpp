@@ -1,5 +1,7 @@
 #include "SerialPort.h"
 
+#include <vector>
+
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -8,10 +10,6 @@
 namespace icu {
 
 #ifdef _WIN32
-
-// =========================================================================
-// Windows 实现
-// =========================================================================
 
 namespace {
 
@@ -27,7 +25,6 @@ std::wstring Utf8ToWide(const std::string& s) {
 }
 
 // 构造 Windows 串口路径：COM3 → \\.\COM3
-// COM10 及以上必须用 \\.\ 前缀；COM1-9 也能用。
 std::wstring MakePortPath(const std::string& portName) {
     const std::wstring wide = Utf8ToWide(portName);
     if (wide.empty()) return {};
@@ -110,11 +107,8 @@ bool SerialPort::Open(const Config& cfg, std::string& errorOut) {
         return false;
     }
 
-    HANDLE h = CreateFileW(path.c_str(), GENERIC_READ | GENERIC_WRITE,
-                           0,                                     // 独占访问
-                           nullptr,                               // 默认安全属性
-                           OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,  // 同步 I/O
-                           nullptr);
+    HANDLE h = CreateFileW(path.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING,
+                           FILE_ATTRIBUTE_NORMAL, nullptr);
     if (h == INVALID_HANDLE_VALUE) {
         errorOut = "Failed to open " + cfg.portName + ": " + WinErrorText(GetLastError());
         return false;
@@ -135,7 +129,6 @@ bool SerialPort::Open(const Config& cfg, std::string& errorOut) {
     dcb.fBinary = TRUE;
     dcb.fParity = (cfg.parity != Parity::None) ? TRUE : FALSE;
 
-    // 流控
     switch (cfg.flowControl) {
         case FlowControl::RtsCts:
             dcb.fOutxCtsFlow = TRUE;
@@ -158,7 +151,6 @@ bool SerialPort::Open(const Config& cfg, std::string& errorOut) {
             break;
     }
 
-    // DTR 默认开启（多数 USB 转串口设备需要）
     dcb.fDtrControl = DTR_CONTROL_ENABLE;
 
     if (!SetCommState(h, &dcb)) {
@@ -167,10 +159,6 @@ bool SerialPort::Open(const Config& cfg, std::string& errorOut) {
         return false;
     }
 
-    // 超时配置：
-    //   ReadIntervalTimeout = MAXDWORD + ReadTotalTimeoutConstant = X
-    //     → 缓冲区有数据：立即返回
-    //     → 缓冲区空：最多等 X 毫秒
     COMMTIMEOUTS timeouts = {};
     timeouts.ReadIntervalTimeout = MAXDWORD;
     timeouts.ReadTotalTimeoutMultiplier = 0;
@@ -208,7 +196,6 @@ int SerialPort::Read(uint8_t* buf, size_t len) {
     DWORD bytesRead = 0;
     if (!ReadFile(h, buf, toRead, &bytesRead, nullptr)) {
         const DWORD err = GetLastError();
-        // 被 Interrupt()（CancelIoEx）取消：视作超时返回 0
         if (err == ERROR_OPERATION_ABORTED) return 0;
         return -1;
     }
@@ -230,15 +217,52 @@ int SerialPort::Write(const uint8_t* data, size_t len) {
 void SerialPort::Interrupt() {
     if (!m_open) return;
     HANDLE h = static_cast<HANDLE>(m_handle);
-    // 取消挂起的 I/O：阻塞的 ReadFile 会立刻返回 ERROR_OPERATION_ABORTED
     CancelIoEx(h, nullptr);
 }
 
-#else  // !_WIN32
+std::vector<std::string> SerialPort::EnumeratePorts() {
+    std::vector<std::string> ports;
 
-// =========================================================================
-// Linux / macOS 骨架（阶段 5 不实现，留接口占位）
-// =========================================================================
+    HKEY hKey = nullptr;
+    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_READ, &hKey) !=
+        ERROR_SUCCESS) {
+        return ports;
+    }
+
+    WCHAR valueName[256];
+    BYTE data[256];
+    DWORD index = 0;
+    while (true) {
+        DWORD nameSize = sizeof(valueName) / sizeof(WCHAR);
+        DWORD dataSize = sizeof(data);
+        DWORD type = 0;
+        const LONG ret =
+            RegEnumValueW(hKey, index, valueName, &nameSize, nullptr, &type, data, &dataSize);
+        if (ret == ERROR_NO_MORE_ITEMS) break;
+        if (ret != ERROR_SUCCESS) {
+            ++index;
+            continue;
+        }
+
+        const auto* wport = reinterpret_cast<const WCHAR*>(data);
+        std::wstring wide(wport, dataSize / sizeof(WCHAR));
+        while (!wide.empty() && wide.back() == L'\0') wide.pop_back();
+
+        const int len =
+            WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        if (len > 1) {
+            std::string port(static_cast<size_t>(len - 1), '\0');
+            WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), -1, port.data(), len, nullptr, nullptr);
+            ports.push_back(port);
+        }
+        ++index;
+    }
+
+    RegCloseKey(hKey);
+    return ports;
+}
+
+#else  // !_WIN32
 
 SerialPort::SerialPort() = default;
 SerialPort::~SerialPort() {
@@ -261,6 +285,10 @@ int SerialPort::Write(const uint8_t*, size_t) {
 }
 
 void SerialPort::Interrupt() {}
+
+std::vector<std::string> SerialPort::EnumeratePorts() {
+    return {};
+}
 
 #endif  // _WIN32
 

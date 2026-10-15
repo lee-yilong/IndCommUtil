@@ -18,15 +18,19 @@ std::string GetStr(const std::map<std::string, FieldValue>& f, const char* key,
 int GetInt(const std::map<std::string, FieldValue>& f, const char* key, int def = 0) {
     auto it = f.find(key);
     if (it == f.end()) return def;
-    // Choice 类型存的是字符串，需要 stoi
-    if (it->second.GetType() == FieldValue::Type::Choice) {
+    const auto t = it->second.GetType();
+    if (t == FieldValue::Type::Int) return it->second.AsInt();
+    // Choice 和 String 都可能存数字字符串：
+    // GenericProtocolDialog::CollectValues 对 Choice 字段用
+    // std::string 构造 FieldValue，落到 String 类型。
+    if (t == FieldValue::Type::String || t == FieldValue::Type::Choice) {
         try {
             return std::stoi(it->second.AsString());
         } catch (...) {
             return def;
         }
     }
-    return it->second.AsInt();
+    return def;
 }
 
 SerialPort::Parity ParseParity(const std::string& s) {
@@ -52,9 +56,21 @@ SerialPort::FlowControl ParseFlow(const std::string& s) {
 }  // namespace
 
 std::vector<FieldDescriptor> SerialProtocol::FieldsForMode(int /*modeIndex*/) const {
+    // 动态枚举可用串口
+    auto ports = SerialPort::EnumeratePorts();
+    std::vector<std::pair<std::string, std::string>> portChoices;
+    for (const auto& p : ports) {
+        portChoices.emplace_back(p, p);  // value = label = "COM5"
+    }
+    if (portChoices.empty()) {
+        // 没有可用串口时给一个占位项，用户可手动改 .conn
+        portChoices.emplace_back("COM1", "COM1");
+    }
+    const std::string defaultPort = portChoices.front().first;
+
     return {
-        {"portName", wxTRANSLATE("Port:"), FieldValue::Type::String,
-         FieldValue(std::string("COM1"))},
+        {"portName", wxTRANSLATE("Port:"), FieldValue::Type::Choice, FieldValue(defaultPort), 0, 0,
+         portChoices},
 
         {"baudRate",
          wxTRANSLATE("Baud Rate:"),

@@ -14,6 +14,7 @@
 
 #include <atomic>
 #include <thread>
+#include <vector>
 
 #include "core/ITransport.h"
 #include "protocols/serial/SerialPort.h"
@@ -31,8 +32,14 @@ public:
     bool IsOpen() const override { return m_state == TransportState::Open; }
     bool IsServerMode() const override { return false; }
     std::string Target() const override;
+    std::string Name() const override { return "Serial"; }
 
     size_t Send(const uint8_t* data, size_t len) override;
+
+    // 枚举当前系统上可用的串口名（UTF-8）。
+    // Windows：读注册表 HARDWARE\DEVICEMAP\SERIALCOMM
+    // Linux：遍历 /dev/ttyS* /dev/ttyUSB* /dev/ttyACM*
+    static std::vector<std::string> EnumeratePorts();
 
 private:
     void ReadLoop();

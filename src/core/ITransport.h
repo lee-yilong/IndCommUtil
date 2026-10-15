@@ -26,6 +26,9 @@ public:
     // 服务器模式：true（监听多个客户端）
     // 客户端模式：false（连接单个远端）
     virtual bool IsServerMode() const { return false; }
+    // 传输层显示名（UI 用于标识当前传输类型，如 "TCP Client" / "TCP Server" / "Serial"）
+    // 由具体 Transport 实现；UI 层通过 wxGetTranslation 翻译
+    virtual std::string Name() const { return "Transport"; }
 
     // ---------- 回调类型 ----------
     using StateCallback = std::function<void(TransportState)>;

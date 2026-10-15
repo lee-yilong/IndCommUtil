@@ -64,7 +64,7 @@ std::string Session::Protocol() const {
 }
 
 std::string Session::TransportName() const {
-    return m_transport->IsServerMode() ? "TCP Server" : "TCP Client";
+    return m_transport->Name();
 }
 
 void Session::HandleTransportState(TransportState st) {

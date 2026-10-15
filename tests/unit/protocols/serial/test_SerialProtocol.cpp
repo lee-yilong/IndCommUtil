@@ -66,7 +66,9 @@ TEST_CASE("SerialProtocol: 字段类型正确") {
 
     const auto* portName = FindField(fields, "portName");
     REQUIRE(portName != nullptr);
-    CHECK(portName->type == FieldValue::Type::String);
+    CHECK(portName->type == FieldValue::Type::Choice);
+    CHECK_FALSE(portName->choices.empty());
+    CHECK_FALSE(portName->choices.empty());
 
     const auto* baud = FindField(fields, "baudRate");
     REQUIRE(baud != nullptr);

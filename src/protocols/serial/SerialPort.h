@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace icu {
 
@@ -54,6 +55,11 @@ public:
     // 打断正在阻塞的 Read（从另一个线程调用）。
     // Windows 用 CancelIoEx；Linux 留空。
     void Interrupt();
+
+    // 枚举当前系统上可用的串口名（UTF-8）。
+    // Windows：读注册表 HARDWARE\DEVICEMAP\SERIALCOMM
+    // Linux：TODO（阶段 6+ 实现）
+    static std::vector<std::string> EnumeratePorts();
 
 private:
     bool m_open = false;

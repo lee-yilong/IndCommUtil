@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 21:42+0800\n"
+"POT-Creation-Date: 2026-10-15 23:11+0800\n"
 "PO-Revision-Date: 2026-10-10 10:49+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -427,66 +427,66 @@ msgstr "no"
 msgid "Codec '%s' encode failed"
 msgstr "Codec '%s' encode failed"
 
-#: src/protocols/serial/SerialProtocol.cpp:56
+#: src/protocols/serial/SerialProtocol.cpp:72
 msgid "Port:"
 msgstr "Port:"
 
-#: src/protocols/serial/SerialProtocol.cpp:60
+#: src/protocols/serial/SerialProtocol.cpp:76
 msgid "Baud Rate:"
 msgstr ""
 
-#: src/protocols/serial/SerialProtocol.cpp:78
+#: src/protocols/serial/SerialProtocol.cpp:94
 msgid "Data Bits:"
 msgstr ""
 
-#: src/protocols/serial/SerialProtocol.cpp:86
+#: src/protocols/serial/SerialProtocol.cpp:102
 msgid "Parity:"
 msgstr ""
 
-#: src/protocols/serial/SerialProtocol.cpp:91
-#: src/protocols/serial/SerialProtocol.cpp:111
+#: src/protocols/serial/SerialProtocol.cpp:107
+#: src/protocols/serial/SerialProtocol.cpp:127
 #, fuzzy
 msgid "None"
 msgstr "(None)"
 
-#: src/protocols/serial/SerialProtocol.cpp:92
+#: src/protocols/serial/SerialProtocol.cpp:108
 msgid "Even"
 msgstr ""
 
-#: src/protocols/serial/SerialProtocol.cpp:93
+#: src/protocols/serial/SerialProtocol.cpp:109
 msgid "Odd"
 msgstr ""
 
-#: src/protocols/serial/SerialProtocol.cpp:94
+#: src/protocols/serial/SerialProtocol.cpp:110
 msgid "Mark"
 msgstr ""
 
-#: src/protocols/serial/SerialProtocol.cpp:95
+#: src/protocols/serial/SerialProtocol.cpp:111
 msgid "Space"
 msgstr ""
 
-#: src/protocols/serial/SerialProtocol.cpp:98
+#: src/protocols/serial/SerialProtocol.cpp:114
 msgid "Stop Bits:"
 msgstr ""
 
-#: src/protocols/serial/SerialProtocol.cpp:106
+#: src/protocols/serial/SerialProtocol.cpp:122
 msgid "Flow Control:"
 msgstr ""
 
-#: src/protocols/serial/SerialProtocol.cpp:112
+#: src/protocols/serial/SerialProtocol.cpp:128
 msgid "RTS/CTS"
 msgstr ""
 
-#: src/protocols/serial/SerialProtocol.cpp:113
+#: src/protocols/serial/SerialProtocol.cpp:129
 msgid "XON/XOFF"
 msgstr ""
 
-#: src/protocols/serial/SerialProtocol.cpp:115
+#: src/protocols/serial/SerialProtocol.cpp:131
 #, fuzzy
 msgid "Read Timeout (ms):"
 msgstr "Connect Timeout (ms):"
 
-#: src/protocols/serial/SerialProtocol.cpp:118
+#: src/protocols/serial/SerialProtocol.cpp:134
 #, fuzzy
 msgid "Write Timeout (ms):"
 msgstr "Connect Timeout (ms):"
@@ -922,13 +922,11 @@ msgstr "Client #%d connected"
 msgid "Client #%d disconnected"
 msgstr "Client #%d disconnected"
 
-#: src/ui/ProtocolSessionPanel.cpp:407
-msgid "Server Mode"
-msgstr "Server Mode"
+#~ msgid "Server Mode"
+#~ msgstr "Server Mode"
 
-#: src/ui/ProtocolSessionPanel.cpp:407
-msgid "Client Mode"
-msgstr "Client Mode"
+#~ msgid "Client Mode"
+#~ msgstr "Client Mode"
 
 #~ msgid "TCP Client"
 #~ msgstr "Client"

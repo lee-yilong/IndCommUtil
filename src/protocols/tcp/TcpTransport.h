@@ -57,6 +57,8 @@ public:
     bool IsServerMode() const override { return false; }
     std::string Target() const override;
 
+    std::string Name() const override { return "TCP Client"; }
+
     size_t Send(const uint8_t* data, size_t len) override;
 
 private:
@@ -98,6 +100,7 @@ public:
     bool IsOpen() const override { return m_state == TransportState::Open; }
     bool IsServerMode() const override { return true; }
     std::string Target() const override;
+    std::string Name() const override { return "TCP Server"; }
 
     size_t Send(const uint8_t* data, size_t len) override;
     size_t SendTo(int clientId, const uint8_t* data, size_t len);
