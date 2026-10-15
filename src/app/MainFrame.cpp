@@ -208,9 +208,10 @@ void MainFrame::OnClose(wxCloseEvent& evt) {
             m_logFrame->ForceDestroy();
             m_logFrame = nullptr;
         }
+
         if (m_trayIcon) {
             m_trayIcon->RemoveIcon();
-            delete m_trayIcon;
+            wxPendingDelete.Append(m_trayIcon);
             m_trayIcon = nullptr;
         }
 
@@ -261,8 +262,9 @@ void MainFrame::OnClose(wxCloseEvent& evt) {
     }
     if (m_trayIcon) {
         m_trayIcon->RemoveIcon();
-        delete m_trayIcon;
+        auto* icon = m_trayIcon;
         m_trayIcon = nullptr;
+        wxTheApp->CallAfter([icon]() { delete icon; });
     }
 
     Destroy();
