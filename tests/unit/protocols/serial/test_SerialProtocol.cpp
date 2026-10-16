@@ -92,7 +92,7 @@ TEST_CASE("SerialProtocol: MakeDefaultFileName") {
     fields["baudRate"] = FieldValue(std::string("9600"));
 
     const std::string name = p.MakeDefaultFileName(0, fields);
-    CHECK(name == "Serial_COM3_9600.conn");
+    CHECK(name == "Serial_COM3_9600.json");
 }
 
 TEST_CASE("SerialProtocol: MakeDefaultFileName 转义特殊字符") {
@@ -103,7 +103,7 @@ TEST_CASE("SerialProtocol: MakeDefaultFileName 转义特殊字符") {
     fields["baudRate"] = FieldValue(std::string("115200"));
 
     const std::string name = p.MakeDefaultFileName(0, fields);
-    CHECK(name == "Serial__dev_ttyUSB0_115200.conn");
+    CHECK(name == "Serial__dev_ttyUSB0_115200.json");
 }
 
 TEST_CASE("SerialProtocol: CreateSession 返回 Idle 状态的 Session") {

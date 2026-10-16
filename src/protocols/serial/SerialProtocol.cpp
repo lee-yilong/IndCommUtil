@@ -2,7 +2,6 @@
 
 #include "core/Session.h"
 #include "protocols/codec/RawCodec.h"
-#include "protocols/serial/SerialPort.h"
 #include "protocols/serial/SerialTransport.h"
 
 namespace icu {
@@ -63,7 +62,7 @@ std::vector<FieldDescriptor> SerialProtocol::FieldsForMode(int /*modeIndex*/) co
         portChoices.emplace_back(p, p);  // value = label = "COM5"
     }
     if (portChoices.empty()) {
-        // 没有可用串口时给一个占位项，用户可手动改 .conn
+        // 没有可用串口时给一个占位项，用户可手动改 .json
         portChoices.emplace_back("COM1", "COM1");
     }
     const std::string defaultPort = portChoices.front().first;
@@ -164,7 +163,7 @@ std::string SerialProtocol::MakeDefaultFileName(
 
     const std::string port = sanitize(GetStr(fields, "portName", "COM1"));
     const std::string baud = GetStr(fields, "baudRate", "9600");
-    return "Serial_" + port + "_" + baud + ".conn";
+    return "Serial_" + port + "_" + baud + ".json";
 }
 
 }  // namespace icu

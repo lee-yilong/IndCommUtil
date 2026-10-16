@@ -300,7 +300,7 @@ void MainFrame::OnOpenConnection(wxCommandEvent&) {
     }
 
     wxFileDialog dlg(this, _("Open Connection Configuration"), "", "",
-                     "Connection files (*.conn)|*.conn|All files (*.*)|*.*",
+                     "Connection files (*.json)|*.json|All files (*.*)|*.*",
                      wxFD_OPEN | wxFD_FILE_MUST_EXIST);
     if (dlg.ShowModal() != wxID_OK) {
         SPDLOG_INFO(_("Open connection cancelled by user"));
@@ -414,8 +414,8 @@ void MainFrame::UpdateConnectionUI() {
 
 void MainFrame::AddRecentConnection(const wxString& path) {
     wxFileName fn(path);
-    if (fn.GetExt().Lower() != "conn") {
-        ICU_SPDLOG_WARN(_("AddRecentConnection: not a .conn path, ignored: %s"), path);
+    if (fn.GetExt().Lower() != "json") {
+        ICU_SPDLOG_WARN(_("AddRecentConnection: not a .json path, ignored: %s"), path);
         return;
     }
 
@@ -555,7 +555,7 @@ void MainFrame::SaveCurrentProfileAs() {
             : wxFileName(m_currentProfilePath).GetFullName();
 
     wxFileDialog dlg(this, _("Save Connection Profile"), "", defaultName,
-                     "Connection files (*.conn)|*.conn", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+                     "Connection files (*.json)|*.json", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
     if (dlg.ShowModal() != wxID_OK) return;
 
     wxString path = dlg.GetPath();
@@ -563,8 +563,8 @@ void MainFrame::SaveCurrentProfileAs() {
 
     // 扩展名兜底（在 ShowModal 之后，不影响对话框）
     wxFileName fn(path);
-    if (fn.GetExt().Lower() != "conn") {
-        fn.SetExt("conn");
+    if (fn.GetExt().Lower() != "json") {
+        fn.SetExt("json");
         path = fn.GetFullPath();
     }
 

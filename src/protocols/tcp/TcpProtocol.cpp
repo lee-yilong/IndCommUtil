@@ -144,11 +144,11 @@ std::string TcpProtocol::MakeDefaultFileName(
     if (modeIndex == 1) {
         std::string h = sanitize(GetStr(fields, "listenHost", "0.0.0.0"));
         return "TCP_Server_" + h + "_" + std::to_string(GetInt(fields, "listenPort", 502)) +
-               ".conn";
+               ".json";
     }
 
     std::string h = sanitize(GetStr(fields, "remoteHost", "127.0.0.1"));
-    return "TCP_Client_" + h + "_" + std::to_string(GetInt(fields, "remotePort", 502)) + ".conn";
+    return "TCP_Client_" + h + "_" + std::to_string(GetInt(fields, "remotePort", 502)) + ".json";
 }
 
 }  // namespace icu

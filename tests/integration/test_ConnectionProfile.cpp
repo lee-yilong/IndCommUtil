@@ -1,6 +1,6 @@
-#include <wx/fileconf.h>
 #include <wx/string.h>
 
+#include <fstream>
 #include <map>
 #include <string>
 
@@ -45,7 +45,7 @@ TEST_CASE("ConnectionProfile: TCP Client roundtrip") {
     fields["reconnectMaxAttempts"] = FieldValue(std::string("3"));
     fields["reconnectDelaySec"] = FieldValue(std::string("5"));
 
-    const wxString path = Wx(env.Path("TCP_Client_test.conn"));
+    const wxString path = Wx(env.Path("TCP_Client_test.json"));
 
     REQUIRE(ConnectionProfile::Save(path, "tcp", 0, proto, fields));
 
@@ -82,7 +82,7 @@ TEST_CASE("ConnectionProfile: TCP Server roundtrip") {
     fields["maxClients"] = FieldValue(20);
     fields["backlog"] = FieldValue(10);
 
-    const wxString path = Wx(env.Path("TCP_Server_test.conn"));
+    const wxString path = Wx(env.Path("TCP_Server_test.json"));
 
     REQUIRE(ConnectionProfile::Save(path, "tcp", 1, proto, fields));
 
@@ -104,7 +104,7 @@ TEST_CASE("ConnectionProfile: 空字段也能 Save/Load") {
 
     std::map<std::string, FieldValue> empty;
 
-    const wxString path = Wx(env.Path("empty.conn"));
+    const wxString path = Wx(env.Path("empty.json"));
     REQUIRE(ConnectionProfile::Save(path, "tcp", 0, proto, empty));
 
     ActiveProfile loaded;
@@ -119,7 +119,7 @@ TEST_CASE("ConnectionProfile: 不存在的文件 Load 失败") {
     TestEnv env;
     Tcp();
 
-    const wxString path = Wx(env.Path("does_not_exist.conn"));
+    const wxString path = Wx(env.Path("does_not_exist.json"));
 
     ActiveProfile loaded;
     CHECK_FALSE(ConnectionProfile::Load(path, loaded));
@@ -129,17 +129,14 @@ TEST_CASE("ConnectionProfile: 未知协议 Load 失败") {
     TestEnv env;
     Tcp();
 
-    const wxString path = Wx(env.Path("unknown_proto.conn"));
-
+    const std::string p = env.Path("unknown_proto.json");
     {
-        wxFileConfig fc(wxEmptyString, wxEmptyString, path, wxEmptyString, wxCONFIG_USE_LOCAL_FILE);
-        fc.Write("/Connection/Protocol", "nonexistent-protocol");
-        fc.Write("/Connection/Mode", "Client");
-        fc.Flush();
+        std::ofstream ofs(p);
+        ofs << R"({"connection":{"protocol":"nonexistent-protocol","mode":"Client"}})";
     }
 
     ActiveProfile loaded;
-    CHECK_FALSE(ConnectionProfile::Load(path, loaded));
+    CHECK_FALSE(ConnectionProfile::Load(wxString::FromUTF8(p.c_str()), loaded));
 }
 
 TEST_CASE("ConnectionProfile: Mode 名不匹配时回退到 modeIndex 0") {
@@ -147,19 +144,15 @@ TEST_CASE("ConnectionProfile: Mode 名不匹配时回退到 modeIndex 0") {
     auto* proto = Tcp();
     REQUIRE(proto != nullptr);
 
-    const wxString path = Wx(env.Path("bad_mode.conn"));
-
+    const std::string p = env.Path("bad_mode.json");
     {
-        wxFileConfig fc(wxEmptyString, wxEmptyString, path, wxEmptyString, wxCONFIG_USE_LOCAL_FILE);
-        fc.Write("/Connection/Protocol", "tcp");
-        fc.Write("/Connection/Mode", "UnknownMode");
-        fc.Write("/Connection/remoteHost", "127.0.0.1");
-        fc.Write("/Connection/remotePort", "502");
-        fc.Flush();
+        std::ofstream ofs(p);
+        ofs << R"({"connection":{"protocol":"tcp","mode":"UnknownMode",)"
+               R"("remoteHost":"127.0.0.1","remotePort":502}})";
     }
 
     ActiveProfile loaded;
-    REQUIRE(ConnectionProfile::Load(path, loaded));
+    REQUIRE(ConnectionProfile::Load(wxString::FromUTF8(p.c_str()), loaded));
     CHECK(loaded.protocolId == "tcp");
     CHECK(loaded.modeIndex == 0);
 
@@ -177,7 +170,7 @@ TEST_CASE("ConnectionProfile: MakeDefaultFileName") {
         fields["remotePort"] = FieldValue(502);
 
         const wxString name = ConnectionProfile::MakeDefaultFileName(proto, 0, fields);
-        CHECK(std::string(name.utf8_str()) == "TCP_Client_127_0_0_1_502.conn");
+        CHECK(std::string(name.utf8_str()) == "TCP_Client_127_0_0_1_502.json");
     }
 
     SUBCASE("Server") {
@@ -186,11 +179,11 @@ TEST_CASE("ConnectionProfile: MakeDefaultFileName") {
         fields["listenPort"] = FieldValue(5030);
 
         const wxString name = ConnectionProfile::MakeDefaultFileName(proto, 1, fields);
-        CHECK(std::string(name.utf8_str()) == "TCP_Server_0_0_0_0_5030.conn");
+        CHECK(std::string(name.utf8_str()) == "TCP_Server_0_0_0_0_5030.json");
     }
 
     SUBCASE("未知协议指针 → Untitled") {
         const wxString name = ConnectionProfile::MakeDefaultFileName(nullptr, 0, {});
-        CHECK(std::string(name.utf8_str()) == "Untitled.conn");
+        CHECK(std::string(name.utf8_str()) == "Untitled.json");
     }
 }
