@@ -25,6 +25,7 @@ configure_file(
 
 set(WX_ROOT     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/wxWidgets")
 set(SPDLOG_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/spdlog")
+set(JSON_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/json")
 
 # -------------------------------------------------------------------------
 # 探测 wxWidgets 布局：wx 3.3 有两种
@@ -70,6 +71,13 @@ if(ICU_BUILD_TESTS)
     include(CTest)
 endif()
 
+# =========================================================================
+# nlohmann/json（header-only，通过 CMake target 引入）
+# =========================================================================
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+set(JSON_Install OFF CACHE INTERNAL "")
+add_subdirectory(third_party/json)
+
 add_executable(IndustrialCommunicationUtility WIN32
     ${APP_SOURCES}
     ${APP_HEADERS}
@@ -104,6 +112,8 @@ target_link_libraries(IndustrialCommunicationUtility PRIVATE
     "${WX_LIB_DIR}/libwx_mswu_core-3.3.dll.a"
     "${WX_LIB_DIR}/libwx_baseu-3.3.dll.a"
     "${WX_LIB_DIR}/libwx_baseu_net-3.3.dll.a"
+
+    nlohmann_json::nlohmann_json
 
     kernel32 user32 gdi32 comdlg32 winspool winmm
     shell32 ole32 oleaut32 uuid comctl32 rpcrt4

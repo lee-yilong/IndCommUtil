@@ -44,6 +44,7 @@ target_link_directories(icu_core_test PUBLIC
 target_link_libraries(icu_core_test PUBLIC
     "${WX_LIB_DIR}/libwx_baseu-3.3.dll.a"
     "${WX_LIB_DIR}/libwx_baseu_net-3.3.dll.a"
+    nlohmann_json::nlohmann_json
     ws2_32
 )
 
