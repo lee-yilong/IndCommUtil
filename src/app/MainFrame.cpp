@@ -678,6 +678,7 @@ void MainFrame::CreateAndOpenSession(const ActiveProfile& profile) {
 void MainFrame::AttachSessionCallbacks(Session* rawPtr) {
     rawPtr->OnStateChanged([this](SessionState st) {
         CallAfter([this, st]() {
+            if (!m_sessionMgr.Active()) return;
             UpdateConnectionUI();
             if (m_sessionPanel) m_sessionPanel->RefreshFromSession();
 
@@ -711,23 +712,27 @@ void MainFrame::AttachSessionCallbacks(Session* rawPtr) {
     rawPtr->OnMessage([this](int clientId, const std::vector<uint8_t>& msg) {
         auto copy = msg;
         CallAfter([this, clientId, copy = std::move(copy)]() {
+            if (!m_sessionMgr.Active()) return;
             if (m_sessionPanel) m_sessionPanel->OnMessage(clientId, copy);
         });
     });
 
     rawPtr->OnReconnectAttempt([this](int attempt) {
         CallAfter([this, attempt]() {
+            if (!m_sessionMgr.Active()) return;
             if (m_sessionPanel) m_sessionPanel->OnReconnectAttempt(attempt);
         });
     });
 
     rawPtr->OnClientConnected([this](int clientId) {
         CallAfter([this, clientId]() {
+            if (!m_sessionMgr.Active()) return;
             if (m_sessionPanel) m_sessionPanel->OnClientConnected(clientId);
         });
     });
     rawPtr->OnClientDisconnected([this](int clientId) {
         CallAfter([this, clientId]() {
+            if (!m_sessionMgr.Active()) return;
             if (m_sessionPanel) m_sessionPanel->OnClientDisconnected(clientId);
         });
     });
