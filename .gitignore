@@ -29,3 +29,7 @@ third_party/wxWidgets.local-backup/
 
 # wxWidgets 旧头文件备份（改名时产生）
 third_party/wxWidgets/include.7z-old/
+
+# 用户测试用的 .json 配置文件（只忽略项目根，不递归到 third_party）
+/*.json
+!/CMakePresets.json

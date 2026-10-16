@@ -1,8 +1,9 @@
+
 # Industrial Communication Utility — 开发指南与 AI Skill
 
 > **文档定位**：本文档既是项目开发文档，也是 AI 辅助开发的 Skill 定义。所有开发按本文档推进，AI 在协助编码时必须遵循本文档的架构、约定和任务清单。
 >
-> **本版重点**：阶段 5 全部完成（串口协议 + 会话面板通用增强）。**下一阶段 6：Modbus（TCP / RTU / ASCII）**，基于 serhmarch/ModbusLib。
+> **本版重点**：阶段 5 全部完成（串口协议 + 会话面板通用增强）。**下一阶段 6：`.conn` 从 INI 迁移到 JSON**。阶段 7 起计划接入 Modbus。
 
 ---
 
@@ -59,14 +60,15 @@
 | 构建 | CMake ≥ 3.20 + MinGW Makefiles / Ninja |
 | 日志 | spdlog（header-only） |
 | 测试 | doctest（header-only） |
+| JSON（阶段 6） | nlohmann/json（header-only，submodule） |
 | i18n | GNU gettext（.po / .mo） |
 | 网络 | wxSocket（内置） |
 | 串口 | 自实现（`SerialPort`，Windows 实现） |
 | 静态分析 | clang-tidy + clang-format |
 | CI | GitHub Actions |
 | 覆盖率 | gcovr + GCC `--coverage` |
-| 调试器 | LLDB-DAP（GDB 17.2 与 cpptools MI 握手失败） |
-| Modbus（阶段 6） | serhmarch/ModbusLib（事务型 API） |
+| 调试器 | LLDB-DAP（GDB 17.2 与 cpptools MI 握手失败）；CLI 用 gdb |
+| Modbus（阶段 7） | serhmarch/ModbusLib（事务型 API） |
 
 ---
 
@@ -78,13 +80,13 @@
 
 - `TcpProtocol` 是一个协议类，`Id() = "tcp"`，`DisplayName() = "TCP/IP"`
 - 「客户端 / 服务器」是 TCP 协议**内部的一种模式（Mode）**
-- 一个 `.conn` 文件 = 一份协议配置（含 Mode），**不是两份**
+- 一个 `.json` 文件 = 一份协议配置（含 Mode），**不是两份**
 
 **反例（禁止）**：
 
 ```
 ❌ TcpClientProtocol + TcpServerProtocol
-❌ 两个独立的 .conn 文件
+❌ 两个独立的 .json 文件
 ❌ UI 里硬编码两套字段
 ❌ 菜单里"TCP客户端"和"TCP服务器"两个入口
 ```
@@ -93,7 +95,7 @@
 
 ```
 ✅ TcpProtocol（一个类，内部根据 Mode 分发）
-✅ 一个 .conn 文件，Mode=Client 或 Server
+✅ 一个 .json 文件，Mode=Client 或 Server
 ✅ UI 从 IProtocol 的字段描述自动生成
 ✅ 菜单里只有"TCP/IP"一个入口
 ```
@@ -143,12 +145,12 @@ IProtocol::FieldsForMode(mode)  →  [ FieldDescriptor, ... ]
 | `protocols/` | `core/ log/` | `ui/ settings/` |
 | `core/` | C++ STL、wxBase | `ui/ protocols/ settings/ config/` |
 | `settings/` | `log/` | `core/ ui/ protocols/` |
-| `config/` | `core/` | `ui/ protocols/ settings/` |
+| `config/` | `core/`、`nlohmann/json` | `ui/ protocols/ settings/` |
 | `log/` | wxBase、spdlog | 业务逻辑 |
 
 ### 2.4 单一数据源
 
-- **协议配置**：唯一来源是 `.conn` 文件（`config/` 管）
+- **协议配置**：唯一来源是 `.json` 文件（`config/` 管）
 - **应用设置**：唯一来源是 `settings/` 模块
 - **协议描述**：唯一来源是 `IProtocol::FieldsForMode()`
 - **协议列表**：唯一来源是 `ProtocolRegistry::All()`
@@ -167,6 +169,21 @@ IProtocol::FieldsForMode(mode)  →  [ FieldDescriptor, ... ]
 - 托盘退出 → 销毁托盘自身
 
 **原因**：wxWidgets 的事件派发是**同步**的。如果在回调栈里 `delete` 了事件派发者，返回后访问成员会崩溃。
+
+### 2.6 对象销毁前先断开回调
+
+**任何"会被异步回调引用"的对象，销毁前必须先清空它持有的所有回调。**
+
+典型场景：
+
+- `Session` 析构 → `transport` 触发 `NotifyState(Closed)` → 状态回调 → `CallAfter` → 事件在 Session 死后执行 → 访问悬垂指针
+- `SessionManager::SetActive(new)` / `Close()` 在**真正销毁旧对象之前**清空回调
+
+**原因**：`CallAfter` 投递的事件在事件循环的后续迭代中执行，此时投递者可能已死。**光靠 `CallAfter` 里的 `if (ptr)` 判断不够**，因为指针可能是悬垂的（已释放但地址还"有效"）。
+
+**正解**：销毁前清空回调，让投递方在投递前就发现"没有回调"而不再投递。
+
+见 `SessionManager::DetachAndClose()`。
 
 ---
 
@@ -214,7 +231,7 @@ Session::Open() → Transport::Open() → 建立连接/监听
 | 类型 | 协议 | 抽象 |
 |---|---|---|
 | **字节流** | TCP / 串口 / MQTT | `IProtocol + ITransport + ICodec + Session` |
-| **事务型**（阶段 6） | Modbus / OPC UA | `ITransactionProtocol + ITransactionSession` |
+| **事务型**（阶段 7） | Modbus / OPC UA | `ITransactionProtocol + ITransactionSession` |
 
 详见 [ADR 0004](docs/architecture/adr/0004-transaction-protocol-separation.md)。
 
@@ -241,6 +258,30 @@ wxSocket Input 事件 / 串口读线程
             → Session::OnMessage(clientId, message)
             → UI 面板显示
 ```
+
+### 3.3 会话销毁顺序
+
+```
+SessionManager::SetActive(new) 或 Close()
+           │
+           ▼
+DetachAndClose()：
+   1. session->OnStateChanged(nullptr)      ← 先清所有回调
+   2. session->OnMessage(nullptr)
+   3. session->OnRawData(nullptr)
+   4. session->OnReconnectAttempt(nullptr)
+   5. session->OnClientConnected(nullptr)
+   6. session->OnClientDisconnected(nullptr)
+           │
+           ▼
+   7. session->Close()                       ← transport 触发 NotifyState(Closed)
+                                              ← 但已无回调，不会投递事件
+           │
+           ▼
+   8. m_active.reset()                       ← 此时才能真正销毁
+```
+
+**违反此顺序会导致**：Session 析构时 transport 触发状态变化 → 回调 lambda 投递 `CallAfter` → 事件在 Session 死后执行 → 访问 `m_transport`（已释放）→ SIGSEGV。
 
 ---
 
@@ -413,7 +454,27 @@ public:
 };
 ```
 
-> **阶段 6 计划**：新增 `ITransactionProtocol` / `ITransactionSession` 用于 Modbus，与上面的字节流抽象并列。详见 [ADR 0004](docs/architecture/adr/0004-transaction-protocol-separation.md)。
+### 4.8 `SessionManager`
+
+```cpp
+class SessionManager {
+public:
+    void SetActive(SessionPtr s);   // 先 DetachAndClose 旧会话
+    void Close();                   // 走 DetachAndClose
+    bool IsConnected() const;
+    Session* Active() const;
+    SessionState ActiveState() const;
+
+private:
+    // 关键：先清 6 个回调 → Close → reset
+    // 防止 Session 析构时触发状态回调并 CallAfter
+    void DetachAndClose();
+
+    SessionPtr m_active;
+};
+```
+
+> **阶段 7 计划**：新增 `ITransactionProtocol` / `ITransactionSession` 用于 Modbus，与上面的字节流抽象并列。详见 [ADR 0004](docs/architecture/adr/0004-transaction-protocol-separation.md)。
 
 ---
 
@@ -446,7 +507,7 @@ IndustrialCommunicationUtility/
 │   │   │   └── SerialPort.h/.cpp
 │   │   └── codec/
 │   │       ├── RawCodec.h/.cpp
-│   │       └── ModbusRtuCodec.h/.cpp （.cpp 待阶段 6）
+│   │       └── ModbusRtuCodec.h/.cpp （.cpp 待阶段 7）
 │   ├── ui/
 │   │   ├── GenericProtocolDialog.h/.cpp
 │   │   ├── ProtocolSessionPanel.h/.cpp  ✅ 通用增强（阶段 5）
@@ -462,7 +523,7 @@ IndustrialCommunicationUtility/
 │   │   ├── IconSettings.h/.cpp
 │   │   └── README.md
 │   ├── config/
-│   │   └── ConnectionProfile.h/.cpp
+│   │   └── ConnectionProfile.h/.cpp   ★ 阶段 6 改为 JSON
 │   └── log/
 │       └── Log.h/.cpp
 ├── tests/
@@ -495,7 +556,8 @@ IndustrialCommunicationUtility/
 │   ├── wxWidgets/
 │   ├── spdlog/
 │   ├── doctest/
-│   └── ModbusLib/                    ★ 阶段 6 待建
+│   ├── json/                         ★ 阶段 6 待建
+│   └── ModbusLib/                    ★ 阶段 7 待建
 └── CMakeLists.txt
 ```
 
@@ -516,11 +578,12 @@ IndustrialCommunicationUtility/
 │   │       ├── 0002-ui-data-driven-by-field-descriptors.md
 │   │       ├── 0003-doctest-as-test-framework.md
 │   │       ├── 0004-transaction-protocol-separation.md
-│   │       └── 0005-serial-protocol-and-common-panel-enhancement.md
+│   │       ├── 0005-serial-protocol-and-common-panel-enhancement.md
+│   │       └── 0006-conn-format-ini-to-json.md
 │   ├── user/
 │   │   ├── getting-started.md
 │   │   ├── tcp.md
-│   │   ├── serial.md                 ✅ 已完成（阶段 5）
+│   │   ├── serial.md
 │   │   └── troubleshooting.md
 │   ├── developer/
 │   │   ├── building.md
@@ -537,7 +600,7 @@ IndustrialCommunicationUtility/
 │   └── update_i18n.sh
 ├── cmake/                            ✅ 已完成
 │   └── version.h.in
-├── packaging/                        ★ 待建（阶段 10）
+├── packaging/                        ★ 待建（阶段 11）
 ├── resources/
 ├── third_party/
 ├── .vscode/
@@ -563,7 +626,7 @@ IndustrialCommunicationUtility/
 | `src/protocols/` | 具体协议实现、Transport、Codec | UI 代码 | `core/`、`log/` |
 | `src/ui/` | 窗口、对话框、面板 | 协议逻辑、socket 操作 | `core/ settings/` |
 | `src/settings/` | 应用级设置 | 协议配置、业务逻辑 | `log/` |
-| `src/config/` | `.conn` 协议配置文件读写 | UI、传输 | `core/` |
+| `src/config/` | `.json` 协议配置文件读写 | UI、传输 | `core/`、`nlohmann/json` |
 | `src/log/` | 日志初始化、GUI sink | 业务逻辑 | wxBase、spdlog |
 | `tests/` | 单元 / 集成测试 | 生产代码 | `core/ protocols/ settings/ config/` |
 | `docs/` | 文档、ADR | 代码 | — |
@@ -599,8 +662,8 @@ IndustrialCommunicationUtility/
 
 | | `settings/` | `config/` |
 |---|---|---|
-| 内容 | 应用级偏好（语言、窗口、字体、主题） | 协议配置（.conn 文件） |
-| 存储 | INI 文件（`wxFileConfig`，候选位置探测） | 独立 `.conn` 文件 |
+| 内容 | 应用级偏好（语言、窗口、字体、主题） | 协议配置（`.json` 文件） |
+| 存储 | INI 文件（`wxFileConfig`，候选位置探测） | 独立 `.json` 文件 |
 | 用户感知 | 隐式 | 显式 |
 | 生命周期 | 应用级 | 会话级 |
 
@@ -636,12 +699,12 @@ settings/
 | **窗口** | 关闭时最小化到托盘 | 🟡 待迁移 |
 | **UI** | 字体（UI / 日志 / 数据） | ⬜ 预留 |
 | **UI** | 主题（浅色 / 深色） | ⬜ 预留 |
-| **UI** | 十六进制显示 | 🟡 会话面板内存（阶段 9 持久化） |
-| **UI** | 自动滚动 | 🟡 会话面板内存（阶段 9 持久化） |
-| **UI** | 时间戳显示 | 🟡 会话面板内存（阶段 9 持久化） |
+| **UI** | 十六进制显示 | 🟡 会话面板内存（阶段 10 持久化） |
+| **UI** | 自动滚动 | 🟡 会话面板内存（阶段 10 持久化） |
+| **UI** | 时间戳显示 | 🟡 会话面板内存（阶段 10 持久化） |
 | **图标** | 协议图标 | ⬜ 预留 |
 | **图标** | UI 图标 | ⬜ 预留 |
-| **最近连接** | 最近打开的 `.conn` 列表 | ✅ 已实现 |
+| **最近连接** | 最近打开的 `.json` 列表 | ✅ 已实现 |
 
 **图例**：✅ 已实现 / 🟡 部分实现或待迁移 / ⬜ 预留
 
@@ -652,7 +715,7 @@ settings/
 1. **加 key** —— `SettingsKeys.h`
 2. **加接口** —— `UISettings.h`
 3. **加实现** —— `UISettings.cpp`
-4. **加 UI** —— `ui/SettingsDialog`（阶段 8 待建）
+4. **加 UI** —— `ui/SettingsDialog`（阶段 9 待建）
 5. **加使用** —— 使用点调用
 
 **全程只改 `settings/` + `SettingsDialog` + 使用点，不触碰 `core/` 和 `protocols/`。**
@@ -661,77 +724,103 @@ settings/
 
 ## 7. 协议配置文件格式
 
-### 7.1 `.conn` 通用结构
+### 7.1 `.json` 通用结构
 
-INI 格式（`wxFileConfig`）：
+JSON 格式（nlohmann/json）：
 
-```ini
-[Connection]
-Protocol=tcp
-Mode=Client
-<协议专属字段>=<值>
+```json
+{
+  "connection": {
+    "protocol": "tcp",
+    "mode": "Client",
+    "<协议专属字段>": "<值>"
+  }
+}
 ```
 
 **必须字段**：
-- `Protocol` — 协议 ID
-- `Mode` — 模式名
+- `protocol` — 协议 ID
+- `mode` — 模式名
+
+**类型映射**：
+
+| `FieldValue::Type` | JSON 类型 |
+|---|---|
+| String | string |
+| Int | number（整数） |
+| Bool | bool |
+| Choice | string（存 value，不是 label） |
 
 ### 7.2 TCP 客户端
 
-```ini
-[Connection]
-Protocol=tcp
-Mode=Client
-RemoteHost=127.0.0.1
-RemotePort=502
-LocalHost=0.0.0.0
-LocalPort=0
-TimeoutMs=3000
-AutoReconnect=1
-MaxReconnectAttempts=3
-ReconnectDelaySec=5
+```json
+{
+  "connection": {
+    "protocol": "tcp",
+    "mode": "Client",
+    "remoteHost": "127.0.0.1",
+    "remotePort": 502,
+    "localHost": "0.0.0.0",
+    "localPort": 0,
+    "timeoutMs": 3000,
+    "autoReconnect": true,
+    "reconnectMaxAttempts": "3",
+    "reconnectDelaySec": "5"
+  }
+}
 ```
 
 ### 7.3 TCP 服务器
 
-```ini
-[Connection]
-Protocol=tcp
-Mode=Server
-ListenHost=0.0.0.0
-ListenPort=502
-MaxClients=10
-ListenBacklog=5
+```json
+{
+  "connection": {
+    "protocol": "tcp",
+    "mode": "Server",
+    "listenHost": "0.0.0.0",
+    "listenPort": 502,
+    "maxClients": 10,
+    "backlog": 5
+  }
+}
 ```
 
 ### 7.4 串口
 
-```ini
-[Connection]
-Protocol=serial
-PortName=COM3
-BaudRate=9600
-DataBits=8
-Parity=N
-StopBits=1
-FlowControl=None
-ReadTimeoutMs=100
-WriteTimeoutMs=1000
+```json
+{
+  "connection": {
+    "protocol": "serial",
+    "mode": "",
+    "portName": "COM3",
+    "baudRate": "9600",
+    "dataBits": "8",
+    "parity": "N",
+    "stopBits": "1",
+    "flowControl": "None",
+    "readTimeoutMs": 100,
+    "writeTimeoutMs": 1000
+  }
+}
 ```
 
 ### 7.5 文件命名约定
 
 ```
-<协议>_<模式>_<主标识>_<次标识>.conn
+<协议>_<模式>_<主标识>_<次标识>.json
 
 例：
-  TCP_Client_127_0_0_1_502.conn
-  TCP_Server_0_0_0_0_502.conn
-  Serial_COM3_9600.conn
-  ModbusTCP_192_168_1_10_502.conn
+  TCP_Client_127_0_0_1_502.json
+  TCP_Server_0_0_0_0_502.json
+  Serial_COM3_9600.json
+  ModbusTCP_192_168_1_10_502.json
 ```
 
-由 `IProtocol::MakeDefaultFileName()` 生成。
+由 `IProtocol::MakeDefaultFileName()` 生成（后缀从 `.conn` 改为 `.json`）。
+
+### 7.6 向后兼容性
+
+**不兼容 INI 格式**。旧 `.conn` 文件加载失败，用户需手工转换。理由见 [ADR 0006](docs/architecture/adr/0006-conn-format-ini-to-json.md)。
 
 ---
 
@@ -741,7 +830,7 @@ WriteTimeoutMs=1000
 |---|---|---|---|---|---|
 | **TCP/IP** | `tcp` | Client / Server | TcpClient / TcpServer | Raw | ✅ 完成 |
 | **串口** | `serial` | — | SerialTransport | Raw | ✅ 完成 |
-| Modbus | `modbus` | TCP / RTU / ASCII | 内置 | 内置（事务型） | ⬜ 待实现（阶段 6） |
+| Modbus | `modbus` | TCP / RTU / ASCII | 内置 | 内置（事务型） | ⬜ 待实现（阶段 7） |
 | MQTT | `mqtt` | Pub / Sub | TcpClient | MqttCodec | ⬜ 待实现 |
 | OPC UA | `opcua` | Client / Server | 专用 | 专用 | ⬜ 待实现 |
 | Siemens TIA | `tia` | Client | TcpClient | S7Codec | ⬜ 待实现 |
@@ -822,20 +911,20 @@ ctest --test-dir build --output-on-failure
 
 | 缺口 | 原因 | 补测时机 |
 |---|---|---|
-| `TcpTransport.cpp` 0% | 依赖真实 wxSocket 事件循环 | 阶段 6 统一评估 |
+| `TcpTransport.cpp` 0% | 依赖真实 wxSocket 事件循环 | 阶段 7 统一评估 |
 | `SerialPort.cpp` / `SerialTransport.cpp` | 依赖真实串口硬件 | 手工回归（com0com） |
-| `settings/*.cpp` 0% | 依赖 `wxApp` 初始化 | 阶段 8 |
+| `settings/*.cpp` 0% | 依赖 `wxApp` 初始化 | 阶段 9 |
 
 ### 9.7 什么必须测
 
 - `FieldValue` 序列化往返
 - `ActiveProfile` 的 `operator==` / `operator!=`
-- `ConnectionProfile` 读写往返
+- `ConnectionProfile` 读写往返（JSON）
 - `Session` 状态机
+- **`SessionManager` 销毁前清空回调**（防止 CallAfter 悬垂指针）
 - 每个 Codec 的半包 / 粘包 / 校验
 - 每个 Protocol 的 `FieldsForMode()` 数量 + label 是翻译 key
 - `ITransport` 的 `clientId` 语义
-- `SessionManager` 的生命周期
 
 ### 9.8 测试命名约定
 
@@ -897,10 +986,11 @@ ctest --test-dir build --output-on-failure
 
 | 对象 | 注意事项 |
 |---|---|
-| `wxTaskBarIcon` | 不要 `delete`，只 `RemoveIcon()`（见下方"遗留问题"） |
+| `wxTaskBarIcon` | 不要 `delete`，只 `RemoveIcon()`（见遗留问题） |
 | `wxSocketBase` | 销毁前先 `Notify(false)` |
 | `wxEvtHandler` | 用 `Bind` 或 `SetEventHandler` |
 | **UI 自毁场景** | **必须用 `CallAfter` 延迟**（见 2.5） |
+| **异步回调持有者** | **销毁前必须清空回调**（见 2.6） |
 | **后台读线程** | `Close()` 时先 `Interrupt()` 打断阻塞读，再 `join()` |
 
 ### 10.6 线程安全
@@ -946,7 +1036,7 @@ GitHub Actions 每次 push / PR 跑四件事：**wxWidgets 构建缓存 → Debu
 
 **几个必须知道的点**：
 
-- `third_party/wxWidgets` 与 `third_party/spdlog` 都是 **submodule**
+- `third_party/wxWidgets`、`third_party/spdlog`、`third_party/json` 都是 **submodule**
 - **必须用 `submodules: recursive`**：wxWidgets 自身还带 12 个嵌套 submodule
 - wxWidgets 的 configure 参数 **不带 `--enable-debug`**，产出 release 库名（`libwx_mswu_*`）
 - 缓存键用 `wx-3.3.5-release-cc-${os}-ucrt64-gcc-${hashFiles('version.h')}`
@@ -1001,7 +1091,8 @@ docs/
 │       ├── 0002-ui-data-driven-by-field-descriptors.md
 │       ├── 0003-doctest-as-test-framework.md
 │       ├── 0004-transaction-protocol-separation.md
-│       └── 0005-serial-protocol-and-common-panel-enhancement.md
+│       ├── 0005-serial-protocol-and-common-panel-enhancement.md
+│       └── 0006-conn-format-ini-to-json.md
 ├── user/
 │   ├── getting-started.md
 │   ├── tcp.md
@@ -1057,25 +1148,39 @@ docs/
 - Port 下拉框自动枚举系统串口
 - `ITransport::Name()` 泛化，会话面板顶部显示传输类型（不再硬编码 TCP）
 - 消息显示支持 HEX / 时间戳 / 自动滚动 / 清空 / 发送新行
+- 修复退出时 `Session` 悬垂指针崩溃（`SessionManager::DetachAndClose()`）
 
-### 阶段 6：Modbus 协议（TCP / RTU / ASCII） ⬜ 未开始
+### 阶段 6：`.conn` 从 INI 迁移到 JSON ⬜ 未开始
 
-- [ ] 6.1 添加 ModbusLib submodule
-- [ ] 6.2 新增 `core/ITransactionProtocol.h` / `core/ITransactionSession.h`
-- [ ] 6.3 `ProtocolRegistry` 支持 `ProtocolKind` 分类
-- [ ] 6.4 `MainFrame` 按 Kind 分派会话面板
-- [ ] 6.5 `protocols/modbus/` 目录
-- [ ] 6.6 `ui/ModbusPanel.h/.cpp`：事务面板
-- [ ] 6.7 `.conn` 读写适配新字段
-- [ ] 6.8 单测 + 集成测试
+- [ ] 6.1 添加 `third_party/json` submodule（nlohmann/json）
+- [ ] 6.2 `CMakeLists.txt` 引入 nlohmann_json target
+- [ ] 6.3 `ConnectionProfile.cpp` 重写 Load / Save（JSON）
+- [ ] 6.4 `ConnectionProfile.h` 接口签名不变
+- [ ] 6.5 `.gitignore` 放行 CMakePresets.json，忽略其他根级 `.json`
+- [ ] 6.6 测试 `test_ConnectionProfile.cpp` 适配
+- [ ] 6.7 文档同步（`docs/user/*.md`、README 第 7 节）
+- [ ] 6.8 手工回归：TCP + 串口保存/加载/最近连接
+
+详见 [ADR 0006](docs/architecture/adr/0006-conn-format-ini-to-json.md)。
+
+### 阶段 7：Modbus 协议（TCP / RTU / ASCII） ⬜ 未开始
+
+- [ ] 7.1 添加 ModbusLib submodule
+- [ ] 7.2 新增 `core/ITransactionProtocol.h` / `core/ITransactionSession.h`
+- [ ] 7.3 `ProtocolRegistry` 支持 `ProtocolKind` 分类
+- [ ] 7.4 `MainFrame` 按 Kind 分派会话面板
+- [ ] 7.5 `protocols/modbus/` 目录
+- [ ] 7.6 `ui/ModbusPanel.h/.cpp`：事务面板
+- [ ] 7.7 `.json` 读写适配新字段
+- [ ] 7.8 单测 + 集成测试
 
 详见 [ADR 0004](docs/architecture/adr/0004-transaction-protocol-separation.md)。
 
-### 阶段 7：更多协议 ⬜ 未开始
+### 阶段 8：更多协议 ⬜ 未开始
 
-### 阶段 8：应用设置完善 ⬜ 未开始
+### 阶段 9：应用设置完善 ⬜ 未开始
 
-### 阶段 9：UI 打磨 ⬜ 未开始
+### 阶段 10：UI 打磨 ⬜ 未开始
 
 - [ ] HEX 发送输入模式
 - [ ] 循环发送（周期 ms）
@@ -1086,7 +1191,7 @@ docs/
 - [ ] HEX / 时间戳 / 自动滚动等偏好持久化
 - [ ] 端口枚举在 Linux 上实现
 
-### 阶段 10：发布准备 ⬜ 未开始
+### 阶段 11：发布准备 ⬜ 未开始
 
 ---
 
@@ -1096,14 +1201,14 @@ docs/
 
 **当前状态**：
 - 阶段 1~5 全部完成
-- **阶段 6 计划**：Modbus（TCP / RTU / ASCII），基于 serhmarch/ModbusLib，采用"事务型协议"独立抽象
+- **阶段 6 计划**：`.conn` 从 INI 迁移到 JSON（nlohmann/json，submodule 管理）
+- **阶段 7 计划**：Modbus（TCP / RTU / ASCII），基于 serhmarch/ModbusLib，采用"事务型协议"独立抽象
 
 **遗留问题**（不阻塞，需单独排查）：
 
 | 问题 | 影响 |
 |---|---|
-| `文件 → 退出` / `X 关闭 → 否` 偶发崩溃 | 退出路径不可靠 |
-| 托盘图标在部分环境不显示（`Shell_NotifyIcon` 权限拒绝） | 系统层问题 |
+| 托盘图标在部分环境不显示（`Shell_NotifyIcon` 权限拒绝） | 系统层问题，不影响功能 |
 
 **工程命令**（仓库根）：
 
@@ -1118,6 +1223,8 @@ docs/
 **关键文件**：
 - `src/core/IProtocol.h` — 协议接口
 - `src/core/ITransport.h` / `src/core/ICodec.h` — 传输/编解码接口
+- `src/core/SessionManager.cpp` — 会话生命周期（`DetachAndClose()`）
+- `src/config/ConnectionProfile.cpp` — `.json` 读写（阶段 6 重写）
 - `src/protocols/tcp/TcpProtocol.cpp` — 多模式协议范例
 - `src/protocols/serial/SerialProtocol.cpp` — 单模式协议范例
 - `src/protocols/serial/SerialPort.cpp` — 平台相关封装范例
@@ -1137,6 +1244,7 @@ docs/
 | 询问设计/架构 | 引用本文档，不发明新架构 |
 | 要求实现某协议 | 按 `TcpProtocol`（多模式）或 `SerialProtocol`（单模式）模板，只写 `protocols/<name>/` |
 | 报告编译错误 | 定位根因，给最小修复 |
+| 报告崩溃 | 要求先用 gdb 抓栈（见附录 A.8），按栈定位 |
 | 要求加 UI 功能 | 先问"能否通过 `FieldDescriptor` 描述" |
 | 要求加 App 设置 | 走 `settings/` 模块 |
 | 要求加测试 | 放 `tests/unit/` 或 `tests/integration/`，用 doctest |
@@ -1149,6 +1257,7 @@ docs/
 - [ ] 设置是否走 `settings/`？
 - [ ] 是否需要同步加测试？
 - [ ] 新增协议是否要在 `tests/CMakeLists.txt` 的 `icu_core_test` 里追加源文件？
+- [ ] 异步回调持有者销毁前是否清空回调？
 
 ### 13.3 代码生成规范
 
@@ -1214,6 +1323,7 @@ tests/unit/protocols/<protocol_id>/
 | 绕过 `settings/` 直接调 `wxConfigBase` | 破坏单一数据源 |
 | `core/` 或 `protocols/` 里 include `ui/` / `settings/` | 破坏分层 |
 | **在按钮回调里同步销毁宿主面板** | **闪退**（见 2.5） |
+| **销毁异步回调持有者前不清空回调** | **CallAfter 悬垂指针崩溃**（见 2.6） |
 | 新增协议不加测试 | 违背 9.7 |
 | 新增协议不追加到 `icu_core_test` 源文件列表 | 链接失败（vtable undefined） |
 | 在 `add_executable` 之前 `target_*_options` | CMake 报"target not built" |
@@ -1231,7 +1341,7 @@ tests/unit/protocols/<protocol_id>/
 | 决策 | 理由 |
 |---|---|
 | **协议是一等公民** | 避免 Client / Server 被拆成两个"协议" |
-| **一个 `.conn` 文件一份配置** | 切换模式不需保存两份 |
+| **一个 `.json` 文件一份配置** | 切换模式不需保存两份 |
 | **UI 数据驱动** | 新协议不改 UI |
 | **`FieldDescriptor` 的 label 作为翻译 key** | 不引入额外 i18n 机制 |
 | **`ITransport` 的 `clientId` 参数** | 统一客户端和服务器 |
@@ -1243,8 +1353,12 @@ tests/unit/protocols/<protocol_id>/
 | **`wxTaskBarIcon` 不直接 delete** | 内部窗口销毁时机问题 |
 | **托盘退出用 `CallAfter` 包裹 `Close`** | 避免在托盘事件栈上销毁托盘 |
 | **UI 自毁场景用 `CallAfter` 延迟** | 避免访问已释放内存 |
+| **销毁异步回调持有者前清空回调** | CallAfter 投递的事件在后续迭代执行，此时投递者可能已死 |
+| **`SessionManager::DetachAndClose()`** | 先清 6 个回调 → Close → reset，防悬垂指针 |
 | **`app.rc` 引用 `wx.rc`** | 一次性解决 Manifest、光标、图标 |
-| **`config/` 用 INI（wxFileConfig）** | 跨平台、易读 |
+| **`.json` 格式（阶段 6）** | INI 表达数组能力弱、类型系统缺失、生态不通用 |
+| **`nlohmann/json`（阶段 6）** | header-only，API 简洁，与现有 header-only 风格一致 |
+| **`.json` 不兼容 INI（阶段 6）** | 项目在开发阶段，用户少，趁早硬切比长期带兼容负担干净 |
 | **`settings/` 与 `config/` 分离** | App 级偏好 vs 协议级配置 |
 | **`Settings` 是唯一 `wxConfigBase` 消费者** | 单一数据源 |
 | **设置改用 `wxFileConfig`** | 注册表在非管理员下权限受限，改用文件 + 多候选位置探测 |
@@ -1264,7 +1378,7 @@ tests/unit/protocols/<protocol_id>/
 | **gcovr filter 用 `.*/src/.*`** | MinGW 下绝对路径匹配失败 |
 | **`MockTransport::Open()` 只切到 `Opening`** | 对齐真实异步 Transport 语义 |
 | **Mock 计数用 `shared_ptr<int>` 存储** | 跨对象生命周期可读 |
-| **保存对话框只过滤 `*.conn`** | Shell 枚举所有文件会触发部分环境缩略图缓存异常 |
+| **保存对话框只过滤 `*.json`** | Shell 枚举所有文件会触发部分环境缩略图缓存异常 |
 | **测试临时目录优先用 cwd** | 系统 `%TEMP%` 在 MSYS2 等环境权限受限 |
 | **CI wxWidgets 不启用 `--enable-debug`** | 只产 release 库名，与 CMakeLists 链接一致 |
 | **CMakeLists 自动探测 wx 布局** | 兼容本地 in-tree build 与 CI 标准布局 |
@@ -1273,7 +1387,7 @@ tests/unit/protocols/<protocol_id>/
 | **串口后台线程 + 同步 I/O** | 延迟低，跨平台清晰，关闭可控 |
 | **不引入第三方串口库** | 边界自己掌握 |
 | **不做 RTS/DTR 控制** | 场景少，会污染 Transport 抽象 |
-| **事务型协议与字节流协议分离**（阶段 6） | ModbusLib 是事务型 API，与 ITransport 字节流抽象不兼容 |
+| **事务型协议与字节流协议分离**（阶段 7） | ModbusLib 是事务型 API，与 ITransport 字节流抽象不兼容 |
 
 **完整 ADR 列表**：[docs/architecture/adr/](docs/architecture/adr/README.md)
 
@@ -1299,13 +1413,18 @@ tests/unit/protocols/<protocol_id>/
 | 2026-10-14 | 修复保存连接对话框在 Shell 异常环境下卡死：过滤器收窄为 `*.conn` |
 | 2026-10-14 | 修复测试临时目录权限问题：`TestEnv` 优先用 cwd |
 | 2026-10-14 | 修复 CI wxWidgets 构建参数：去掉 `--enable-debug`，缓存 key 加 `-release` |
-| 2026-10-14 | 新增 ADR 0004：事务型协议与字节流协议分离（阶段 6 用） |
+| 2026-10-14 | 新增 ADR 0004：事务型协议与字节流协议分离（阶段 7 用） |
 | 2026-10-14 | 新增 ADR 0005：串口协议实现与通用会话面板增强（阶段 5 用） |
-| 2026-10-14 | 路线图更新：阶段 5 改为串口 + 面板增强，Modbus 移到阶段 6 |
+| 2026-10-14 | 路线图更新：阶段 5 改为串口 + 面板增强，Modbus 移到阶段 6（后顺延为阶段 7） |
 | 2026-10-15 | CI 修复：wxWidgets 改 in-tree 构建，CMakeLists 自动探测 wx 布局，`wxDEBUG_LEVEL=0` |
 | 2026-10-15 | 阶段 5 完成：`SerialPort` / `SerialTransport` / `SerialProtocol` + 单测 + 面板增强 + 用户文档 |
 | 2026-10-15 | 菜单顺序按注册顺序（TCP 在 Serial 之前），ProtocolRegistry 用 `vector<pair>` |
 | 2026-10-15 | Port 下拉框自动枚举系统串口，`ITransport::Name()` 泛化 |
+| 2026-10-16 | 修复退出时 Session 悬垂指针崩溃（`SessionManager::DetachAndClose()`） |
+| 2026-10-16 | 新增原则 2.6「对象销毁前先断开回调」 |
+| 2026-10-16 | 命令从 PowerShell 换为 UCRT64（tasklist / taskkill）；新增附录 A.8 GDB 调试 |
+| 2026-10-16 | 新增 ADR 0006：`.conn` 从 INI 迁移到 JSON |
+| 2026-10-16 | 路线图更新：新阶段 6 = 格式迁移，原阶段 6（Modbus）顺延为阶段 7 |
 
 ---
 
@@ -1379,19 +1498,10 @@ done
 # 查进程
 tasklist | grep -E "IndustrialCommunicationUtility|icu_tests"
 
-# 杀进程
+# 杀进程（双斜杠防止 MSYS2 路径转换）
 taskkill //F //IM IndustrialCommunicationUtility.exe 2>/dev/null || true
 taskkill //F //IM icu_tests.exe 2>/dev/null || true
-
-### A.8 虚拟串口（com0com）
-
 ```
-# 在 com0com Setup Command Prompt（管理员）里
-list
-install PortName=COM5 PortName=COM6
-```
-
----
 
 ### A.8 GDB 调试
 
@@ -1402,6 +1512,66 @@ install PortName=COM5 PortName=COM6
 ```bash
 gdb --version
 # 若未安装：pacman -S mingw-w64-ucrt-x86_64-gdb
+```
+
+#### 场景 1：交互式调试（推荐排查时用）
+
+```bash
+cd build
+gdb ./IndustrialCommunicationUtility.exe
+```
+
+进入 gdb 后：
+
+```
+(gdb) run
+```
+
+在 GUI 里复现崩溃。程序 SIGSEGV 时 gdb 自动中断：
+
+```
+(gdb) bt            # 简栈
+(gdb) bt full       # 完整栈（含局部变量）
+(gdb) info registers
+(gdb) quit
+```
+
+#### 场景 2：批处理（一条命令抓栈）
+
+```bash
+cd build
+gdb -batch -ex "run" -ex "bt" -ex "bt full" ./IndustrialCommunicationUtility.exe
+```
+
+复现崩溃后，gdb 打印栈并退出，适合快速抓一次。
+
+#### 场景 3：程序正常退出（没有崩溃）
+
+gdb 输出 `exited normally` 和 `No stack`。说明本次运行没触发崩溃，可能是偶发问题，多跑几次或换复现路径。
+
+#### 读栈要点
+
+- **栈顶 `#0`** 是崩溃点（出错的函数 + 行号）
+- **往下的 `#1`、`#2`** 是调用链，找到**第一个属于 `icu::` 的帧**，那是本次 bug 的直接触发位置
+- `bt full` 里的局部变量值能帮助判断是不是悬垂指针（例如 `this=0x7479800` 后访问 `m_transport` 崩了，说明对象已释放）
+
+#### 典型例子：退出时 Session 悬垂指针
+
+```
+#0  icu::Session::TransportName() at Session.cpp:67  ← m_transport 已释放
+#1  ProtocolSessionPanel::UpdateModeLabel at ...:402
+#2  ProtocolSessionPanel::RefreshFromSession at ...:141
+#3  MainFrame::AttachSessionCallbacks lambda at ...:682
+#4  wxAsyncMethodCallEventFunctor::Execute
+#5  wxEvtHandler::ProcessPendingEvents
+```
+
+**解读**：`Session` 析构时 transport 触发了状态变化 → `CallAfter` 投递 lambda →
+事件在 `Session` 死后执行 → 访问已释放的 `m_transport` → SIGSEGV。
+
+**修法**：在 `SessionManager` 销毁 `Session` 前清空所有回调（见 `DetachAndClose()`）。
+
+---
 
 ## 附录 B：协议实现检查清单
 
@@ -1410,7 +1580,7 @@ gdb --version
 - [ ] `DisplayName()` 是翻译 key
 - [ ] `FieldsForMode()` 返回的 label 都是翻译 key
 - [ ] `CreateSession()` 不依赖具体 UI
-- [ ] `MakeDefaultFileName()` 生成的名称可跨平台
+- [ ] `MakeDefaultFileName()` 生成的名称可跨平台（后缀 `.json`）
 - [ ] 已注册到 `ProtocolRegistry`（`RegisterBuiltinProtocols()`）
 - [ ] 已追加到 `tests/CMakeLists.txt` 的 `icu_core_test` 源文件列表
 - [ ] 新增的 label 已在 `.po` 里翻译
@@ -1425,7 +1595,7 @@ gdb --version
 - [ ] Key 定义在 `SettingsKeys.h`
 - [ ] 类型化接口加在对应的 `XxxSettings.h`
 - [ ] 实现走 `Settings::Instance()`
-- [ ] 在 `SettingsDialog` 里加 UI（阶段 8 之后）
+- [ ] 在 `SettingsDialog` 里加 UI（阶段 9 之后）
 - [ ] 在使用点调用
 - [ ] 未在 `core/` 或 `protocols/` 里直接访问 settings
 - [ ] 已在本 README 第 6.5 节设置项清单里更新状态
@@ -1556,8 +1726,8 @@ list
 
 | 序 | 操作 | 期望 |
 |---|---|---|
-| 1 | Client 模式 → 保存为 `TCP_Client_test.conn` | 标题显示 `- TCP_Client_test`，无 `*` |
-| 2 | 查看文件内容 | 含 `Protocol=tcp` + `Mode=Client` |
+| 1 | Client 模式 → 保存为 `TCP_Client_test.json` | 标题显示 `- TCP_Client_test`，无 `*` |
+| 2 | 查看文件内容 | 含 `"protocol": "tcp"` + `"mode": "Client"` |
 | 3 | 点"配置连接..."改端口 | 标题出现 `*` |
 | 4 | `文件 → 保存连接` | `*` 消失 |
 | 5 | 关闭连接 | 无提示 |
@@ -1567,7 +1737,7 @@ list
 
 | 序 | 操作 | 期望 |
 |---|---|---|
-| 1 | 保存 3 个 `.conn` | 最近连接列出 3 项 |
+| 1 | 保存 3 个 `.json` | 最近连接列出 3 项 |
 | 2 | 点击其中一项 | 加载并连接 |
 | 3 | 重启 | 仍在 |
 | 4 | 手动删除一个 → 重启 | 该项消失 |
@@ -1606,22 +1776,43 @@ list
 | 8 | 托盘右键 → 退出 | 干净退出 |
 | 9 | `tasklist \| grep IndustrialCommunicationUtility` | 无输出 |
 
-> ⚠️ **已知问题**：步骤 8 及 `文件 → 退出` 路径在部分环境偶发崩溃，见 13.1 遗留问题。
-
 ### E.11 异常场景
 
 | 场景 | 操作 | 期望 |
 |---|---|---|
-| 打开损坏的 `.conn` | 手动改 `Type=XYZ` | 提示"加载失败" |
-| 保存到只读路径 | `C:\Windows\System32\test.conn` | 提示"保存失败" |
-| 配置不完整 | 手动删除 `RemoteHost` | 加载后使用默认值 |
+| 打开损坏的 `.json` | 手动写非法 JSON | 提示"加载失败" |
+| 打开旧 `.conn` 文件 | 选 `.conn` | 提示"加载失败"（不兼容，见 ADR 0006） |
+| 保存到只读路径 | `C:\Windows\System32\test.json` | 提示"保存失败" |
+| 配置不完整 | 手动删除 `remoteHost` | 加载后使用默认值 |
 | 串口被占用 | 别的软件已打开 | 提示"打开失败" |
 | 串口拔掉 | 运行中拔 USB 转串口 | 状态"已断开" |
 | 串口不存在 | Port 填 `COM99` | 打开失败，日志有错误 |
 
-### E.12 测试结果记录
+### E.12 退出路径测试
 
-```markdown
+**准备**：每次先开一个会话（TCP 或串口），再测退出。
+
+| 序 | 操作 | 期望 |
+|---|---|---|
+| 1 | 开 TCP 会话，`文件 → 退出` | 干净退出 |
+| 2 | 开 TCP 会话，X → 否 → 否 | 干净退出 |
+| 3 | 开串口会话，`文件 → 退出` | 干净退出 |
+| 4 | 开串口会话，X → 否 → 否 | 干净退出 |
+| 5 | 无会话直接退出 | 干净退出 |
+| 6 | 开会话 → 断开连接 → 退出 | 干净退出 |
+| 7 | 开会话 → 打开 → 断开 → 打开 → 退出 | 干净退出 |
+
+每次退出后：
+
+```bash
+tasklist | grep IndustrialCommunicationUtility
+```
+
+应**无输出**。
+
+### E.13 测试结果记录
+
+
 ## 测试日期：2026-XX-XX
 ## 版本：v0.1.0
 ## 测试人：<姓名>
@@ -1636,14 +1827,16 @@ list
 | E.7 最近连接 | ✅ | — |
 | E.8 窗口与 UI | ✅ | — |
 | E.9 语言切换 | ✅ | — |
-| E.10 关闭与托盘 | ⚠️ | 退出偶发崩溃（已知） |
+| E.10 关闭与托盘 | ✅ | — |
 | E.11 异常场景 | ✅ | — |
+| E.12 退出路径 | ✅ | — |
 
-**结论**：主体通过，退出崩溃问题待单独修复。
-```
+**结论**：全部通过。
+
 
 ---
 
 **文档结束。**
 
 > 本文档随项目演进持续更新。任何架构级改动必须先更新本文档，再动代码。
+
