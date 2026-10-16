@@ -66,16 +66,20 @@ Send 行右侧：
 
 ---
 
-## 5. `.conn` 文件格式
+## 5. `.json` 文件格式
 
-```ini
-[Connection]
-Protocol=serial
-PortName=COM3
-BaudRate=9600
-DataBits=8
-Parity=N
-StopBits=1
-FlowControl=None
-ReadTimeoutMs=100
-WriteTimeoutMs=1000
+```json
+{
+  "connection": {
+    "protocol": "serial",
+    "mode": "",
+    "portName": "COM3",
+    "baudRate": "9600",
+    "dataBits": "8",
+    "parity": "N",
+    "stopBits": "1",
+    "flowControl": "None",
+    "readTimeoutMs": 100,
+    "writeTimeoutMs": 1000
+  }
+}

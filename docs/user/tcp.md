@@ -6,7 +6,7 @@
 
 `TCP/IP` 是**一个**协议，内部有 Client / Server 两种**模式**。
 
-新建连接时选模式（`Mode=Client` 或 `Mode=Server` 存进 `.conn`），
+新建连接时选模式（`Mode=Client` 或 `Mode=Server` 存进 `.json`），
 菜单里只有一个 `TCP/IP` 入口 —— 这是刻意的设计，
 见 [ADR 0001](../architecture/adr/0001-protocol-as-first-class-with-modes.md)。
 
@@ -91,20 +91,24 @@ TCP 模式目前使用 **`RawCodec`（透传）**：不做任何封帧处理，
 
 ---
 
-## 6. `.conn` 文件格式
 
-```ini
-[Connection]
-Protocol=tcp
-Mode=Client
-remoteHost=192.168.1.10
-remotePort=502
-localHost=0.0.0.0
-localPort=0
-timeoutMs=3000
-autoReconnect=1
-reconnectMaxAttempts=3
-reconnectDelaySec=5
+## 6. `.json` 文件格式
+
+```json
+{
+  "connection": {
+    "protocol": "tcp",
+    "mode": "Client",
+    "remoteHost": "192.168.1.10",
+    "remotePort": 502,
+    "localHost": "0.0.0.0",
+    "localPort": 0,
+    "timeoutMs": 3000,
+    "autoReconnect": true,
+    "reconnectMaxAttempts": "3",
+    "reconnectDelaySec": "5"
+  }
+}
 ```
 
 - 全部字段都写在 `[Connection]` 段下（`wxFileConfig` 的 `/Connection/<key>` 路径）。

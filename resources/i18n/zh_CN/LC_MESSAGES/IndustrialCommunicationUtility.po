@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: IndustrialCommunicationUtility 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-16 08:51+0800\n"
+"POT-Creation-Date: 2026-10-16 13:55+0800\n"
 "PO-Revision-Date: 2026-10-13 16:00+0800\n"
 "Last-Translator: Your Name <you@example.com>\n"
 "Language-Team: Simplified Chinese\n"
@@ -301,8 +301,7 @@ msgstr ""
 "%s"
 
 #: src/app/MainFrame.cpp:418
-#, c-format
-msgid "AddRecentConnection: not a .conn path, ignored: %s"
+msgid "AddRecentConnection: not a .json path, ignored: %s"
 msgstr "AddRecentConnection: 非 .conn 路径，已忽略: %s"
 
 #: src/app/MainFrame.cpp:440
@@ -421,69 +420,73 @@ msgstr "是"
 msgid "no"
 msgstr "否"
 
+#: src/config/ConnectionProfile.cpp:78
+msgid "Failed to parse JSON: %s"
+msgstr "解析JSON失败: %s"
+
 #: src/core/Session.cpp:45
 #, c-format
 msgid "Codec '%s' encode failed"
 msgstr "编解码器 '%s' 编码失败"
 
-#: src/protocols/serial/SerialProtocol.cpp:72
+#: src/protocols/serial/SerialProtocol.cpp:71
 msgid "Port:"
 msgstr "端口："
 
-#: src/protocols/serial/SerialProtocol.cpp:76
+#: src/protocols/serial/SerialProtocol.cpp:75
 msgid "Baud Rate:"
 msgstr "波特率："
 
-#: src/protocols/serial/SerialProtocol.cpp:94
+#: src/protocols/serial/SerialProtocol.cpp:93
 msgid "Data Bits:"
 msgstr "数据位："
 
-#: src/protocols/serial/SerialProtocol.cpp:102
+#: src/protocols/serial/SerialProtocol.cpp:101
 msgid "Parity:"
 msgstr "校验位："
 
-#: src/protocols/serial/SerialProtocol.cpp:107
-#: src/protocols/serial/SerialProtocol.cpp:127
+#: src/protocols/serial/SerialProtocol.cpp:106
+#: src/protocols/serial/SerialProtocol.cpp:126
 msgid "None"
 msgstr "无"
 
-#: src/protocols/serial/SerialProtocol.cpp:108
+#: src/protocols/serial/SerialProtocol.cpp:107
 msgid "Even"
 msgstr "偶校验"
 
-#: src/protocols/serial/SerialProtocol.cpp:109
+#: src/protocols/serial/SerialProtocol.cpp:108
 msgid "Odd"
 msgstr "奇校验"
 
-#: src/protocols/serial/SerialProtocol.cpp:110
+#: src/protocols/serial/SerialProtocol.cpp:109
 msgid "Mark"
 msgstr "标记"
 
-#: src/protocols/serial/SerialProtocol.cpp:111
+#: src/protocols/serial/SerialProtocol.cpp:110
 msgid "Space"
 msgstr "空格"
 
-#: src/protocols/serial/SerialProtocol.cpp:114
+#: src/protocols/serial/SerialProtocol.cpp:113
 msgid "Stop Bits:"
 msgstr "停止位："
 
-#: src/protocols/serial/SerialProtocol.cpp:122
+#: src/protocols/serial/SerialProtocol.cpp:121
 msgid "Flow Control:"
 msgstr "流控制："
 
-#: src/protocols/serial/SerialProtocol.cpp:128
+#: src/protocols/serial/SerialProtocol.cpp:127
 msgid "RTS/CTS"
 msgstr "RTS/CTS"
 
-#: src/protocols/serial/SerialProtocol.cpp:129
+#: src/protocols/serial/SerialProtocol.cpp:128
 msgid "XON/XOFF"
 msgstr "XON/XOFF"
 
-#: src/protocols/serial/SerialProtocol.cpp:131
+#: src/protocols/serial/SerialProtocol.cpp:130
 msgid "Read Timeout (ms):"
 msgstr "读超时（毫秒）："
 
-#: src/protocols/serial/SerialProtocol.cpp:134
+#: src/protocols/serial/SerialProtocol.cpp:133
 msgid "Write Timeout (ms):"
 msgstr "写超时（毫秒）："
 
@@ -491,21 +494,21 @@ msgstr "写超时（毫秒）："
 msgid "&Serial Port"
 msgstr "串口"
 
-#: src/protocols/serial/SerialTransport.cpp:28
+#: src/protocols/serial/SerialTransport.cpp:324
 #, c-format
 msgid "Failed to open serial port: %s"
 msgstr "无法打开串口: %s"
 
-#: src/protocols/serial/SerialTransport.cpp:36
+#: src/protocols/serial/SerialTransport.cpp:332
 #, c-format
 msgid "Serial port opened: %s"
 msgstr "串口已打开: %s"
 
-#: src/protocols/serial/SerialTransport.cpp:59
+#: src/protocols/serial/SerialTransport.cpp:350
 msgid "Serial port closed"
 msgstr "串口已关闭"
 
-#: src/protocols/serial/SerialTransport.cpp:84
+#: src/protocols/serial/SerialTransport.cpp:373
 msgid "Serial port read error"
 msgstr "串口读取错误"
 

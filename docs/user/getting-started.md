@@ -33,8 +33,8 @@ scripts/build.sh
 | 菜单 | 项 | 说明 |
 |---|---|---|
 | **文件** | 新建连接 ▸ | 每个已注册协议一个子项（当前只有 `TCP/IP`） |
-| | 最近连接 ▸ | 最近打开的 `.conn`，最多 5 个 |
-| | 打开连接 `Ctrl+O` | 打开已保存的 `.conn` |
+| | 最近连接 ▸ | 最近打开的 `.json`，最多 5 个 |
+| | 打开连接 `Ctrl+O` | 打开已保存的 `.json` |
 | | 保存连接 `Ctrl+S` | 保存当前配置 |
 | | 另存连接 `Ctrl+Shift+S` | 保存到新文件 |
 | | 关闭连接 `Ctrl+W` | 关闭当前连接 |
@@ -91,23 +91,24 @@ nc 127.0.0.1 5030
 
 ## 6. 保存与复用配置
 
-- 保存后得到 `.conn` 文件（INI 格式，可用文本编辑器查看）：
+- 保存后得到 `.json` 文件，可用文本编辑器查看：：
 
-```ini
-[Connection]
-Protocol=tcp
-Mode=Client
-remoteHost=127.0.0.1
-remotePort=5020
+```json
+{
+  "connection": {
+    "protocol": "tcp",
+    "mode": "Client",
+    "remoteHost": "127.0.0.1",
+    "remotePort": 5020
+  }
 ```
 
-> `wxFileConfig` 读写**不区分大小写**，所以手写 `RemoteHost=127.0.0.1` 也能正确读入。
-> 但应用保存时会写成 `FieldDescriptor::key` 的原始大小写（`remoteHost`），
-> 建议手工编辑时也保持一致，避免将来跨平台构建时出现意外。
-> 所有字段都写在 `[Connection]` 段下。
+> 所有字段都在顶层 connection 对象内。protocol / mode 是稳定 key，
+> 不随界面语言变化。字段类型按 FieldDescriptor::type 映射：
+> 字符串/选项 → JSON string，整数 → number，布尔 → true/false
 
-- `文件 → 打开连接` 或从「最近连接」里选，即可恢复配置并连接。
-- `.conn` 是纯文本，方便版本管理、批量生成、脚本化。
+- 文件 → 打开连接 或从「最近连接」里选，即可恢复配置并连接。
+- `.json` 是纯文本，方便版本管理、批量生成、脚本化。
 
 ---
 

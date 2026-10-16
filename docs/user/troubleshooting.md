@@ -112,39 +112,44 @@ TCP 是**字节流**，没有消息边界。当前 TCP 用 `RawCodec` **透传**
 
 ## 4. 配置文件
 
-### 打开 `.conn` 提示加载失败
+### 打开 `.json` 提示加载失败
 
-两个常见原因：
+三个常见原因：
 
 | 原因 | 检查 |
 |---|---|
 | 文件不存在 / 路径不可读 | 文件真的在吗 |
-| `Protocol=` 指向未注册的协议 | 必须是 `tcp`（见根 `README.md` 第 8 节协议清单）|
+| JSON 语法错误 | 用编辑器检查括号、逗号、引号；或贴进 `python -m json.tool` 校验 |
+| `"protocol"` 指向未注册的协议 | 必须是 `tcp`（见根 `README.md` 第 8 节协议清单）|
 
-`Mode=` 写错**不会**导致失败，会回退到 `modeIndex` 0（即第一个模式）。
+`"mode"` 写错**不会**导致失败，会回退到 `modeIndex` 0（即第一个模式）。
 
-### 手工改了 `.conn`，但加载后字段还是旧值
+### 手工改了 `.json`，但加载后字段还是旧值
 
 - 键名拼错 → 该字段被忽略，用默认值。
-- 键名大小写无所谓（`wxFileConfig` 不区分），但**拼写必须对**。
-- 字段所属的段必须是 `[Connection]`。
+- **键名大小写敏感**（JSON 规范），必须是 `FieldDescriptor::key` 的原始大小写
+  （如 `remoteHost`，不是 `RemoteHost`）。
+- 所有字段必须在顶层 `connection` 对象内。
+- 类型错误（如把 `remotePort` 写成字符串 `"502"` 而不是数字 `502`）会导致加载失败。
 
 ### 保存失败
 
 - 目标目录只读，或文件被占用。
 - 保存到 `C:\Program Files\...` 之类需要管理员权限的位置会失败，换用户目录。
 
-### `.conn` 文件长什么样
+### `.json` 文件长什么样
 
-```ini
-[Connection]
-Protocol=tcp
-Mode=Client
-remoteHost=192.168.1.10
-remotePort=5020
+```json
+{
+  "connection": {
+    "protocol": "tcp",
+    "mode": "Client",
+    "remoteHost": "192.168.1.10",
+    "remotePort": 5020
+  }
 ```
 
-纯文本 INI，可以直接用文本编辑器改、纳入版本管理、脚本批量生成。
+纯文本 JSON，可以直接用文本编辑器改、纳入版本管理、脚本批量生成。
 
 ---
 
@@ -228,7 +233,7 @@ cmake -S . -B build -G "MinGW Makefiles" -DICU_BUILD_TESTS=ON
 收集这些信息再排查：
 
 1. `logs/app.log` 的内容
-2. 触发问题的 `.conn` 文件内容
+2. 触发问题的 `.json` 文件内容
 3. `g++ --version`、`cmake --version` 输出
 4. 完整的错误输出 / 崩溃位置
 
