@@ -1375,10 +1375,13 @@ done
 
 ### A.7 残留进程清理
 
-```powershell
-Get-Process IndustrialCommunicationUtility -ErrorAction SilentlyContinue | Stop-Process -Force
-Get-Process icu_tests -ErrorAction SilentlyContinue | Stop-Process -Force
-```
+```bash
+# 查进程
+tasklist | grep -E "IndustrialCommunicationUtility|icu_tests"
+
+# 杀进程
+taskkill //F //IM IndustrialCommunicationUtility.exe 2>/dev/null || true
+taskkill //F //IM icu_tests.exe 2>/dev/null || true
 
 ### A.8 虚拟串口（com0com）
 
@@ -1389,6 +1392,16 @@ install PortName=COM5 PortName=COM6
 ```
 
 ---
+
+### A.8 GDB 调试
+
+**用 MSYS2 UCRT64 的 gdb 抓崩溃栈。**
+
+#### 前置：确认 gdb 可用
+
+```bash
+gdb --version
+# 若未安装：pacman -S mingw-w64-ucrt-x86_64-gdb
 
 ## 附录 B：协议实现检查清单
 
@@ -1591,7 +1604,7 @@ list
 | 6 | 点"是" | 窗口隐藏，托盘出现 |
 | 7 | 双击托盘图标 | 窗口恢复 |
 | 8 | 托盘右键 → 退出 | 干净退出 |
-| 9 | `Get-Process IndustrialCommunicationUtility` | 无输出 |
+| 9 | `tasklist \| grep IndustrialCommunicationUtility` | 无输出 |
 
 > ⚠️ **已知问题**：步骤 8 及 `文件 → 退出` 路径在部分环境偶发崩溃，见 13.1 遗留问题。
 

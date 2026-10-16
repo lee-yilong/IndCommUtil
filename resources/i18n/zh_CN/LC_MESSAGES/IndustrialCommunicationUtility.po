@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: IndustrialCommunicationUtility 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 23:11+0800\n"
+"POT-Creation-Date: 2026-10-16 08:51+0800\n"
 "PO-Revision-Date: 2026-10-13 16:00+0800\n"
 "Last-Translator: Your Name <you@example.com>\n"
 "Language-Team: Simplified Chinese\n"
@@ -244,12 +244,12 @@ msgid "User invoked Open Connection"
 msgstr "用户调用了打开连接"
 
 #: src/app/MainFrame.cpp:297 src/app/MainFrame.cpp:371
-#: src/app/MainFrame.cpp:620 src/app/MainFrame.cpp:758
+#: src/app/MainFrame.cpp:620 src/app/MainFrame.cpp:763
 msgid "Please close the current connection first."
 msgstr "请先关闭当前连接。"
 
 #: src/app/MainFrame.cpp:297 src/app/MainFrame.cpp:371
-#: src/app/MainFrame.cpp:620 src/app/MainFrame.cpp:758
+#: src/app/MainFrame.cpp:620 src/app/MainFrame.cpp:763
 msgid "Notice"
 msgstr "提示"
 
@@ -286,7 +286,7 @@ msgstr "正在从文件打开连接: %s"
 msgid "Closing connection: %s"
 msgstr "正在关闭连接: %s"
 
-#: src/app/MainFrame.cpp:363 src/app/MainFrame.cpp:704
+#: src/app/MainFrame.cpp:363 src/app/MainFrame.cpp:705
 #: src/ui/ProtocolSessionPanel.cpp:186 src/ui/ProtocolSessionPanel.cpp:219
 msgid "Disconnected"
 msgstr "已断开连接"
@@ -379,45 +379,45 @@ msgstr "无法打开会话"
 msgid "Creating session: %s"
 msgstr "正在创建会话: %s"
 
-#: src/app/MainFrame.cpp:674 src/app/MainFrame.cpp:698
+#: src/app/MainFrame.cpp:674 src/app/MainFrame.cpp:699
 #: src/ui/ProtocolSessionPanel.cpp:36 src/ui/ProtocolSessionPanel.cpp:196
 #, c-format
 msgid "Connecting to %s ..."
 msgstr "正在连接到 %s ..."
 
-#: src/app/MainFrame.cpp:691 src/ui/ProtocolSessionPanel.cpp:207
+#: src/app/MainFrame.cpp:692 src/ui/ProtocolSessionPanel.cpp:207
 #, c-format
 msgid "Listening on %s"
 msgstr "正在监听 %s"
 
-#: src/app/MainFrame.cpp:694
+#: src/app/MainFrame.cpp:695
 #, c-format
 msgid "Connected [%s]: %s"
 msgstr "已连接 [%s]: %s"
 
-#: src/app/MainFrame.cpp:701
+#: src/app/MainFrame.cpp:702
 #, c-format
 msgid "Reconnecting to %s ..."
 msgstr "正在重新连接到 %s ..."
 
-#: src/app/MainFrame.cpp:737 src/ui/ProtocolSessionPanel.cpp:310
+#: src/app/MainFrame.cpp:742 src/ui/ProtocolSessionPanel.cpp:310
 msgid "User clicked Open Connection"
 msgstr "用户点击了打开连接"
 
-#: src/app/MainFrame.cpp:752
+#: src/app/MainFrame.cpp:757
 msgid "User clicked Configure Connection"
 msgstr "用户点击了配置连接"
 
-#: src/app/MainFrame.cpp:776
+#: src/app/MainFrame.cpp:781
 #, c-format
 msgid "Configuration updated (modified=%s)"
 msgstr "配置已更新（已修改=%s）"
 
-#: src/app/MainFrame.cpp:777
+#: src/app/MainFrame.cpp:782
 msgid "yes"
 msgstr "是"
 
-#: src/app/MainFrame.cpp:777
+#: src/app/MainFrame.cpp:782
 msgid "no"
 msgstr "否"
 
@@ -428,89 +428,86 @@ msgstr "编解码器 '%s' 编码失败"
 
 #: src/protocols/serial/SerialProtocol.cpp:72
 msgid "Port:"
-msgstr ""
+msgstr "端口："
 
 #: src/protocols/serial/SerialProtocol.cpp:76
 msgid "Baud Rate:"
-msgstr ""
+msgstr "波特率："
 
 #: src/protocols/serial/SerialProtocol.cpp:94
 msgid "Data Bits:"
-msgstr ""
+msgstr "数据位："
 
 #: src/protocols/serial/SerialProtocol.cpp:102
 msgid "Parity:"
-msgstr ""
+msgstr "校验位："
 
 #: src/protocols/serial/SerialProtocol.cpp:107
 #: src/protocols/serial/SerialProtocol.cpp:127
-#, fuzzy
 msgid "None"
-msgstr "（无）"
+msgstr "无"
 
 #: src/protocols/serial/SerialProtocol.cpp:108
 msgid "Even"
-msgstr ""
+msgstr "偶校验"
 
 #: src/protocols/serial/SerialProtocol.cpp:109
 msgid "Odd"
-msgstr ""
+msgstr "奇校验"
 
 #: src/protocols/serial/SerialProtocol.cpp:110
 msgid "Mark"
-msgstr ""
+msgstr "标记"
 
 #: src/protocols/serial/SerialProtocol.cpp:111
 msgid "Space"
-msgstr ""
+msgstr "空格"
 
 #: src/protocols/serial/SerialProtocol.cpp:114
 msgid "Stop Bits:"
-msgstr ""
+msgstr "停止位："
 
 #: src/protocols/serial/SerialProtocol.cpp:122
 msgid "Flow Control:"
-msgstr ""
+msgstr "流控制："
 
 #: src/protocols/serial/SerialProtocol.cpp:128
 msgid "RTS/CTS"
-msgstr ""
+msgstr "RTS/CTS"
 
 #: src/protocols/serial/SerialProtocol.cpp:129
 msgid "XON/XOFF"
-msgstr ""
+msgstr "XON/XOFF"
 
 #: src/protocols/serial/SerialProtocol.cpp:131
-#, fuzzy
 msgid "Read Timeout (ms):"
-msgstr "连接超时（毫秒）："
+msgstr "读超时（毫秒）："
 
 #: src/protocols/serial/SerialProtocol.cpp:134
-#, fuzzy
 msgid "Write Timeout (ms):"
-msgstr "连接超时（毫秒）："
+msgstr "写超时（毫秒）："
 
 #: src/protocols/serial/SerialProtocol.h:14
 msgid "&Serial Port"
-msgstr ""
+msgstr "串口"
 
 #: src/protocols/serial/SerialTransport.cpp:28
-#, fuzzy, c-format
+#, c-format
 msgid "Failed to open serial port: %s"
-msgstr "无法打开会话"
+msgstr "无法打开串口: %s"
 
 #: src/protocols/serial/SerialTransport.cpp:36
 #, c-format
 msgid "Serial port opened: %s"
-msgstr ""
+msgstr "串口已打开: %s"
 
 #: src/protocols/serial/SerialTransport.cpp:59
 msgid "Serial port closed"
-msgstr ""
+msgstr "串口已关闭"
 
 #: src/protocols/serial/SerialTransport.cpp:84
 msgid "Serial port read error"
-msgstr ""
+msgstr "串口读取错误"
 
 #: src/protocols/tcp/TcpProtocol.cpp:30
 msgid "Client"
@@ -793,11 +790,11 @@ msgstr "数据日志"
 
 #: src/ui/ProtocolSessionPanel.cpp:83
 msgid "HEX Display"
-msgstr ""
+msgstr "HEX 显示"
 
 #: src/ui/ProtocolSessionPanel.cpp:84
 msgid "Timestamp"
-msgstr ""
+msgstr "时间戳"
 
 #: src/ui/ProtocolSessionPanel.cpp:107 src/ui/ProtocolSessionPanel.cpp:112
 msgid "Send"
@@ -805,7 +802,7 @@ msgstr "发送"
 
 #: src/ui/ProtocolSessionPanel.cpp:115
 msgid "Append newline"
-msgstr ""
+msgstr "追加换行"
 
 #: src/ui/ProtocolSessionPanel.cpp:125 src/ui/ProtocolSessionPanel.cpp:340
 msgid "Open Connection"

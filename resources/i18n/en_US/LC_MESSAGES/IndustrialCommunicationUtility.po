@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 23:11+0800\n"
+"POT-Creation-Date: 2026-10-16 08:51+0800\n"
 "PO-Revision-Date: 2026-10-10 10:49+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -245,12 +245,12 @@ msgid "User invoked Open Connection"
 msgstr "User invoked Open Connection"
 
 #: src/app/MainFrame.cpp:297 src/app/MainFrame.cpp:371
-#: src/app/MainFrame.cpp:620 src/app/MainFrame.cpp:758
+#: src/app/MainFrame.cpp:620 src/app/MainFrame.cpp:763
 msgid "Please close the current connection first."
 msgstr "Please close the current connection first."
 
 #: src/app/MainFrame.cpp:297 src/app/MainFrame.cpp:371
-#: src/app/MainFrame.cpp:620 src/app/MainFrame.cpp:758
+#: src/app/MainFrame.cpp:620 src/app/MainFrame.cpp:763
 msgid "Notice"
 msgstr "Notice"
 
@@ -287,7 +287,7 @@ msgstr "Opening connection from file: %s"
 msgid "Closing connection: %s"
 msgstr "Closing connection: %s"
 
-#: src/app/MainFrame.cpp:363 src/app/MainFrame.cpp:704
+#: src/app/MainFrame.cpp:363 src/app/MainFrame.cpp:705
 #: src/ui/ProtocolSessionPanel.cpp:186 src/ui/ProtocolSessionPanel.cpp:219
 msgid "Disconnected"
 msgstr "Disconnected"
@@ -380,45 +380,45 @@ msgstr "Failed to open session"
 msgid "Creating session: %s"
 msgstr "Creating session: %s"
 
-#: src/app/MainFrame.cpp:674 src/app/MainFrame.cpp:698
+#: src/app/MainFrame.cpp:674 src/app/MainFrame.cpp:699
 #: src/ui/ProtocolSessionPanel.cpp:36 src/ui/ProtocolSessionPanel.cpp:196
 #, c-format
 msgid "Connecting to %s ..."
 msgstr "Connecting to %s ..."
 
-#: src/app/MainFrame.cpp:691 src/ui/ProtocolSessionPanel.cpp:207
+#: src/app/MainFrame.cpp:692 src/ui/ProtocolSessionPanel.cpp:207
 #, c-format
 msgid "Listening on %s"
 msgstr "Listening on %s"
 
-#: src/app/MainFrame.cpp:694
+#: src/app/MainFrame.cpp:695
 #, c-format
 msgid "Connected [%s]: %s"
 msgstr "Connected [%s]: %s"
 
-#: src/app/MainFrame.cpp:701
+#: src/app/MainFrame.cpp:702
 #, c-format
 msgid "Reconnecting to %s ..."
 msgstr "Reconnecting to %s ..."
 
-#: src/app/MainFrame.cpp:737 src/ui/ProtocolSessionPanel.cpp:310
+#: src/app/MainFrame.cpp:742 src/ui/ProtocolSessionPanel.cpp:310
 msgid "User clicked Open Connection"
 msgstr "User clicked Open Connection"
 
-#: src/app/MainFrame.cpp:752
+#: src/app/MainFrame.cpp:757
 msgid "User clicked Configure Connection"
 msgstr "User clicked Configure Connection"
 
-#: src/app/MainFrame.cpp:776
+#: src/app/MainFrame.cpp:781
 #, c-format
 msgid "Configuration updated (modified=%s)"
 msgstr "Configuration updated (modified=%s)"
 
-#: src/app/MainFrame.cpp:777
+#: src/app/MainFrame.cpp:782
 msgid "yes"
 msgstr "yes"
 
-#: src/app/MainFrame.cpp:777
+#: src/app/MainFrame.cpp:782
 msgid "no"
 msgstr "no"
 
