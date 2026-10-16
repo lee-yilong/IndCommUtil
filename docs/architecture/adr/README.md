@@ -47,9 +47,14 @@ docs/architecture/adr/
 
 | 编号 | 标题 | 状态 |
 |---|---|---|
+| 编号 | 标题 | 状态 |
+|---|---|---|
 | [0001](0001-protocol-as-first-class-with-modes.md) | 协议是一等公民，客户端/服务器是内部模式 | 已接受 |
 | [0002](0002-ui-data-driven-by-field-descriptors.md) | UI 由 FieldDescriptor 数据驱动 | 已接受 |
 | [0003](0003-doctest-as-test-framework.md) | 用 doctest 作为测试框架 | 已接受 |
+| [0004](0004-transaction-protocol-separation.md) | 事务型协议与字节流协议分离 | 已接受 |
+| [0005](0005-serial-protocol-and-common-panel-enhancement.md) | 串口协议与通用面板增强 | 已接受 |
+| [0006](0006-conn-format-ini-to-json.md) | `.conn` 配置文件从 INI 迁移到 JSON | 已接受 |
 
 > 更早的决策（在引入 ADR 机制之前做的）汇总在根 `README.md` 第 14 节「关键决策记录」。
 > 后续新增决策一律写在 `docs/architecture/adr/`。
