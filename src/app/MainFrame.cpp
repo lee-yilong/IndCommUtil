@@ -2,8 +2,11 @@
 
 #include <wx/datetime.h>
 #include <wx/display.h>
+#include <wx/filedlg.h>
 #include <wx/filename.h>
+#include <wx/generic/filedlgg.h>
 #include <wx/simplebook.h>
+#include <wx/stdpaths.h>
 #include <wx/tokenzr.h>
 
 #include <optional>
@@ -46,7 +49,6 @@ MainFrame::MainFrame(wxFrame* parent, const wxString& title) : wxFrame(parent, w
     BuildMenuBar();
     BuildLayout();
 
-    log::Init();
     UpdateConnectionUI();
     LoadRecentConnections();
 
@@ -299,7 +301,8 @@ void MainFrame::OnOpenConnection(wxCommandEvent&) {
         return;
     }
 
-    wxFileDialog dlg(this, _("Open Connection Configuration"), "", "",
+    const wxString defaultDir = wxStandardPaths::Get().GetDocumentsDir();
+    wxFileDialog dlg(this, _("Open Connection Configuration"), defaultDir, "",
                      "Connection files (*.json)|*.json|All files (*.*)|*.*",
                      wxFD_OPEN | wxFD_FILE_MUST_EXIST);
     if (dlg.ShowModal() != wxID_OK) {
@@ -322,7 +325,6 @@ void MainFrame::OnOpenConnection(wxCommandEvent&) {
     m_currentProfilePath = path;
 
     AddRecentConnection(path);
-
     ICU_SPDLOG_INFO(_("Opening connection from file: %s"), path);
 
     CreateAndOpenSession(profile);
@@ -554,14 +556,21 @@ void MainFrame::SaveCurrentProfileAs() {
                                                      m_activeProfile->fields)
             : wxFileName(m_currentProfilePath).GetFullName();
 
-    wxFileDialog dlg(this, _("Save Connection Profile"), "", defaultName,
+    // 默认目录：优先上次保存位置；否则用户文档目录
+    wxString defaultDir;
+    if (!m_currentProfilePath.IsEmpty()) {
+        defaultDir = wxFileName(m_currentProfilePath).GetPath();
+    } else {
+        defaultDir = wxStandardPaths::Get().GetDocumentsDir();
+    }
+
+    wxFileDialog dlg(this, _("Save Connection Profile"), defaultDir, defaultName,
                      "Connection files (*.json)|*.json", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
     if (dlg.ShowModal() != wxID_OK) return;
 
     wxString path = dlg.GetPath();
     if (path.IsEmpty()) return;
 
-    // 扩展名兜底（在 ShowModal 之后，不影响对话框）
     wxFileName fn(path);
     if (fn.GetExt().Lower() != "json") {
         fn.SetExt("json");

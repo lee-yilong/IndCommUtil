@@ -14,7 +14,7 @@ ACTION="${2:-}"
 
 case "$BUILD_TYPE" in
     debug)
-        BUILD_DIR="build"
+        BUILD_DIR="build-debug"
         CMAKE_BUILD_TYPE="Debug"
         ICU_BUILD_TESTS="ON"
         ;;

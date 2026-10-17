@@ -1,5 +1,8 @@
 #include "Log.h"
 
+#include <wx/filename.h>
+#include <wx/stdpaths.h>
+
 #include <algorithm>
 #include <filesystem>
 #include <memory>
@@ -57,15 +60,24 @@ void Init() {
     // 控制台 sink
     sinks.push_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
 
-    // 文件 sink
-    std::filesystem::create_directories("logs");
+    // 文件 sink：放在 exe 同目录下的 logs/
+    // 用绝对路径，避免受当前工作目录影响
+    // （IDE 里 cwd 是 build/，手动跑 cwd 是项目根，行为会不一致）
+    wxFileName exePath(wxStandardPaths::Get().GetExecutablePath());
+    const wxString logDirWx = exePath.GetPath() + wxFileName::GetPathSeparator() + "logs";
+    const wxString logFileWx = logDirWx + wxFileName::GetPathSeparator() + "app.log";
+
+    const std::string logDir = std::string(logDirWx.utf8_str());
+    const std::string logFile = std::string(logFileWx.utf8_str());
+
+    std::filesystem::create_directories(logDir);
     sinks.push_back(
-        std::make_shared<spdlog::sinks::rotating_file_sink_mt>("logs/app.log", 1024 * 1024 * 5, 3));
+        std::make_shared<spdlog::sinks::rotating_file_sink_mt>(logFile, 1024 * 1024 * 5, 3));
 
     g_logger = std::make_shared<spdlog::logger>("app", sinks.begin(), sinks.end());
     spdlog::set_default_logger(g_logger);
     spdlog::set_level(spdlog::level::debug);
-    g_logger->flush_on(spdlog::level::err);
+    g_logger->flush_on(spdlog::level::trace);
 }
 
 void Shutdown() {

@@ -13,11 +13,12 @@
 namespace icu {
 
 bool App::OnInit() {
+    settings::LanguageSettings::SetupUtf8Locale();
+    log::Init();
+
     SPDLOG_INFO(_("Application initializing..."));
 
-    settings::LanguageSettings::SetupUtf8Locale();
     settings::Settings::Instance().Init();
-    log::Init();
 
     auto& lang = settings::LanguageSettings::Instance();
     lang.ApplyLanguage(lang.GetSavedLanguage());
