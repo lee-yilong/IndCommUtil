@@ -7,8 +7,8 @@ msgstr ""
 "Project-Id-Version: IndustrialCommunicationUtility 0.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-10-18 03:34+0800\n"
-"PO-Revision-Date: 2026-10-13 16:00+0800\n"
-"Last-Translator: Your Name <you@example.com>\n"
+"PO-Revision-Date: 2026-10-18 12:00+0800\n"
+"Last-Translator: AI Assistant\n"
 "Language-Team: Simplified Chinese\n"
 "Language: zh_CN\n"
 "MIME-Version: 1.0\n"
@@ -319,6 +319,9 @@ msgid ""
 "Please check if the target folder is writable, or blocked by Windows "
 "Defender."
 msgstr ""
+"保存连接配置失败。\n"
+"\n"
+"请检查目标文件夹是否可写，或被 Windows Defender 拦截。"
 
 #: src/app/MainFrame.cpp:632
 msgid "Failed to open session"
@@ -335,9 +338,8 @@ msgstr "断线自动重连"
 
 #: src/core/ReconnectConfig.h:28 src/core/ReconnectConfig.h:42
 #: src/core/ReconnectConfig.h:55
-#, fuzzy
 msgid "Reconnect Settings"
-msgstr "重新连接中..."
+msgstr "重连设置"
 
 #: src/core/ReconnectConfig.h:31
 msgid "Max reconnect attempts:"
@@ -392,24 +394,20 @@ msgid "30 s"
 msgstr "30 秒"
 
 #: src/core/SessionStateMachine.h:44
-#, fuzzy
 msgid "Connection lost."
-msgstr "正在连接到 %s ..."
+msgstr "连接断开。"
 
 #: src/core/SessionStateMachine.h:46
-#, fuzzy
 msgid "Connection failed."
-msgstr "连接失败或超时"
+msgstr "连接失败。"
 
 #: src/core/SessionStateMachine.h:49
-#, fuzzy
 msgid "Reconnected successfully."
-msgstr "重连延迟："
+msgstr "重连成功。"
 
 #: src/core/SessionStateMachine.h:51
-#, fuzzy
 msgid "Connected successfully."
-msgstr "重连延迟："
+msgstr "连接成功。"
 
 #: src/core/StreamSession.cpp:40
 #, c-format
@@ -419,29 +417,27 @@ msgstr "编解码器 '%s' 编码失败"
 #: src/protocols/modbus/ModbusProtocol.cpp:29
 #: src/protocols/modbus/ModbusProtocol.cpp:113
 msgid "Slave ID:"
-msgstr ""
+msgstr "从站 ID："
 
 #: src/protocols/modbus/ModbusProtocol.cpp:30
-#, fuzzy
 msgid "Timeout (ms):"
-msgstr "读超时（毫秒）："
+msgstr "超时（毫秒）："
 
 #: src/protocols/modbus/ModbusProtocol.cpp:42
-#, fuzzy
 msgid "TCP"
-msgstr "TCP/IP"
+msgstr "TCP"
 
 #: src/protocols/modbus/ModbusProtocol.cpp:42
 msgid "RTU"
-msgstr ""
+msgstr "RTU"
 
 #: src/protocols/modbus/ModbusProtocol.cpp:42
 msgid "ASCII"
-msgstr ""
+msgstr "ASCII"
 
 #: src/protocols/modbus/ModbusProtocol.cpp:47
 msgid "Host:"
-msgstr ""
+msgstr "主机："
 
 #: src/protocols/modbus/ModbusProtocol.cpp:49
 #: src/protocols/modbus/ModbusProtocol.cpp:63
@@ -452,19 +448,17 @@ msgstr "端口："
 #: src/protocols/modbus/ModbusProtocol.cpp:52
 #: src/protocols/modbus/ModbusProtocol.cpp:87
 msgid "Role:"
-msgstr ""
+msgstr "角色："
 
 #: src/protocols/modbus/ModbusProtocol.cpp:57
 #: src/protocols/modbus/ModbusProtocol.cpp:92
-#, fuzzy
 msgid "Client (Master)"
-msgstr "客户端模式"
+msgstr "客户端（主站）"
 
 #: src/protocols/modbus/ModbusProtocol.cpp:57
 #: src/protocols/modbus/ModbusProtocol.cpp:92
-#, fuzzy
 msgid "Server (Slave)"
-msgstr "服务器模式"
+msgstr "服务器（从站）"
 
 #: src/protocols/modbus/ModbusProtocol.cpp:66
 #: src/protocols/serial/SerialProtocol.cpp:60
@@ -494,29 +488,27 @@ msgstr "奇校验"
 
 #: src/protocols/modbus/ModbusProtocol.cpp:115
 msgid "Function Code:"
-msgstr ""
+msgstr "功能码："
 
 #: src/protocols/modbus/ModbusProtocol.cpp:128
 msgid "Start Address:"
-msgstr ""
+msgstr "起始地址："
 
 #: src/protocols/modbus/ModbusProtocol.cpp:130
 msgid "Count:"
-msgstr ""
+msgstr "数量："
 
 #: src/protocols/modbus/ModbusProtocol.cpp:131
 msgid "Write Values (comma sep):"
-msgstr ""
+msgstr "写入值（逗号分隔）："
 
 #: src/protocols/modbus/ModbusProtocol.h:12
-#, fuzzy
 msgid "&Modbus"
-msgstr "Modbus RTU"
+msgstr "&Modbus"
 
 #: src/protocols/modbus/ModbusSession.cpp:121
-#, fuzzy
 msgid "Reconnect attempts exhausted."
-msgstr "重连尝试次数已耗尽（%d）"
+msgstr "重连尝试次数已耗尽。"
 
 #: src/protocols/serial/SerialProtocol.cpp:77
 msgid "Data Bits:"
@@ -719,23 +711,23 @@ msgid "Catalog '%s' loaded for lang '%s'"
 msgstr "已加载翻译文件 '%s'（语言 '%s'）"
 
 #: src/settings/Settings.cpp:94
-#, fuzzy, c-format
+#, c-format
 msgid "Failed to open settings file for write: %s"
-msgstr "无法打开串口: %s"
+msgstr "无法打开设置文件进行写入: %s"
 
 #: src/settings/Settings.cpp:115
 msgid "Failed to initialize settings: no writable location"
 msgstr "设置初始化失败：找不到可写位置"
 
 #: src/settings/Settings.cpp:125
-#, fuzzy, c-format
+#, c-format
 msgid "Failed to parse settings file: %s"
-msgstr "解析JSON失败: %s"
+msgstr "解析设置文件失败: %s"
 
 #: src/settings/Settings.cpp:130
-#, fuzzy, c-format
+#, c-format
 msgid "Settings initialized: %s"
-msgstr "设置系统已初始化"
+msgstr "设置已初始化: %s"
 
 #: src/settings/Settings.cpp:138
 msgid "Settings shutdown"
@@ -743,15 +735,15 @@ msgstr "设置系统已关闭"
 
 #: src/ui/AppTaskBarIcon.cpp:56 src/ui/AppTaskBarIcon.cpp:73
 msgid "No valid icon for taskbar; tray icon unavailable"
-msgstr ""
+msgstr "任务栏没有有效图标；托盘图标不可用"
 
 #: src/ui/AppTaskBarIcon.cpp:63
 msgid "Failed to create wxIcon from HICON"
-msgstr ""
+msgstr "无法从 HICON 创建 wxIcon"
 
 #: src/ui/AppTaskBarIcon.cpp:69
 msgid "Taskbar icon set successfully"
-msgstr ""
+msgstr "任务栏图标设置成功"
 
 #: src/ui/AppTaskBarIcon.cpp:82
 msgid "Show Window"
@@ -835,15 +827,15 @@ msgstr "追加换行"
 
 #: src/ui/SessionPanel.cpp:144
 msgid "Operation Request"
-msgstr ""
+msgstr "操作请求"
 
 #: src/ui/SessionPanel.cpp:158
 msgid "Execute"
-msgstr ""
+msgstr "执行"
 
 #: src/ui/SessionPanel.cpp:175
 msgid "Result Log"
-msgstr ""
+msgstr "结果日志"
 
 #: src/ui/SessionPanel.cpp:221
 #, c-format
@@ -927,151 +919,4 @@ msgstr "客户端: %d"
 
 #: src/ui/SessionPanel.cpp:457
 msgid "Executing request..."
-msgstr ""
-
-#~ msgid "Auto"
-#~ msgstr "自动"
-
-#, fuzzy
-#~ msgid "Reconnect delay (sec):"
-#~ msgstr "重连延迟："
-
-#, fuzzy
-#~ msgid "[Heartbeat] Connection lost. Reconnecting..."
-#~ msgstr "连接丢失，正在重连..."
-
-#, fuzzy
-#~ msgid "[Execute] Connection lost. Reconnecting..."
-#~ msgstr "连接丢失，正在重连..."
-
-#, fuzzy
-#~ msgid "Attempting to reconnect..."
-#~ msgstr "正在重新连接到 %s ..."
-
-#~ msgid "Close cancelled by user"
-#~ msgstr "用户取消了关闭"
-
-#~ msgid "Save cancelled, close aborted"
-#~ msgstr "保存已取消，关闭操作中止"
-
-#~ msgid "About dialog shown"
-#~ msgstr "已显示关于对话框"
-
-#~ msgid "User invoked Open Connection"
-#~ msgstr "用户调用了打开连接"
-
-#~ msgid "Open connection cancelled by user"
-#~ msgstr "用户取消了打开连接"
-
-#, c-format
-#~ msgid "Opening connection from file: %s"
-#~ msgstr "正在从文件打开连接: %s"
-
-#, c-format
-#~ msgid "Closing connection: %s"
-#~ msgstr "正在关闭连接: %s"
-
-#, c-format
-#~ msgid "AddRecentConnection: not a .json path, ignored: %s"
-#~ msgstr "AddRecentConnection: 非 .conn 路径，已忽略: %s"
-
-#~ msgid "User selected Simplified Chinese"
-#~ msgstr "用户选择了简体中文"
-
-#~ msgid "wxTheApp is not icu::App"
-#~ msgstr "wxTheApp 不是 icu::App 类型的实例"
-
-#~ msgid "User selected English"
-#~ msgstr "用户选择了英文"
-
-#, c-format
-#~ msgid "Profile saved: %s"
-#~ msgstr "配置文件已保存: %s"
-
-#, c-format
-#~ msgid "Profile saved as: %s"
-#~ msgstr "配置文件已另存为: %s"
-
-#~ msgid "User clicked Save Connection"
-#~ msgstr "用户点击了保存连接"
-
-#~ msgid "User clicked Save Connection As"
-#~ msgstr "用户点击了另存连接"
-
-#~ msgid "Minimized to system tray"
-#~ msgstr "已最小化到系统托盘"
-
-#~ msgid "Restored from system tray"
-#~ msgstr "已从系统托盘恢复"
-
-#, c-format
-#~ msgid "Unknown protocol menu id: %d"
-#~ msgstr "未知的协议菜单 ID: %d"
-
-#, c-format
-#~ msgid "User invoked New Connection for protocol: %s"
-#~ msgstr "用户为协议调用了新建连接: %s"
-
-#, c-format
-#~ msgid "Creating session: %s"
-#~ msgstr "正在创建会话: %s"
-
-#~ msgid "Failed to save connection profile."
-#~ msgstr "保存连接配置失败。"
-
-#, c-format
-#~ msgid "Connected to %s"
-#~ msgstr "已连接到 %s"
-
-#, c-format
-#~ msgid "Configuration updated (modified=%s)"
-#~ msgstr "配置已更新（已修改=%s）"
-
-#~ msgid "yes"
-#~ msgstr "是"
-
-#~ msgid "no"
-#~ msgstr "否"
-
-#, fuzzy
-#~ msgid "Failed to create session (Transaction protocols UI pending)"
-#~ msgstr "无法打开会话"
-
-#~ msgid "Statistics"
-#~ msgstr "统计"
-
-#~ msgid "Reconnect failed, giving up"
-#~ msgstr "重连失败，已放弃"
-
-#~ msgid "User cancelled connecting/reconnecting"
-#~ msgstr "用户取消了连接/重连"
-
-#~ msgid "User clicked Disconnect"
-#~ msgstr "用户点击了断开连接"
-
-#~ msgid "User clicked Reconfigure"
-#~ msgstr "用户点击了重新配置"
-
-#, fuzzy
-#~ msgid "Failed to open transaction session"
-#~ msgstr "无法打开会话"
-
-#, fuzzy, c-format
-#~ msgid "Creating transaction session: %s"
-#~ msgstr "正在创建会话: %s"
-
-#, fuzzy
-#~ msgid "No saved connection profiles found in:\n"
-#~ msgstr ""
-#~ "找不到连接配置文件：\n"
-#~ "%s"
-
-#, fuzzy
-#~ msgid "Select a connection profile:"
-#~ msgstr "保存连接配置失败。"
-
-#~ msgid "TCP Client"
-#~ msgstr "TCP 客户端"
-
-#~ msgid "Raw"
-#~ msgstr "原始"
+msgstr "正在执行请求..."
