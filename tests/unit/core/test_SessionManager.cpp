@@ -1,7 +1,7 @@
 #include <memory>
 
-#include "core/Session.h"
 #include "core/SessionManager.h"
+#include "core/StreamSession.h"
 #include "doctest.h"
 #include "mocks/MockCodec.h"
 #include "mocks/MockTransport.h"
@@ -14,10 +14,10 @@ namespace {
 
 struct MockSession {
     MockTransport* transport = nullptr;
-    Session* raw = nullptr;
+    StreamSession* raw = nullptr;
     std::shared_ptr<int> closeCount;
     std::shared_ptr<int> openCount;
-    SessionPtr session;
+    std::unique_ptr<StreamSession> session;
 
     MockSession() {
         auto t = std::make_unique<MockTransport>();
@@ -26,11 +26,12 @@ struct MockSession {
         openCount = t->openCount;
 
         auto c = std::make_unique<MockCodec>();
-        session = std::make_unique<Session>(std::move(t), std::move(c));
+        session = std::make_unique<StreamSession>(std::move(t), std::move(c));
         raw = session.get();
     }
 
-    SessionPtr Release() { return std::move(session); }
+    // 返回 ISessionPtr 以满足 SetActive 的签名
+    ISessionPtr Release() { return std::move(session); }
 };
 
 }  // namespace
@@ -46,7 +47,7 @@ TEST_CASE("SessionManager: 默认无活动会话") {
 TEST_CASE("SessionManager: SetActive 保存会话") {
     SessionManager mgr;
     MockSession ms;
-    Session* raw = ms.raw;
+    StreamSession* raw = ms.raw;
 
     mgr.SetActive(ms.Release());
 
@@ -88,7 +89,7 @@ TEST_CASE("SessionManager: 连续 SetActive 只保留最后一个") {
     SessionManager mgr;
 
     MockSession s1, s2, s3;
-    Session* s3raw = s3.raw;
+    StreamSession* s3raw = s3.raw;
 
     mgr.SetActive(s1.Release());
     mgr.SetActive(s2.Release());

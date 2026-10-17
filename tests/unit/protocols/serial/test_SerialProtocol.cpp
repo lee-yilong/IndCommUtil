@@ -3,7 +3,7 @@
 #include <string>
 
 #include "core/ProtocolRegistry.h"
-#include "core/Session.h"
+#include "core/StreamSession.h"
 #include "doctest.h"
 #include "protocols/serial/SerialProtocol.h"
 

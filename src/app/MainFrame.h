@@ -15,7 +15,7 @@ namespace icu {
 class ProtocolSessionPanel;
 class LogFrame;
 class AppTaskBarIcon;
-class Session;
+class SessionPanel;
 
 enum MenuId {
     idMenuQuit = 1000,
@@ -49,7 +49,7 @@ private:
     wxMenuItem* m_recentMenuItem = nullptr;
 
     wxSimplebook* m_contentBook = nullptr;
-    ProtocolSessionPanel* m_sessionPanel = nullptr;
+    SessionPanel* m_sessionPanel = nullptr;
 
     LogFrame* m_logFrame = nullptr;
     AppTaskBarIcon* m_trayIcon = nullptr;
@@ -92,11 +92,10 @@ private:
     void SaveRecentConnections();
 
     void ShowWelcomePage();
-    void ShowSessionPage(Session* session);
+    void ShowSessionPage(IProtocol* proto, int modeIndex, ISession* session);
 
     IProtocol* GetActiveProtocol() const;
     void CreateAndOpenSession(const ActiveProfile& profile);
-    void AttachSessionCallbacks(Session* rawPtr);
 
     bool IsModified() const;
     wxString GetDisplayName() const;

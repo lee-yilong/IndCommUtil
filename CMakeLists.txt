@@ -78,6 +78,15 @@ set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install OFF CACHE INTERNAL "")
 add_subdirectory(third_party/json)
 
+set(MODBUSLIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ModbusLib")
+if(EXISTS "${MODBUSLIB_ROOT}/CMakeLists.txt")
+    add_subdirectory(${MODBUSLIB_ROOT} ${CMAKE_CURRENT_BINARY_DIR}/ModbusLib)
+    set(ICU_HAS_MODBUSLIB ON)
+else()
+    message(WARNING "ModbusLib not found; Modbus protocol disabled")
+    set(ICU_HAS_MODBUSLIB OFF)
+endif()
+
 add_executable(IndustrialCommunicationUtility WIN32
     ${APP_SOURCES}
     ${APP_HEADERS}
@@ -226,4 +235,20 @@ endif()
 # =========================================================================
 if(ICU_BUILD_COVERAGE AND MINGW)
     message(STATUS "Coverage instrumentation enabled (GCC --coverage)")
+endif()
+
+if(ICU_HAS_MODBUSLIB)
+    # 1. 把 ModbusLib 的 src 目录加入头文件搜索路径
+    target_include_directories(IndustrialCommunicationUtility PRIVATE "${MODBUSLIB_ROOT}/src")
+
+    # 2. 链接库
+    target_link_libraries(IndustrialCommunicationUtility PRIVATE modbus)
+
+    # 3. 拷贝 DLL
+    add_custom_command(TARGET IndustrialCommunicationUtility POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:modbus>
+            $<TARGET_FILE_DIR:IndustrialCommunicationUtility>
+        COMMENT "Copying ModbusLib DLL to output directory"
+    )
 endif()

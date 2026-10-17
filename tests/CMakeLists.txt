@@ -16,13 +16,17 @@ target_include_directories(doctest INTERFACE
 add_library(icu_core_test STATIC
     "${CMAKE_SOURCE_DIR}/src/core/ProtocolTypes.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/ProtocolRegistry.cpp"
-    "${CMAKE_SOURCE_DIR}/src/core/Session.cpp"
+    "${CMAKE_SOURCE_DIR}/src/core/StreamSession.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/SessionManager.cpp"
     "${CMAKE_SOURCE_DIR}/src/config/ConnectionProfile.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/tcp/TcpProtocol.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/tcp/TcpTransport.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/serial/SerialTransport.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/serial/SerialProtocol.cpp"
+
+    # 如果有 Modbus 的实现文件，也加进来：
+    "${CMAKE_SOURCE_DIR}/src/protocols/modbus/ModbusProtocol.cpp"
+    "${CMAKE_SOURCE_DIR}/src/protocols/modbus/ModbusSession.cpp"
 )
 
 # 同 CMakeLists.txt：强制 wxDEBUG_LEVEL=0
@@ -34,6 +38,7 @@ target_include_directories(icu_core_test PUBLIC
     "${WX_ROOT}/include"
     "${WX_SETUP_DIR}"                     # ← 原来是 "${WX_ROOT}/lib/gcc_dll/${WX_SETUP_DIR}"
     "${SPDLOG_ROOT}/include"
+    "${CMAKE_SOURCE_DIR}/third_party/ModbusLib/src"
 )
 
 target_link_directories(icu_core_test PUBLIC
@@ -69,6 +74,7 @@ set_target_properties(icu_tests PROPERTIES WIN32_EXECUTABLE FALSE)
 target_link_libraries(icu_tests PRIVATE
     icu_core_test
     doctest
+    modbus
 )
 
 # 复制 wxWidgets DLL 到 build/tests/

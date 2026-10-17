@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-#include "core/Session.h"
+#include "core/StreamSession.h"
 #include "doctest.h"
 #include "mocks/MockCodec.h"
 #include "mocks/MockTransport.h"
@@ -16,14 +16,14 @@ namespace {
 struct Fixture {
     MockTransport* transport = nullptr;
     MockCodec* codec = nullptr;
-    std::unique_ptr<Session> session;
+    std::unique_ptr<StreamSession> session;
 
     Fixture() {
         auto t = std::make_unique<MockTransport>();
         auto c = std::make_unique<MockCodec>();
         transport = t.get();
         codec = c.get();
-        session = std::make_unique<Session>(std::move(t), std::move(c));
+        session = std::make_unique<StreamSession>(std::move(t), std::move(c));
     }
 };
 

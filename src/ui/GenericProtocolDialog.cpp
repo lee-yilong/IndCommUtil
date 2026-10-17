@@ -64,19 +64,54 @@ wxPanel* GenericProtocolDialog::BuildFieldsPanel(wxWindow* parent,
                                                  const std::vector<FieldDescriptor>& fields,
                                                  std::map<std::string, wxWindow*>& outControls) {
     auto* panel = new wxPanel(parent);
+    auto* mainSizer = new wxBoxSizer(wxVERTICAL);
+
+    // 主网格（平铺字段）
     auto* grid = new wxFlexGridSizer(2, 8, 8);
     grid->AddGrowableCol(1, 1);
 
-    for (const auto& fd : fields) {
-        grid->Add(new wxStaticText(panel, wxID_ANY, wxGetTranslation(wxString::FromUTF8(fd.label))),
-                  0, wxALIGN_CENTER_VERTICAL);
+    // 用于收集分组字段
+    std::map<std::string, std::vector<const FieldDescriptor*>> groupedFields;
 
-        wxWindow* ctrl = CreateControl(panel, fd);
-        grid->Add(ctrl, 1, wxEXPAND);
-        outControls[fd.key] = ctrl;
+    for (const auto& fd : fields) {
+        if (fd.group.empty()) {
+            grid->Add(
+                new wxStaticText(panel, wxID_ANY, wxGetTranslation(wxString::FromUTF8(fd.label))),
+                0, wxALIGN_CENTER_VERTICAL);
+            wxWindow* ctrl = CreateControl(panel, fd);
+            grid->Add(ctrl, 1, wxEXPAND);
+            outControls[fd.key] = ctrl;
+        } else {
+            groupedFields[fd.group].push_back(&fd);
+        }
     }
 
-    panel->SetSizer(grid);
+    mainSizer->Add(grid, 0, wxEXPAND | wxALL, 8);
+
+    // 渲染带边框的分组
+    for (const auto& pair : groupedFields) {
+        const std::string& groupName = pair.first;
+        const auto& groupFds = pair.second;
+
+        auto* box = new wxStaticBoxSizer(wxVERTICAL, panel,
+                                         wxGetTranslation(wxString::FromUTF8(groupName)));
+        auto* boxGrid = new wxFlexGridSizer(2, 8, 8);
+        boxGrid->AddGrowableCol(1, 1);
+
+        for (const auto* fd : groupFds) {
+            boxGrid->Add(new wxStaticText(box->GetStaticBox(), wxID_ANY,
+                                          wxGetTranslation(wxString::FromUTF8(fd->label))),
+                         0, wxALIGN_CENTER_VERTICAL);
+            wxWindow* ctrl = CreateControl(box->GetStaticBox(), *fd);
+            boxGrid->Add(ctrl, 1, wxEXPAND);
+            outControls[fd->key] = ctrl;
+        }
+
+        box->Add(boxGrid, 1, wxEXPAND | wxALL, 8);
+        mainSizer->Add(box, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 8);
+    }
+
+    panel->SetSizer(mainSizer);
     return panel;
 }
 

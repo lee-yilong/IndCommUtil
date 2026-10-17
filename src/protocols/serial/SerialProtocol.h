@@ -6,8 +6,6 @@
 
 namespace icu {
 
-// 串口协议：单模式（点对点，无 Client/Server 角色区分）
-// HasModes() = false，ModeNames() 返回空
 class SerialProtocol : public IProtocol {
 public:
     std::string Id() const override { return "serial"; }
@@ -18,8 +16,8 @@ public:
 
     std::vector<FieldDescriptor> FieldsForMode(int modeIndex) const override;
 
-    SessionPtr CreateSession(int modeIndex,
-                             const std::map<std::string, FieldValue>& fields) override;
+    ISessionPtr CreateSession(int modeIndex,
+                              const std::map<std::string, FieldValue>& fields) override;
 
     std::string MakeDefaultFileName(int modeIndex,
                                     const std::map<std::string, FieldValue>& fields) const override;

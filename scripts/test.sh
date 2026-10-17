@@ -10,7 +10,7 @@
 set -euo pipefail
 
 if [ "${1:-}" = "--list" ]; then
-    EXE="build/tests/icu_tests.exe"
+    EXE="build-debug/tests/icu_tests.exe"
     if [ ! -f "$EXE" ]; then
         echo "!! $EXE 不存在，先运行 scripts/build.sh" >&2
         exit 1
@@ -19,8 +19,9 @@ if [ "${1:-}" = "--list" ]; then
     exit 0
 fi
 
+# 这里把默认的 build 改成了 build-debug，与 build.sh 保持一致
 case "${1:-debug}" in
-    debug)   BUILD_DIR="build" ;;
+    debug)   BUILD_DIR="build-debug" ;;
     release) BUILD_DIR="build-release" ;;
     *)
         echo "用法: $0 [debug|release|--list]" >&2

@@ -10,3 +10,7 @@
 	path = third_party/json
 	url = https://github.com/nlohmann/json.git
 	shallow = true
+[submodule "third_party/ModbusLib"]
+	path = third_party/ModbusLib
+	url = https://github.com/serhmarch/ModbusLib.git
+	shallow = true

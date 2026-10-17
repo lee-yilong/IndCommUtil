@@ -75,6 +75,9 @@ struct FieldDescriptor {
 
     std::vector<std::pair<std::string, std::string>> choices;
     //                                                {value, label}
+
+    // 新增：分组名（如果为空，则默认平铺）
+    std::string group;
 };
 
 // -------------------------------------------------------------------------

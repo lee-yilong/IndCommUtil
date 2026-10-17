@@ -74,7 +74,14 @@
   - `docs/`（架构、ADR、用户手册、开发者文档、API）
   - `scripts/`（构建、测试、覆盖率、格式化、i18n）
   - `LICENSE`（MIT）、`CONTRIBUTING.md`
-
+- **阶段 7 完成：Modbus 协议（TCP / RTU / ASCII）**
+  - 引入 `third_party/ModbusLib`，实现标准的 Modbus TCP 通信。
+  - 完整支持 01/02/03/04/05/06/0F/10 功能码的读写操作。
+  - 新增 `core/ReconnectConfig.h`：标准化重连配置（次数、延迟），所有协议共享。
+  - 新增 `core/SessionStateMachine.h`：统一会话状态机，集中处理状态流转与重连计数。
+  - 新增 `core/ISession.h` 和 `core/ITransactionSession.h`：统一字节流与事务型协议的底层接口。
+  - 新增 `ui/SessionPanel.h/.cpp`：统一的会话面板，通过 `OperationFieldsForMode` 自动生成事务型表单。
+  - 后台心跳线程：Modbus 连接后自动发起探测请求，实现掉线秒级感知与自动重连。
 ### 变更
 
 - **第三方依赖统一为 submodule**：
@@ -95,6 +102,11 @@
   合并进 `core/ProtocolTypes.h/.cpp`，删除三个旧头文件
 - **代码格式化**：全量套用 `.clang-format`（clang-format 19.1.5）；
   `wxBEGIN_EVENT_TABLE` 宏区域用 `// clang-format off` 保护，避免缩进逐级累积
+- **架构重构：彻底统一 UI 与底层会话**
+  - 移除 `ui/ProtocolSessionPanel` 与 `ui/ModbusPanel`，合并为通用的 `SessionPanel`。
+  - 移除 `TransactionSessionManager`，统一由 `SessionManager` 管理 `ISessionPtr`。
+  - `FieldDescriptor` 新增 `group` 属性，支持将相关字段（如“重连设置”）收纳到底部的分割框中。
+  - `TcpProtocol` 与 `ModbusProtocol` 全面接入 `ReconnectConfig` 标准化字段。
 
 ### 修复
 
