@@ -1,20 +1,20 @@
 #include "LogFrame.h"
 
-#include "log/Log.h"
+// ★ 包含刚才新建的 LogSink
+#include "LogSink.h"
 #include "spdlog/spdlog.h"
 
 namespace icu {
 
-// clang-format off
-// wxWidgets 事件表宏展开后是一条语句，clang-format 会把后续行的缩进逐级累积
 wxBEGIN_EVENT_TABLE(LogFrame, wxFrame) EVT_CLOSE(LogFrame::OnClose)
-    EVT_BUTTON(wxID_ANY, LogFrame::OnClear) wxEND_EVENT_TABLE();  // clang-format on
+    EVT_BUTTON(wxID_ANY, LogFrame::OnClear) wxEND_EVENT_TABLE()
 
-LogFrame::LogFrame(wxWindow* parent)
+        LogFrame::LogFrame(wxWindow* parent)
     : wxFrame(parent, wxID_ANY, _("Log"), wxDefaultPosition, wxSize(900, 500),
               wxDEFAULT_FRAME_STYLE) {
     BuildUi();
 
+    // ★ 调用 AttachGuiSink
     log::AttachGuiSink(m_textCtrl);
     CentreOnParent();
 
@@ -22,9 +22,11 @@ LogFrame::LogFrame(wxWindow* parent)
 }
 
 LogFrame::~LogFrame() {
+    // ★ 调用 DetachGuiSink
     log::DetachGuiSink();
 }
 
+// ... 下面的代码保持你原来的不变 ...
 void LogFrame::BuildUi() {
     auto* panel = new wxPanel(this);
     auto* root = new wxBoxSizer(wxVERTICAL);

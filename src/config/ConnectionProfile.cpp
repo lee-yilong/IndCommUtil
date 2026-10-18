@@ -13,10 +13,8 @@
 namespace icu {
 
 namespace {
-
 using json = nlohmann::json;
 
-// 把 JSON 字段值转成 FieldValue::Deserialize 需要的字符串
 std::string JsonToStr(const json& v) {
     if (v.is_string()) return v.get<std::string>();
     if (v.is_number_integer()) return std::to_string(v.get<long long>());
@@ -25,7 +23,6 @@ std::string JsonToStr(const json& v) {
     return {};
 }
 
-// 按 FieldDescriptor 声明的类型，把 FieldValue 写进 JSON
 void WriteField(json& obj, const std::string& key, const FieldValue& v, FieldValue::Type type) {
     switch (type) {
         case FieldValue::Type::String:
@@ -48,11 +45,98 @@ void WriteField(json& obj, const std::string& key, const FieldValue& v, FieldVal
     }
 }
 
+void ParseSession(const json& j, SessionConfig& outSession) {
+    if (!j.contains("session") || !j["session"].is_object()) return;
+    const auto& s = j["session"];
+
+    if (s.contains("active_mode") && s["active_mode"].is_string()) {
+        std::string mode = s["active_mode"].get<std::string>();
+        if (mode == "manual")
+            outSession.activeMode = SessionMode::Manual;
+        else if (mode == "interactive")
+            outSession.activeMode = SessionMode::Interactive;
+        else if (mode == "auto")
+            outSession.activeMode = SessionMode::Auto;
+    }
+
+    // ★ 解析强类型的 variables 对象
+    if (s.contains("variables") && s["variables"].is_object()) {
+        for (auto& [key, v] : s["variables"].items()) {
+            CommVariable var;
+            var.name = key;
+            var.type = v.value("type", "string");
+            var.access = v.value("access", "RO");
+            if (v.contains("params")) var.params = v["params"];
+            outSession.variables[key] = var;
+        }
+    }
+
+    if (s.contains("manual_mode") && s["manual_mode"].is_object()) {
+        outSession.manualMode.sendPayload = s["manual_mode"].value("send_payload", "");
+        outSession.manualMode.appendNewline = s["manual_mode"].value("append_newline", true);
+    }
+
+    if (s.contains("interactive_mode") && s["interactive_mode"].is_object()) {
+        const auto& m = s["interactive_mode"];
+        outSession.interactiveMode.currentStepIndex = m.value("current_step_index", 0);
+        outSession.interactiveMode.startStepIndex = m.value("start_step_index", 0);
+        outSession.interactiveMode.endStepIndex = m.value("end_step_index", 0);
+        if (m.contains("test_flow") && m["test_flow"].is_array()) {
+            outSession.interactiveMode.testFlow = m["test_flow"];
+        }
+    }
+
+    if (s.contains("auto_mode") && s["auto_mode"].is_object()) {
+        const auto& m = s["auto_mode"];
+        outSession.autoMode.startStepIndex = m.value("start_step_index", 0);
+        outSession.autoMode.endStepIndex = m.value("end_step_index", 0);
+        if (m.contains("test_flow") && m["test_flow"].is_array()) {
+            outSession.autoMode.testFlow = m["test_flow"];
+        }
+    }
+}
+
+void WriteSession(json& j, const SessionConfig& session) {
+    j["session"] = json::object();
+    auto& s = j["session"];  // ★ 确保这一行存在
+
+    if (session.activeMode == SessionMode::Manual)
+        s["active_mode"] = "manual";
+    else if (session.activeMode == SessionMode::Interactive)
+        s["active_mode"] = "interactive";
+    else if (session.activeMode == SessionMode::Auto)
+        s["active_mode"] = "auto";
+
+    // ★ 保存 variables 为 Object 形式
+    s["variables"] = json::object();
+    for (const auto& [key, var] : session.variables) {
+        json v;
+        v["type"] = var.type;
+        v["access"] = var.access;
+        v["params"] = var.params;
+        s["variables"][key] = v;
+    }
+
+    s["manual_mode"] = json::object();
+    s["manual_mode"]["send_payload"] = session.manualMode.sendPayload;
+    s["manual_mode"]["append_newline"] = session.manualMode.appendNewline;
+
+    s["interactive_mode"] = json::object();
+    s["interactive_mode"]["current_step_index"] = session.interactiveMode.currentStepIndex;
+    s["interactive_mode"]["start_step_index"] = session.interactiveMode.startStepIndex;
+    s["interactive_mode"]["end_step_index"] = session.interactiveMode.endStepIndex;
+    s["interactive_mode"]["test_flow"] = session.interactiveMode.testFlow;
+
+    s["auto_mode"] = json::object();
+    s["auto_mode"]["start_step_index"] = session.autoMode.startStepIndex;
+    s["auto_mode"]["end_step_index"] = session.autoMode.endStepIndex;
+    s["auto_mode"]["test_flow"] = session.autoMode.testFlow;
+}
+
 }  // namespace
 
 bool ConnectionProfile::Load(const wxString& path, ActiveProfile& out) {
     wxLogNull noLog;
-
     if (!wxFileName::FileExists(path)) return false;
 
     wxFile f;
@@ -64,18 +148,15 @@ bool ConnectionProfile::Load(const wxString& path, ActiveProfile& out) {
         return false;
     }
 
-    const size_t need = static_cast<size_t>(len);
-    std::string buf(need, '\0');
-    const size_t got = f.Read(buf.data(), need);
+    std::string buf(static_cast<size_t>(len), '\0');
+    const size_t got = f.Read(buf.data(), static_cast<size_t>(len));
     f.Close();
-
-    if (got != need) return false;
+    if (got != static_cast<size_t>(len)) return false;
 
     json j;
     try {
         j = json::parse(buf);
-    } catch (const json::parse_error& e) {
-        ICU_SPDLOG_WARN(_("Failed to parse JSON: %s"), wxString::FromUTF8(e.what()));
+    } catch (...) {
         return false;
     }
 
@@ -115,23 +196,23 @@ bool ConnectionProfile::Load(const wxString& path, ActiveProfile& out) {
     out.protocolId = protocolId;
     out.modeIndex = modeIndex;
     out.fields = std::move(fields);
+
+    out.session = SessionConfig{};
+    ParseSession(j, out.session);
+
     return true;
 }
 
 bool ConnectionProfile::Save(const wxString& path, const std::string& protocolId, int modeIndex,
-                             IProtocol* protocol, const std::map<std::string, FieldValue>& fields) {
-    if (!protocol) return false;
-    if (path.IsEmpty()) return false;
+                             IProtocol* protocol, const std::map<std::string, FieldValue>& fields,
+                             const SessionConfig& session) {
+    if (!protocol || path.IsEmpty()) return false;
 
     wxLogNull noLog;
-
-    // 确保目标目录存在
     wxFileName fn(path);
     const wxString dir = fn.GetPath();
     if (!dir.IsEmpty() && !wxFileName::DirExists(dir)) {
-        if (!wxFileName::Mkdir(dir, wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL)) {
-            return false;
-        }
+        if (!wxFileName::Mkdir(dir, wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL)) return false;
     }
 
     json j;
@@ -149,13 +230,14 @@ bool ConnectionProfile::Save(const wxString& path, const std::string& protocolId
         WriteField(j["connection"], fd.key, it->second, fd.type);
     }
 
-    const std::string text = j.dump(2);  // 2 空格缩进
+    WriteSession(j, session);
+
+    const std::string text = j.dump(2);
 
     wxFile f;
     if (!f.Create(path, true)) return false;
     const size_t written = f.Write(text.data(), text.size());
     f.Close();
-
     return written == text.size();
 }
 

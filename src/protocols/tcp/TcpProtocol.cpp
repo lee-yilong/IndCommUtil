@@ -1,5 +1,6 @@
 #include "TcpProtocol.h"
 
+#include "TcpSendStep.h"
 #include "TcpTransport.h"
 #include "core/ISession.h"
 #include "core/ReconnectConfig.h"
@@ -111,6 +112,14 @@ std::string TcpProtocol::MakeDefaultFileName(
     }
     std::string h = sanitize(GetStr(fields, "remoteHost", "127.0.0.1"));
     return "TCP_Client_" + h + "_" + std::to_string(GetInt(fields, "remotePort", 502)) + ".json";
+}
+
+ITestStepPtr TcpProtocol::CreateTestStep(const std::string& stepType,
+                                         const nlohmann::json& params) {
+    if (stepType == "send" || stepType == "tcp_send") {
+        return std::make_unique<TcpSendStep>(params);
+    }
+    return nullptr;
 }
 
 }  // namespace icu

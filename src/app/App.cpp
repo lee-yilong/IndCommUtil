@@ -25,7 +25,7 @@ bool App::OnInit() {
 
     RegisterBuiltinProtocols();
 
-    auto* frame = new MainFrame(nullptr, _("Industrial Communication Utility"));
+    auto* frame = new MainFrame(nullptr, _("IndComm"));
     frame->Show(true);
 
     SPDLOG_INFO(_("Application initialized"));

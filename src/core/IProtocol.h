@@ -2,10 +2,12 @@
 
 #include <map>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
 
-#include "ISession.h"  // 引入 ISessionPtr
+#include "ISession.h"
+#include "ITestStep.h"
 #include "ProtocolTypes.h"
 
 namespace icu {
@@ -34,6 +36,10 @@ public:
     // 返回事务型协议的操作区字段；字节流协议返回空
     virtual std::vector<FieldDescriptor> OperationFieldsForMode(int /*modeIndex*/) const {
         return {};
+    }
+
+    virtual ITestStepPtr CreateTestStep(const std::string& stepType, const nlohmann::json& params) {
+        return nullptr;  // 默认不支持测试步骤
     }
 };
 

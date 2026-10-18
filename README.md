@@ -1,9 +1,8 @@
-
-# Industrial Communication Utility — 开发指南与 AI Skill
+# IndComm — 开发指南与 AI Skill
 
 > **文档定位**：本文档既是项目开发文档，也是 AI 辅助开发的 Skill 定义。所有开发按本文档推进，AI 在协助编码时必须遵循本文档的架构、约定和任务清单。
 >
-> **本版重点**：阶段 7 全部完成（Modbus 协议接入 + 统一底层会话架构）。**当前重点转向阶段 8：通用自动化测试引擎，让工具从手动调试进化为自动测试平台。**
+> **本版重点**：阶段 8（通用自动化测试引擎）与阶段 9（独立 CLI 工具）全部完成。**下一阶段 10：SQLite 数据持久化与实时曲线可视化。**
 
 ---
 
@@ -37,7 +36,7 @@
 
 ### 1.1 定位
 
-**Industrial Communication Utility**（工业通信实用工具）是一个面向工业现场的多协议通讯测试/调试及自动化测试平台。目标整合 NetAssist、Modbus Poll 等工具的调试能力，并提供基于 `.json` 测试流程的无头自动化执行。
+**IndComm**（Industrial Communication Utility）是一个面向工业现场的多协议通讯测试/调试及自动化测试平台。目标整合 NetAssist、Modbus Poll 等工具的调试能力，并提供基于 `.json` 测试流程的无头自动化执行。
 
 ### 1.2 核心目标
 
@@ -47,8 +46,8 @@
 | **UI 数据驱动** | 配置对话框、会话面板、菜单项全部从协议描述自动生成 |
 | **统一底层会话** | 字节流和事务型协议统一抽象为 `ISession`，UI 层不感知底层差异 |
 | **状态与重连标准化** | 提供 `ReconnectConfig` 与 `SessionStateMachine`，所有协议开箱即用 |
-| **自动化测试** | 提供通用的 `TestRunner`，支持变量提取、断言校验和正则匹配 |
-| **无头 CLI 支持** | 独立 `icu-cli.exe`，方便接入 CI/CD 流水线 |
+| **自动化测试** | 提供通用的 `TestRunner`，支持通信变量提取、断言校验和正则匹配 |
+| **无头 CLI 支持** | 独立 `indcomm-cli.exe`，方便接入 CI/CD 流水线与自动化测试 |
 | **分层解耦** | 应用层 / 框架层 / 协议层 / UI 层 / 服务层，依赖单向 |
 | **测试可回归** | `core/` / `protocols/` / `settings/` / `config/` 有单测覆盖 |
 | **工程化规范** | CI、静态分析、版本管理、文档、打包全流程 |
@@ -81,78 +80,29 @@
 **协议是一个整体，不是「客户端」和「服务器」两个东西。**
 「客户端 / 服务器」是 TCP 或 Modbus 协议**内部的一种模式（Mode）**。一个 `.json` 文件 = 一份协议配置（含 Mode 与测试步骤），**不是两份**。
 
-**反例（禁止）**：
-```
-❌ TcpClientProtocol + TcpServerProtocol
-❌ 两个独立的 .json 文件
-❌ UI 里硬编码两套字段
-❌ 菜单里"TCP客户端"和"TCP服务器"两个入口
-```
-
-**正例（目标）**：
-```
-✅ TcpProtocol（一个类，内部根据 Mode 分发）
-✅ 一个 .json 文件，Mode=Client 或 Server
-✅ UI 从 IProtocol 的字段描述自动生成
-✅ 菜单里只有"TCP/IP"一个入口
-```
-
 ### 2.2 UI 完全数据驱动且统一
 
 - 配置对话框：通过 `FieldDescriptor` 列表自动生成 `GenericProtocolDialog`。
-- 会话面板：合并为唯一的 `SessionPanel`。字节流协议渲染收发区，事务型协议通过 `OperationFieldsForMode` 自动渲染参数表单。
+- 会话面板：使用 `wxNotebook` 提供三种模式（手动、交互、自动）。字节流协议渲染收发区，事务型协议通过 `OperationFieldsForMode` 自动渲染参数表单。
 - **新增协议绝不需要改动任何 `ui/` 下的代码**。
-- **字段分组**：`FieldDescriptor` 支持 `group` 属性，允许将重连设置收纳进底部的分割框。
 
 ### 2.3 状态机与重连标准化
 
 - **底层差异收敛**：所有会话继承 `ISession`。字节流继承 `StreamSession`，事务型继承 `ITransactionSession`。
-- **状态与重连抽象**：
-  - 任何协议都组合 `SessionStateMachine` 管理生命周期状态（自动去重、日志打印、重连计数重置）。
-  - 任何协议都组合 `ReconnectConfig` 获得统一的“自动重连、最大次数、延迟”配置与 UI 字段。
-  - 协议作者只需关心“发报文、收报文”。
+- **状态与重连抽象**：任何协议都组合 `SessionStateMachine` 管理生命周期状态，组合 `ReconnectConfig` 获得统一的重连配置与 UI 字段。
 
 ### 2.4 自动化测试引擎通用化（阶段 8）
 
-- 所有的测试步骤抽象为 `ITestStep`（`core/`）。由具体协议通过 `IProtocol::CreateTestStep` 工厂生成。
-- 变量池（`Variables`）全局共享，支持类似 Postman 的 `{{variable}}` 变量提取与替换。
-- `TestRunner` 纯粹负责流程调度，不感知底层通信细节（TCP 正则断言 / Modbus 寄存器数值断言均在 Step 内部实现）。
+- 所有的测试步骤抽象为 `ITestStep`。由具体协议通过 `IProtocol::CreateTestStep` 工厂生成。
+- 引入**通信变量（CommVariable）**：支持定义类型、读写权限（RO/RW）和协议专属参数。测试步骤通过变量名直接引用参数，实现业务逻辑与协议细节解耦。
+- `TestRunner` 纯粹负责流程调度，支持自动全跑与交互单步阻断。
 
 ### 2.5 分层清晰，依赖单向
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  app/          应用入口（App / MainFrame）                │
-└─────────────────────────┬───────────────────────────────┘
-                          │
-┌─────────────────────────▼───────────────────────────────┐
-│  ui/           UI 层（对话框 / 统一的 SessionPanel 等）     │
-└─────────────────────────┬───────────────────────────────┘
-                          │
-┌─────────────────────────▼───────────────────────────────┐
-│  protocols/    协议层（TcpProtocol / ModbusProtocol 等）  │
-└─────────────────────────┬───────────────────────────────┘
-                          │
-┌─────────────────────────▼───────────────────────────────┐
-│  core/         框架层（ISession / IProtocol / 状态机等）   │
-└─────────────────────────┬───────────────────────────────┘
-                          │
-┌─────────────────────────▼───────────────────────────────┐
-│  settings/  config/  log/   基础服务层                    │
-└─────────────────────────────────────────────────────────┘
-```
-
-**依赖规则**：
-
-| 层 | 允许依赖 | 禁止依赖 |
-|---|---|---|
-| `app/` | `ui/ core/ settings/ config/ log/` | — |
-| `ui/` | `core/ settings/` | `protocols/`（具体协议） |
-| `protocols/` | `core/ log/` | `ui/ settings/` |
-| `core/` | C++ STL、wxBase | `ui/ protocols/ settings/ config/` |
-| `settings/` | `log/` | `core/ ui/ protocols/` |
-| `config/` | `core/`、`nlohmann/json` | `ui/ protocols/ settings/` |
-| `log/` | wxBase、spdlog | 业务逻辑 |
+- `app/` -> `ui/` -> `protocols/` -> `core/`。
+- `core/` 只依赖 C++ STL 和 wxBase（不包含任何 GUI 元素）。
+- `ui/` 不得直接操作 socket 或串口，必须通过 `ISession` 接口。
+- **核心逻辑抽离为 `icu_core_lib` 静态库，同时服务 GUI (`IndComm.exe`) 与 CLI (`indcomm-cli.exe`)。**
 
 ### 2.6 单一数据源
 
@@ -165,25 +115,7 @@
 ### 2.7 UI 生命周期安全
 
 **任何"用户操作触发 UI 自身销毁"的场景，都必须用 `CallAfter` 延迟。**
-
-典型场景：
-- 按钮点击 → 切页面 → 销毁当前面板
-- 菜单点击 → 重建窗口 → 销毁当前窗口
-- 托盘退出 → 销毁托盘自身
-
-**原因**：wxWidgets 的事件派发是**同步**的。如果在回调栈里 `delete` 了事件派发者，返回后访问成员会崩溃。
-
-### 2.8 对象销毁前先断开回调
-
 **任何"会被异步回调引用"的对象，销毁前必须先清空它持有的所有回调。**
-
-典型场景：
-- `Session` 析构 → `transport` 触发 `NotifyState(Closed)` → 状态回调 → `CallAfter` → 事件在 Session 死后执行 → 访问悬垂指针。
-- `SessionManager::SetActive(new)` / `Close()` 在**真正销毁旧对象之前**清空回调。
-
-**原因**：`CallAfter` 投递的事件在事件循环的后续迭代中执行，此时投递者可能已死。**光靠 `CallAfter` 里的 `if (ptr)` 判断不够**，因为指针可能是悬垂的（已释放但地址还"有效"）。
-
-**正解**：销毁前清空回调（如 `DetachAllCallbacks()`），让投递方在投递前就发现"没有回调"而不再投递。
 
 ---
 
@@ -198,38 +130,28 @@
 | 字节流 (TCP, Serial) | `StreamSession` | 组合 `ITransport` 和 `ICodec`，底层做半包/粘包处理。 |
 | 事务型 (Modbus) | `ModbusSession` (继承 `ITransactionSession`) | 组合 `ModbusLib`，后台起心跳线程管理连接状态与重连。 |
 
-### 3.2 消息与执行生命周期
+### 3.2 统一的 UI 生成逻辑
 
-**字节流发送**：
-`UI` -> `StreamSession::Send()` -> `ICodec::Encode` -> `ITransport::Send`。
-
-**事务型执行**：
-`UI` -> `SessionPanel::OnExecute` (搜集表单数据) -> `ModbusSession::Execute` (在后台线程) -> `ModbusClientPort` -> 回调结果（`CallAfter`）。
-
-### 3.3 统一的 UI 生成逻辑
-
-`SessionPanel` 构建时会根据 `ISession` 的具体类型进行动态分派：
+`SessionPanel` 使用 `wxNotebook` 提供三种模式的独立页面（手动、交互、自动）。构建时根据 `ISession` 动态分派：
 ```cpp
 m_streamSession = dynamic_cast<StreamSession*>(m_session);
 m_txSession = dynamic_cast<ITransactionSession*>(m_session);
 ```
-- 如果是 `StreamSession`，渲染标准的日志与发送区。
-- 如果是 `ITransactionSession`，拉取 `OperationFieldsForMode` 并自动渲染参数表单，同时在后台维护心跳。
 
-### 3.4 自动化测试执行流（阶段 8）
+### 3.3 自动化测试执行流
 
 ```
-UI 加载 test_flow (JSON)
+UI/CLI 加载 test_flow (JSON)
     -> 实例化 TestRunner (包含多个 ITestStep)
     -> 在后台线程按顺序运行：
-        -> Execute() 发送指令
+        -> Execute() 从 variables 中读取 params，发送指令
         -> 等待响应
-        -> Assert() 进行正则/数值比对
+        -> Assert() 进行比对
         -> Extract() 提取变量存入全局池
-    -> 抛出回调更新 UI 进度
+    -> 抛出回调更新 UI 或 CLI 终端
 ```
 
-### 3.5 会话销毁顺序
+### 3.4 会话销毁顺序
 
 ```
 SessionManager::SetActive(new) 或 Close()
@@ -245,8 +167,6 @@ DetachAndClose()：
            ▼
    3. m_active.reset()                       ← 此时才能真正销毁
 ```
-
-**违反此顺序会导致**：Session 析构时 transport 触发状态变化 → 回调 lambda 投递 `CallAfter` → 事件在 Session 死后执行 → 访问 `m_transport`（已释放）→ SIGSEGV。
 
 ---
 
@@ -282,7 +202,19 @@ public:
 };
 ```
 
-### 4.3 `IProtocol`（协议接口）
+### 4.3 `ITestStep`（自动化测试步骤，阶段 8）
+```cpp
+class ITestStep {
+public:
+    virtual ~ITestStep() = default;
+    virtual std::string Name() const = 0;
+    virtual TestResult Execute(ISession* session, std::map<std::string, CommVariable>& vars) = 0;
+    virtual bool Assert(const TestResult& result, std::string& outErrorMsg) = 0;
+    virtual void Extract(const TestResult& result, std::map<std::string, CommVariable>& vars) = 0;
+};
+```
+
+### 4.4 `IProtocol`（协议接口）
 ```cpp
 class IProtocol {
 public:
@@ -291,31 +223,10 @@ public:
     virtual bool HasModes() const = 0;
     virtual std::vector<std::string> ModeNames() const = 0;
     virtual std::vector<FieldDescriptor> FieldsForMode(int modeIndex) const = 0;
-
-    // 字节流或事务型的统一创建入口
     virtual ISessionPtr CreateSession(int modeIndex, const std::map<std::string, FieldValue>& fields) = 0;
-
-    // 事务型操作的表单描述，供 SessionPanel 自动生成 UI
     virtual std::vector<FieldDescriptor> OperationFieldsForMode(int modeIndex) const { return {}; }
-
-    // ★ 阶段 8 新增：工厂模式生成测试步骤
-    // virtual ITestStepPtr CreateTestStep(const std::string& stepType, const nlohmann::json& params) = 0;
-
-    virtual std::string MakeDefaultFileName(
-        int modeIndex, const std::map<std::string, FieldValue>& fields) const = 0;
-};
-```
-
-### 4.4 `ITestStep`（自动化测试步骤，阶段 8）
-```cpp
-// core/ITestStep.h
-class ITestStep {
-public:
-    virtual ~ITestStep() = default;
-    virtual std::string Name() const = 0;
-    virtual TestResult Execute(ISession* session, TestVariables& vars) = 0;
-    virtual bool Assert(const TestResult& result, std::string& outErrorMsg) = 0;
-    virtual void Extract(const TestResult& result, TestVariables& vars) = 0;
+    virtual ITestStepPtr CreateTestStep(const std::string& stepType, const nlohmann::json& params) = 0;
+    virtual std::string MakeDefaultFileName(int modeIndex, const std::map<std::string, FieldValue>& fields) const = 0;
 };
 ```
 
@@ -358,10 +269,12 @@ private:
 ### 5.1 当前目录
 
 ```text
-IndustrialCommunicationUtility/
+IndComm/
 ├── src/
 │   ├── main.cpp
 │   ├── app/
+│   ├── cli/                             ← ★ 独立 CLI 入口
+│   │   └── main.cpp
 │   ├── core/
 │   │   ├── ICodec.h
 │   │   ├── ITransport.h
@@ -370,14 +283,12 @@ IndustrialCommunicationUtility/
 │   │   ├── ITransactionSession.h        ← 事务型会话扩展接口
 │   │   ├── ReconnectConfig.h            ← 统一重连配置与 UI 字段
 │   │   ├── SessionStateMachine.h        ← 统一状态流转与重连计数
-│   │   ├── ITestStep.h                  ← ★ 阶段 8：测试步骤接口
-│   │   ├── TestRunner.h/.cpp            ← ★ 阶段 8：测试调度器
+│   │   ├── ITestStep.h                  ← 测试步骤接口
+│   │   ├── TestRunner.h/.cpp            ← 测试调度器
 │   │   ├── ProtocolRegistry.h/.cpp
 │   │   ├── ProtocolTypes.h/.cpp
 │   │   ├── StreamSession.h/.cpp         ← 字节流会话实现
 │   │   └── SessionManager.h/.cpp
-│   ├── cli/                             ← ★ 阶段 9：独立 CLI 入口
-│   │   └── main.cpp
 │   ├── protocols/
 │   │   ├── tcp/
 │   │   ├── serial/
@@ -387,6 +298,7 @@ IndustrialCommunicationUtility/
 │   │   ├── GenericProtocolDialog.h/.cpp
 │   │   ├── SessionPanel.h/.cpp          ← 唯一的动态生成会话面板
 │   │   ├── LogFrame.h/.cpp
+│   │   ├── LogSink.h/.cpp               ← 抽离的 GUI 日志 Sink
 │   │   └── AppTaskBarIcon.h/.cpp
 │   ├── settings/
 │   ├── config/
@@ -402,28 +314,13 @@ IndustrialCommunicationUtility/
 | 目录 | 职责 | 不得包含 | 依赖 |
 |---|---|---|---|
 | `src/app/` | 启动、主窗口骨架、菜单 | 业务逻辑、协议细节 | `ui/ core/ settings/ config/ log/` |
+| `src/cli/` | CLI 入口与参数解析 | GUI 代码 | `core/ config/` |
 | `src/core/` | 接口、基础类型、Session | wxWidgets UI、具体协议 | C++ STL、wxBase |
 | `src/protocols/` | 具体协议实现、Transport、Codec | UI 代码 | `core/`、`log/` |
 | `src/ui/` | 窗口、对话框、面板 | 协议逻辑、socket 操作 | `core/ settings/` |
 | `src/settings/` | 应用级设置 | 协议配置、业务逻辑 | `log/` |
 | `src/config/` | `.json` 协议配置文件读写 | UI、传输 | `core/`、`nlohmann/json` |
-| `src/log/` | 日志初始化、GUI sink | 业务逻辑 | wxBase、spdlog |
-
-### 5.3 分层规则
-
-**新增功能时先问自己：改动属于哪一层？**
-
-| 需求 | 归属 |
-|---|---|
-| 新协议 | `protocols/<name>/` |
-| 新编解码 | `protocols/codec/` |
-| 新对话框 | `ui/` |
-| 新设置项 | `settings/` |
-| 协议配置格式变化 | `config/` |
-| 框架接口扩展 | `core/` |
-| 菜单项调整 | `app/MainFrame` |
-| 新增测试 | `tests/unit/` 或 `tests/integration/` |
-| 新增决策 | `docs/architecture/adr/` |
+| `src/log/` | 日志初始化、基础配置 | 业务逻辑 | wxBase、spdlog |
 
 ---
 
@@ -503,111 +400,69 @@ settings/
 
 ### 7.1 `.json` 通用结构
 
-JSON 格式（nlohmann/json）。由于引入了 `ReconnectConfig`，所有协议共享三个重连字段；并且可以包含 `test_flow` 数组（阶段 8）：
+配置文件顶层分为 `connection` 和 `session`。`session` 中包含**通信变量**与**各模式的测试流**。
 
 ```json
 {
   "connection": {
-    "protocol": "tcp",
-    "mode": "Client",
+    "protocol": "modbus",
+    "mode": "TCP",
     "host": "127.0.0.1",
     "port": 502,
-    "autoReconnect": true,
-    "reconnectMaxAttempts": "0",
-    "reconnectDelaySec": "3"
-  },
-  "test_flow": [
-    {
-      "name": "读取寄存器",
-      "action": "read",
-      "params": { "slaveId": 1, "functionCode": 3, "startAddress": 0, "count": 1 },
-      "wait_ms": 500,
-      "extract": { "var_name": "temp_val" },
-      "assert": { "type": "eq", "expected": "25" }
+    "reconnect": {
+      "autoReconnect": true,
+      "maxAttempts": "0",
+      "delaySec": "3"
     }
-  ]
-}
-```
-
-**类型映射**：
-
-| `FieldValue::Type` | JSON 类型 |
-|---|---|
-| String | string |
-| Int | number（整数） |
-| Bool | bool |
-| Choice | string（存 value，不是 label） |
-
-### 7.2 TCP 客户端
-
-```json
-{
-  "connection": {
-    "protocol": "tcp",
-    "mode": "Client",
-    "remoteHost": "127.0.0.1",
-    "remotePort": 502,
-    "localHost": "0.0.0.0",
-    "localPort": 0,
-    "timeoutMs": 3000,
-    "autoReconnect": true,
-    "reconnectMaxAttempts": "3",
-    "reconnectDelaySec": "5"
+  },
+  "session": {
+    "active_mode": "auto",
+    "variables": {
+      "my_temp": {
+        "type": "int",
+        "access": "RW",
+        "params": {
+          "slaveId": 1,
+          "functionCode": 3,
+          "startAddress": 0,
+          "count": 1
+        }
+      }
+    },
+    "auto_mode": {
+      "test_flow": [
+        {
+          "name": "Step 1 Read",
+          "action": "read",
+          "variable": "my_temp",
+          "wait_ms": 100
+        }
+      ]
+    },
+    "interactive_mode": {
+      "test_flow": []
+    }
   }
 }
 ```
 
-### 7.3 TCP 服务器
+### 7.2 字段详细说明
 
-```json
-{
-  "connection": {
-    "protocol": "tcp",
-    "mode": "Server",
-    "listenHost": "0.0.0.0",
-    "listenPort": 502,
-    "maxClients": 10,
-    "backlog": 5
-  }
-}
-```
+#### `session.variables` 节点（通信变量）
+| 字段名 | 类型 | 说明 |
+|---|---|---|
+| `type` | string | 数据类型（int / string / bool / float） |
+| `access` | string | `RO`（只读）、`RW`（读写）、`WO`（只写） |
+| `params` | object | 协议专属参数（如 Modbus 的 slaveId, functionCode 等） |
 
-### 7.4 串口
-
-```json
-{
-  "connection": {
-    "protocol": "serial",
-    "mode": "",
-    "portName": "COM3",
-    "baudRate": "9600",
-    "dataBits": "8",
-    "parity": "N",
-    "stopBits": "1",
-    "flowControl": "None",
-    "readTimeoutMs": 100,
-    "writeTimeoutMs": 1000
-  }
-}
-```
-
-### 7.5 文件命名约定
-
-```
-<协议>_<模式>_<主标识>_<次标识>.json
-
-例：
-  TCP_Client_127_0_0_1_502.json
-  TCP_Server_0_0_0_0_502.json
-  Serial_COM3_9600.json
-  ModbusTCP_Client_127_0_0_1_502.json
-```
-
-由 `IProtocol::MakeDefaultFileName()` 生成。
-
-### 7.6 向后兼容性
-
-**不兼容 INI 格式**。旧 `.conn` 文件加载失败，用户需手工转换。
+#### `test_flow` 节点（测试步骤）
+| 字段名 | 类型 | 说明 |
+|---|---|---|
+| `name` | string | 步骤名称 |
+| `action` | string | 动作类型：`read`, `write`, `send`, `delay` 等 |
+| `variable` | string | 引用的通信变量名 |
+| `wait_ms` | int | 发送后等待响应的时间（毫秒） |
+| `value` | string | （可选）写入操作时的目标值，不填则用变量当前值 |
 
 ---
 
@@ -617,14 +472,8 @@ JSON 格式（nlohmann/json）。由于引入了 `ReconnectConfig`，所有协�
 |---|---|---|---|---|---|
 | **TCP/IP** | `tcp` | Client / Server | TcpClient / TcpServer | Raw | ✅ 完成 |
 | **串口** | `serial` | — | SerialTransport | Raw | ✅ 完成 |
-| **Modbus** | `modbus` | TCP / RTU / ASCII | 内置 (ModbusLib) | 事务型 | ✅ 完成（阶段 7） |
-| MQTT | `mqtt` | Pub / Sub | TcpClient | MqttCodec | ⬜ 待实现（阶段 11） |
-| OPC UA | `opcua` | Client / Server | 专用 | 专用 | ⬜ 待实现 |
-| Siemens TIA | `tia` | Client | TcpClient | S7Codec | ⬜ 待实现 |
-| Allen-Bradley | `ab` | Client | TcpClient | CIPCodec | ⬜ 待实现 |
-| 三菱 | `mitsubishi` | Client | TcpClient | MCProtocol | ⬜ 待实现 |
-
-**图例**：✅ 完成 / 🟡 进行中 / ⬜ 未开始
+| **Modbus** | `modbus` | TCP / RTU / ASCII | 内置 (ModbusLib) | 事务型 | ✅ 完成（阶段 7/8） |
+| MQTT | `mqtt` | Pub / Sub | TcpClient | MqttCodec | ⬜ 待实现 |
 
 ---
 
@@ -691,6 +540,14 @@ ctest --test-dir build --output-on-failure
 | `src/settings/` | ≥ 60% | 0% ⚠️ |
 | `src/config/` | ≥ 70% | 100% ✅ |
 | `src/ui/` / `src/app/` | 手动测试 | — |
+
+**已知缺口及处理计划**：
+
+| 缺口 | 原因 | 补测时机 |
+|---|---|---|
+| `TcpTransport.cpp` 0% | 依赖真实 wxSocket 事件循环 | 阶段 7 统一评估 |
+| `SerialPort.cpp` / `SerialTransport.cpp` | 依赖真实串口硬件 | 手工回归（com0com） |
+| `settings/*.cpp` 0% | 依赖 `wxApp` 初始化 | 阶段 12 |
 
 ### 9.7 什么必须测
 
@@ -858,7 +715,8 @@ docs/
 │       ├── 0006-conn-format-ini-to-json.md
 │       ├── 0007-test-runner-engine-architecture.md
 │       ├── 0008-standalone-headless-cli-tool.md
-│       └── 0009-sqlite-data-logging-and-charting.md
+│       ├── 0009-sqlite-data-logging-and-charting.md
+│       └── 0010-project-file-and-test-flow-redesign.md
 ├── user/
 │   ├── getting-started.md
 │   ├── tcp.md
@@ -885,49 +743,28 @@ docs/
 
 ### 已完成
 
-- [x] **阶段 1：协议抽象层**
-- [x] **阶段 2：MainFrame 切换到协议层**
-- [x] **阶段 3：会话面板通用化**
-- [x] **阶段 4：目录结构与设置模块重构**
-- [x] **阶段 5：串口协议 + 会话面板通用增强**
-- [x] **阶段 6：`.conn` 从 INI 迁移到 JSON**
-- [x] **阶段 7：Modbus 协议（TCP/RTU/ASCII） + 统一底层与重连架构**
+- [x] **阶段 1~7：基础框架、TCP、串口、Modbus 接入**
+- [x] **阶段 8：通用自动化测试引擎**
+  - [x] 引入 `ITestStep` 与 `TestRunner`。
+  - [x] 引入通信变量概念，实现 UI 动态管理。
+  - [x] 交互模式单步阻断与自动模式一键运行。
+- [x] **阶段 9：独立 CLI 工具 (indcomm-cli)**
+  - [x] CMake 抽离 `icu_core_lib`。
+  - [x] 编译产出 `IndComm.exe` 和 `indcomm-cli.exe`。
+  - [x] CLI 支持 `-r` 自动运行、`-i` 交互、`--read` / `--write`。
 
-### 阶段 8：通用自动化测试引擎 ⬜ 进行中
+### 阶段 10：SQLite 数据持久化与实时曲线 ⬜ 进行中
 
-- [ ] 8.1 定义 `core/ITestStep.h` 和 `core/TestRunner.h`
-- [ ] 8.2 扩展 `IProtocol` 增加 `CreateTestStep` 接口
-- [ ] 8.3 扩展 `.json` 文件格式，支持 `test_flow` 步骤数组
-- [ ] 8.4 实现具体的协议测试步骤（如 `TcpSendStep`、`ModbusReadStep`）
-- [ ] 8.5 在 `SessionPanel` 中实现“手动/交互/自动”三模式 UI 切换
-- [ ] 8.6 实现单步执行与自动运行的变量池替换 (`{{var}}`)
-- [ ] 8.7 单测覆盖 `TestRunner` 调度与断言逻辑
+- [ ] 10.1 引入 SQLite3 库。
+- [ ] 10.2 建立 `test_runs` 和 `run_data` 数据库表。
+- [ ] 10.3 `TestRunner` 增加 `OnDataRecorded` 回调。
+- [ ] 10.4 执行测试时将变量数据写入 SQLite。
+- [ ] 10.5 实现基于 `wxGraphicsContext` 的实时折线图。
+- [ ] 10.6 历史数据查询与图表回放。
 
-### 阶段 9：独立 CLI 工具 (icu-cli) ⬜ 未开始
-
-- [ ] 9.1 重构 CMake 结构，抽离 `icu_core_lib` 静态库
-- [ ] 9.2 建立 `src/cli/main.cpp` 入口
-- [ ] 9.3 实现命令行解析（`--config` 等）
-- [ ] 9.4 实现 Headless 模式下的日志与控制台输出
-- [ ] 9.5 完善退出码规范（0 成功 / 1 失败）
-
-### 阶段 10：SQLite 数据持久化与实时曲线 ⬜ 未开始
-
-- [ ] 10.1 引入 SQLite3 库
-- [ ] 10.2 建立 `test_runs` 和 `run_data` 数据库表
-- [ ] 10.3 `TestRunner` 增加 `OnDataExtracted` 回调
-- [ ] 10.4 UI 层接入 SQLite 存储
-- [ ] 10.5 实现基于 `wxGraphicsContext` 的实时折线图
-- [ ] 10.6 实现历史运行数据查询与图表回放
-
-### 阶段 11：更多协议 ⬜ 未开始
-- MQTT、OPC UA 等
-
+### 阶段 11：更多协议（MQTT 等） ⬜ 未开始
 ### 阶段 12：应用设置完善 ⬜ 未开始
-- `SettingsDialog` 实现
-
 ### 阶段 13：UI 打磨与发布准备 ⬜ 未开始
-- HEX 发送、循环发送、保存接收文件等
 
 ---
 
@@ -936,9 +773,9 @@ docs/
 ### 13.1 上下文理解
 
 **当前状态**：
-- 阶段 1~7 已完成（统一底层 `ISession` + Modbus 接入）。
-- **阶段 8 进行中**：构建通用自动化测试引擎。
-- **核心新增文件**：`core/ITestStep.h`、`core/TestRunner.h`。
+- 阶段 1~9 已完成（统一底层 `ISession` + Modbus 接入 + 自动化引擎 + CLI 工具）。
+- **阶段 10 进行中**：构建 SQLite 数据持久化与图表可视化。
+- **核心新增文件**：`core/ITestStep.h`、`core/TestRunner.h`、`src/cli/main.cpp`。
 
 **遗留问题**：
 
@@ -964,6 +801,7 @@ docs/
 - `src/core/IProtocol.h` — 协议接口
 - `src/protocols/modbus/ModbusProtocol.cpp` — 事务型协议范例
 - `src/ui/SessionPanel.cpp` — 统一的动态生成 UI 面板
+- `src/cli/main.cpp` — 独立 CLI 入口
 
 ### 13.2 回答用户问题的流程
 
@@ -1105,6 +943,8 @@ tests/unit/protocols/<protocol_id>/
 | **自动化测试引擎通用化 (ADR 0007)** | 通过 `ITestStep` 和变量池，实现协议无关的自动化步骤调度 |
 | **独立 CLI 无头工具 (ADR 0008)** | 方便接入 CI/CD 流水线，避免主程序臃肿 |
 | **SQLite 数据记录与图表 (ADR 0009)** | 以 `.json` 路径为关联键，实现历史与实时数据可视化 |
+| **项目文件重构 (ADR 0010)** | 剥离 `connection` 与 `session`，引入 Action 枚举与变量双向绑定 |
+| **项目更名 `IndComm`** | 缩短可执行文件名，提升命令行输入体验 |
 
 **完整 ADR 列表**：[docs/architecture/adr/](docs/architecture/adr/README.md)
 
@@ -1144,6 +984,7 @@ tests/unit/protocols/<protocol_id>/
 | 2026-10-16 | 路线图更新：新阶段 6 = 格式迁移，Modbus 顺延为阶段 7 |
 | 2026-10-18 | 阶段 7 完成：Modbus 接入、`ISession` 统一、重连抽象 |
 | 2026-10-18 | 确立阶段 8/9/10 架构，新增 ADR 0007/0008/0009 |
+| 2026-10-19 | 阶段 8 & 9 完成：通信变量、自动化引擎、CLI 工具，项目更名 IndComm |
 
 ---
 
@@ -1215,10 +1056,11 @@ done
 
 ```bash
 # 查进程
-tasklist | grep -E "IndustrialCommunicationUtility|icu_tests"
+tasklist | grep -E "IndComm|indcomm-cli|icu_tests"
 
 # 杀进程（双斜杠防止 MSYS2 路径转换）
-taskkill //F //IM IndustrialCommunicationUtility.exe 2>/dev/null || true
+taskkill //F //IM IndComm.exe 2>/dev/null || true
+taskkill //F //IM indcomm-cli.exe 2>/dev/null || true
 taskkill //F //IM icu_tests.exe 2>/dev/null || true
 ```
 
@@ -1237,7 +1079,7 @@ gdb --version
 
 ```bash
 cd build
-gdb ./IndustrialCommunicationUtility.exe
+gdb ./IndComm.exe
 ```
 
 进入 gdb 后：
@@ -1259,7 +1101,7 @@ gdb ./IndustrialCommunicationUtility.exe
 
 ```bash
 cd build
-gdb -batch -ex "run" -ex "bt" -ex "bt full" ./IndustrialCommunicationUtility.exe
+gdb -batch -ex "run" -ex "bt" -ex "bt full" ./IndComm.exe
 ```
 
 复现崩溃后，gdb 打印栈并退出，适合快速抓一次。
@@ -1486,7 +1328,7 @@ list
 | 6 | 点"是" | 窗口隐藏，托盘出现 |
 | 7 | 双击托盘图标 | 窗口恢复 |
 | 8 | 托盘右键 → 退出 | 干净退出 |
-| 9 | `tasklist \| grep IndustrialCommunicationUtility` | 无输出 |
+| 9 | `tasklist \| grep IndComm` | 无输出 |
 
 ### E.11 异常场景
 
@@ -1517,7 +1359,7 @@ list
 每次退出后：
 
 ```bash
-tasklist | grep IndustrialCommunicationUtility
+tasklist | grep IndComm
 ```
 
 应**无输出**。
@@ -1551,4 +1393,3 @@ tasklist | grep IndustrialCommunicationUtility
 **文档结束。**
 
 > 本文档随项目演进持续更新。任何架构级改动必须先更新本文档，再动代码。
-

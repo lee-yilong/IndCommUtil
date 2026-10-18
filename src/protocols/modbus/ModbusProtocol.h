@@ -2,6 +2,8 @@
 
 #include <wx/translation.h>
 
+#include <nlohmann/json.hpp>  // 确保引入 JSON
+
 #include "core/IProtocol.h"
 
 namespace icu {
@@ -15,8 +17,6 @@ public:
     std::vector<std::string> ModeNames() const override;
 
     std::vector<FieldDescriptor> FieldsForMode(int modeIndex) const override;
-
-    // 这就是刚刚加上去的自动生成表单字段
     std::vector<FieldDescriptor> OperationFieldsForMode(int modeIndex) const override;
 
     ISessionPtr CreateSession(int modeIndex,
@@ -24,6 +24,8 @@ public:
 
     std::string MakeDefaultFileName(int modeIndex,
                                     const std::map<std::string, FieldValue>& fields) const override;
+
+    ITestStepPtr CreateTestStep(const std::string& stepType, const nlohmann::json& params) override;
 
 private:
     std::vector<FieldDescriptor> TcpFields() const;

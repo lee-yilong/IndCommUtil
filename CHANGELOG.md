@@ -82,6 +82,18 @@
   - 新增 `core/ISession.h` 和 `core/ITransactionSession.h`：统一字节流与事务型协议的底层接口。
   - 新增 `ui/SessionPanel.h/.cpp`：统一的会话面板，通过 `OperationFieldsForMode` 自动生成事务型表单。
   - 后台心跳线程：Modbus 连接后自动发起探测请求，实现掉线秒级感知与自动重连。
+- **自动化测试引擎（阶段 8）**
+  - 引入 `ITestStep` 与 `TestRunner`，实现自动化测试步骤调度。
+  - `SessionConfig` 支持三种独立模式：手动（Manual）、交互（Interactive）、自动（Auto）。
+  - 引入“通信变量（CommVariable）”概念，支持定义类型、读写权限（RO/RW）和协议专属参数。
+  - UI 彻底重构为 `wxNotebook` 选项卡布局，支持变量的增删改查与动态参数面板。
+  - 测试步骤可视化编辑，支持动态选择变量，支持变量池的 `{{var}}` 引用与提取。
+  - 交互模式支持单步阻断执行，自动模式支持一键跑通。
+- **独立 CLI 工具（阶段 9）**
+  - 重构 CMake 架构，抽离核心静态库 `icu_core_lib`，实现 GUI 与 CLI 双端复用。
+  - 新增 `src/cli/main.cpp`，编译生成 `indcomm-cli.exe`。
+  - CLI 支持 `-c` 加载配置，`-r` 自动运行，`-i` 交互单步运行，`--read` / `--write` 直接读写变量。
+  - 分离 GUI 日志 Sink 到 `ui/LogSink`，确保 CLI 端编译不依赖 GUI 库。
 ### 变更
 
 - **第三方依赖统一为 submodule**：
@@ -107,6 +119,9 @@
   - 移除 `TransactionSessionManager`，统一由 `SessionManager` 管理 `ISessionPtr`。
   - `FieldDescriptor` 新增 `group` 属性，支持将相关字段（如“重连设置”）收纳到底部的分割框中。
   - `TcpProtocol` 与 `ModbusProtocol` 全面接入 `ReconnectConfig` 标准化字段。
+- **项目更名**：可执行文件由 `IndustrialCommunicationUtility.exe` 精简为 `IndComm.exe`。
+- **禁止生成 ModbusLib 示例**：CMake 添加 `EXCLUDE_FROM_ALL`，避免生成多余的 `mbclient.exe` / `mbserver.exe`。
+- **配置结构重构**：`.json` 文件严格划分为 `connection` 和 `session` 两大节点，旧的 INI 格式已彻底废弃。
 
 ### 修复
 
@@ -132,3 +147,5 @@
 
 [未发布]: https://github.com/lee-yilong/IndCommUtil/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/lee-yilong/IndCommUtil/releases/tag/v0.1.0
+首个可运行版本：协议可插拔框架 + TCP 协议 + 数据驱动 UI + 测试与工程化配套。
+（历史记录略，详见 Git 提交历史）

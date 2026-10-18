@@ -7,6 +7,7 @@
 #include "config/ConnectionProfile.h"
 #include "core/IProtocol.h"
 #include "core/ProtocolRegistry.h"
+#include "core/SessionConfig.h"
 #include "doctest.h"
 #include "helpers/TestEnv.h"
 
@@ -47,7 +48,7 @@ TEST_CASE("ConnectionProfile: TCP Client roundtrip") {
 
     const wxString path = Wx(env.Path("TCP_Client_test.json"));
 
-    REQUIRE(ConnectionProfile::Save(path, "tcp", 0, proto, fields));
+    REQUIRE(ConnectionProfile::Save(path, "tcp", 0, proto, fields, SessionConfig{}));
 
     ActiveProfile loaded;
     REQUIRE(ConnectionProfile::Load(path, loaded));
@@ -84,7 +85,7 @@ TEST_CASE("ConnectionProfile: TCP Server roundtrip") {
 
     const wxString path = Wx(env.Path("TCP_Server_test.json"));
 
-    REQUIRE(ConnectionProfile::Save(path, "tcp", 1, proto, fields));
+    REQUIRE(ConnectionProfile::Save(path, "tcp", 1, proto, fields, SessionConfig{}));
 
     ActiveProfile loaded;
     REQUIRE(ConnectionProfile::Load(path, loaded));
@@ -105,7 +106,7 @@ TEST_CASE("ConnectionProfile: 空字段也能 Save/Load") {
     std::map<std::string, FieldValue> empty;
 
     const wxString path = Wx(env.Path("empty.json"));
-    REQUIRE(ConnectionProfile::Save(path, "tcp", 0, proto, empty));
+    REQUIRE(ConnectionProfile::Save(path, "tcp", 0, proto, empty, SessionConfig{}));
 
     ActiveProfile loaded;
     REQUIRE(ConnectionProfile::Load(path, loaded));

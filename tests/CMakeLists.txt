@@ -23,6 +23,9 @@ add_library(icu_core_test STATIC
     "${CMAKE_SOURCE_DIR}/src/protocols/tcp/TcpTransport.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/serial/SerialTransport.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/serial/SerialProtocol.cpp"
+    "${CMAKE_SOURCE_DIR}/src/protocols/tcp/TcpSendStep.cpp"
+    "${CMAKE_SOURCE_DIR}/src/protocols/modbus/ModbusReadStep.cpp"
+    "${CMAKE_SOURCE_DIR}/src/protocols/modbus/ModbusWriteStep.cpp"
 
     # 如果有 Modbus 的实现文件，也加进来：
     "${CMAKE_SOURCE_DIR}/src/protocols/modbus/ModbusProtocol.cpp"

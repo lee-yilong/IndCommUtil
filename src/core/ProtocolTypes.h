@@ -6,11 +6,13 @@
 //   FieldDescriptor  —— 字段描述（UI 自动生成用）
 //   ActiveProfile    —— 一个"活动配置"：协议 ID + 模式 + 字段值
 // =========================================================================
-
 #include <map>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "SessionConfig.h"
 
 namespace icu {
 
@@ -86,17 +88,20 @@ struct FieldDescriptor {
 struct ActiveProfile {
     std::string protocolId;
     int modeIndex = 0;
-    std::map<std::string, FieldValue> fields;
+    std::map<std::string, FieldValue> fields;  // 对应 connection 节点
+    SessionConfig session;                     // 对应 session 节点
 
     void Clear() {
         protocolId.clear();
         modeIndex = 0;
         fields.clear();
+        session = SessionConfig{};
     }
 
     bool Empty() const { return protocolId.empty(); }
 
     bool operator==(const ActiveProfile& o) const {
+        // 简单比较，主要是为了判断是否修改
         return protocolId == o.protocolId && modeIndex == o.modeIndex && fields == o.fields;
     }
     bool operator!=(const ActiveProfile& o) const { return !(*this == o); }

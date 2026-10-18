@@ -2,6 +2,8 @@
 
 #include <wx/translation.h>
 
+#include <nlohmann/json.hpp>  // 确保引入 JSON
+
 #include "core/IProtocol.h"
 
 namespace icu {
@@ -21,6 +23,8 @@ public:
 
     std::string MakeDefaultFileName(int modeIndex,
                                     const std::map<std::string, FieldValue>& fields) const override;
+
+    ITestStepPtr CreateTestStep(const std::string& stepType, const nlohmann::json& params) override;
 
 private:
     std::vector<FieldDescriptor> ClientFields() const;

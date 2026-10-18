@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: IndustrialCommunicationUtility 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-18 03:34+0800\n"
+"POT-Creation-Date: 2026-10-18 19:30+0800\n"
 "PO-Revision-Date: 2026-10-18 12:00+0800\n"
 "Last-Translator: AI Assistant\n"
 "Language-Team: Simplified Chinese\n"
@@ -20,7 +20,7 @@ msgstr ""
 msgid "Application initializing..."
 msgstr "应用程序正在初始化..."
 
-#: src/app/App.cpp:28 src/app/MainFrame.cpp:494 src/ui/AppTaskBarIcon.cpp:68
+#: src/app/App.cpp:28 src/app/MainFrame.cpp:524 src/ui/AppTaskBarIcon.cpp:68
 #: src/ui/AppTaskBarIcon.cpp:76
 msgid "Industrial Communication Utility"
 msgstr "工业通信实用工具"
@@ -61,123 +61,123 @@ msgstr "正在重启应用程序: %s"
 msgid "Language will be applied on next start"
 msgstr "语言将在下次启动时生效"
 
-#: src/app/MainFrame.cpp:78
+#: src/app/MainFrame.cpp:80
 msgid "Industrial Communication Utility started"
 msgstr "工业通信实用工具已启动"
 
-#: src/app/MainFrame.cpp:83
+#: src/app/MainFrame.cpp:85
 msgid "MainFrame destroyed"
 msgstr "主窗口已销毁"
 
-#: src/app/MainFrame.cpp:95
+#: src/app/MainFrame.cpp:99
 msgid "Too many protocols, menu ID overflow"
 msgstr "协议过多，菜单 ID 溢出"
 
-#: src/app/MainFrame.cpp:104
+#: src/app/MainFrame.cpp:109
 msgid "&New Connection"
 msgstr "&新建连接"
 
-#: src/app/MainFrame.cpp:104
+#: src/app/MainFrame.cpp:109
 msgid "Create a new connection"
 msgstr "创建一个新连接"
 
-#: src/app/MainFrame.cpp:106
+#: src/app/MainFrame.cpp:112
 msgid "Recent &Connections"
 msgstr "最近&连接"
 
-#: src/app/MainFrame.cpp:107
+#: src/app/MainFrame.cpp:113
 msgid "Recently used connections"
 msgstr "最近使用过的连接"
 
-#: src/app/MainFrame.cpp:108
+#: src/app/MainFrame.cpp:115
 msgid "&Open Connection\tCtrl+O"
 msgstr "&打开连接\tCtrl+O"
 
-#: src/app/MainFrame.cpp:109
+#: src/app/MainFrame.cpp:116
 msgid "Open a saved connection"
 msgstr "打开一个已保存的连接"
 
-#: src/app/MainFrame.cpp:110
+#: src/app/MainFrame.cpp:118
 msgid "&Save Connection\tCtrl+S"
 msgstr "&保存连接\tCtrl+S"
 
-#: src/app/MainFrame.cpp:111
+#: src/app/MainFrame.cpp:119
 msgid "Save the current connection profile"
 msgstr "保存当前连接配置"
 
-#: src/app/MainFrame.cpp:112
+#: src/app/MainFrame.cpp:121
 msgid "Save Connection &As...\tCtrl+Shift+S"
 msgstr "连接另存为(&A)...\tCtrl+Shift+S"
 
-#: src/app/MainFrame.cpp:113
+#: src/app/MainFrame.cpp:122
 msgid "Save the current connection profile to a new file"
 msgstr "将当前连接配置保存到新文件"
 
-#: src/app/MainFrame.cpp:114
+#: src/app/MainFrame.cpp:124
 msgid "&Close Connection\tCtrl+W"
 msgstr "&关闭连接\tCtrl+W"
 
-#: src/app/MainFrame.cpp:115
+#: src/app/MainFrame.cpp:125
 msgid "Close the current connection"
 msgstr "关闭当前连接"
 
-#: src/app/MainFrame.cpp:117
+#: src/app/MainFrame.cpp:128
 msgid "&Quit\tAlt+F4"
 msgstr "&退出\tAlt+F4"
 
-#: src/app/MainFrame.cpp:117
+#: src/app/MainFrame.cpp:128
 msgid "Quit the application"
 msgstr "退出应用程序"
 
-#: src/app/MainFrame.cpp:118
+#: src/app/MainFrame.cpp:130
 msgid "&File"
 msgstr "&文件"
 
-#: src/app/MainFrame.cpp:121
+#: src/app/MainFrame.cpp:133
 msgid "&Show Log\tF2"
 msgstr "&显示日志\tF2"
 
-#: src/app/MainFrame.cpp:121
+#: src/app/MainFrame.cpp:133
 msgid "Show application logs"
 msgstr "显示应用日志"
 
-#: src/app/MainFrame.cpp:122
+#: src/app/MainFrame.cpp:134
 msgid "&View"
 msgstr "&视图"
 
-#: src/app/MainFrame.cpp:126
+#: src/app/MainFrame.cpp:138
 msgid "Simplified Chinese"
 msgstr "简体中文"
 
-#: src/app/MainFrame.cpp:127
+#: src/app/MainFrame.cpp:139
 msgid "English"
 msgstr "English"
 
-#: src/app/MainFrame.cpp:134
+#: src/app/MainFrame.cpp:146
 msgid "Language"
 msgstr "语言"
 
-#: src/app/MainFrame.cpp:135
+#: src/app/MainFrame.cpp:147
 msgid "&Settings"
 msgstr "&设置"
 
-#: src/app/MainFrame.cpp:138
+#: src/app/MainFrame.cpp:150
 msgid "&About\tF1"
 msgstr "&关于\tF1"
 
-#: src/app/MainFrame.cpp:138
+#: src/app/MainFrame.cpp:150
 msgid "Show info about this application"
 msgstr "显示关于本应用的信息"
 
-#: src/app/MainFrame.cpp:139
+#: src/app/MainFrame.cpp:151
 msgid "&Help"
 msgstr "&帮助"
 
-#: src/app/MainFrame.cpp:143
+#: src/app/MainFrame.cpp:155
 msgid "Ready"
 msgstr "就绪"
 
-#: src/app/MainFrame.cpp:155
+#: src/app/MainFrame.cpp:168
 msgid ""
 "No active connection.\n"
 "Use File → New Connection to get started."
@@ -185,71 +185,46 @@ msgstr ""
 "当前无活动连接。\n"
 "使用「文件 → 新建连接」开始。"
 
-#: src/app/MainFrame.cpp:162
+#: src/app/MainFrame.cpp:175
 msgid "Welcome"
 msgstr "欢迎"
 
-#: src/app/MainFrame.cpp:163 src/app/MainFrame.cpp:174
-#: src/app/MainFrame.cpp:183
+#: src/app/MainFrame.cpp:177 src/app/MainFrame.cpp:189
+#: src/app/MainFrame.cpp:203
 msgid "Session"
 msgstr "会话"
 
-#: src/app/MainFrame.cpp:188
-msgid "User clicked Configure Connection"
-msgstr "用户点击了配置连接"
-
-#: src/app/MainFrame.cpp:206
-msgid "User clicked Open Connection"
-msgstr "用户点击了打开连接"
-
-#: src/app/MainFrame.cpp:225
-#, c-format
-msgid "Listening on %s"
-msgstr "正在监听 %s"
-
-#: src/app/MainFrame.cpp:228
-#, c-format
-msgid "Connected [%s]: %s"
-msgstr "已连接 [%s]: %s"
-
-#: src/app/MainFrame.cpp:232 src/app/MainFrame.cpp:634
-#, c-format
-msgid "Connecting to %s ..."
-msgstr "正在连接到 %s ..."
-
-#: src/app/MainFrame.cpp:235
-#, c-format
-msgid "Reconnecting to %s ..."
-msgstr "正在重新连接到 %s ..."
-
-#: src/app/MainFrame.cpp:238 src/app/MainFrame.cpp:372
-#: src/ui/SessionPanel.cpp:258
-msgid "Disconnected"
-msgstr "已断开连接"
-
-#: src/app/MainFrame.cpp:249 src/app/MainFrame.cpp:293
+#: src/app/MainFrame.cpp:212 src/app/MainFrame.cpp:265
 msgid "Application exiting"
 msgstr "应用程序正在退出"
 
-#: src/app/MainFrame.cpp:268 src/app/MainFrame.cpp:357
+#: src/app/MainFrame.cpp:235 src/app/MainFrame.cpp:350
 #, c-format
 msgid "Save changes to '%s' before closing?"
 msgstr "关闭前是否保存对 '%s' 的修改？"
 
-#: src/app/MainFrame.cpp:269 src/app/MainFrame.cpp:358
-#: src/app/MainFrame.cpp:536
+#: src/app/MainFrame.cpp:236 src/app/MainFrame.cpp:351
+#: src/app/MainFrame.cpp:577
 msgid "Save Connection Profile"
 msgstr "保存连接配置"
 
-#: src/app/MainFrame.cpp:283
+#: src/app/MainFrame.cpp:240 src/app/MainFrame.cpp:354
+msgid "Close cancelled by user"
+msgstr ""
+
+#: src/app/MainFrame.cpp:247 src/app/MainFrame.cpp:360
+msgid "Save cancelled, close aborted"
+msgstr ""
+
+#: src/app/MainFrame.cpp:253
 msgid "Minimize to system tray instead of exiting?"
 msgstr "是否最小化到系统托盘而不退出？"
 
-#: src/app/MainFrame.cpp:283
+#: src/app/MainFrame.cpp:253
 msgid "Close"
 msgstr "关闭"
 
-#: src/app/MainFrame.cpp:317
+#: src/app/MainFrame.cpp:290
 msgid ""
 "Industrial Communication Utility\n"
 "A tool for testing industrial protocols."
@@ -257,25 +232,38 @@ msgstr ""
 "工业通信实用工具\n"
 "工业协议测试工具"
 
-#: src/app/MainFrame.cpp:318
+#: src/app/MainFrame.cpp:291
 msgid "About"
 msgstr "关于"
 
-#: src/app/MainFrame.cpp:328 src/app/MainFrame.cpp:379
-#: src/app/MainFrame.cpp:583
+#: src/app/MainFrame.cpp:292
+msgid "About dialog shown"
+msgstr ""
+
+#: src/app/MainFrame.cpp:304
+#, fuzzy
+msgid "User invoked Open Connection"
+msgstr "用户点击了打开连接"
+
+#: src/app/MainFrame.cpp:307 src/app/MainFrame.cpp:382
+#: src/app/MainFrame.cpp:640
 msgid "Please close the current connection first."
 msgstr "请先关闭当前连接。"
 
-#: src/app/MainFrame.cpp:328 src/app/MainFrame.cpp:379
-#: src/app/MainFrame.cpp:583
+#: src/app/MainFrame.cpp:307 src/app/MainFrame.cpp:382
+#: src/app/MainFrame.cpp:640
 msgid "Notice"
 msgstr "提示"
 
-#: src/app/MainFrame.cpp:333
+#: src/app/MainFrame.cpp:313
 msgid "Open Connection Configuration"
 msgstr "打开连接配置"
 
-#: src/app/MainFrame.cpp:340 src/app/MainFrame.cpp:394
+#: src/app/MainFrame.cpp:317
+msgid "Open connection cancelled by user"
+msgstr ""
+
+#: src/app/MainFrame.cpp:325 src/app/MainFrame.cpp:400
 #, c-format
 msgid ""
 "Failed to load connection profile:\n"
@@ -284,13 +272,29 @@ msgstr ""
 "加载连接配置文件失败：\n"
 "%s"
 
-#: src/app/MainFrame.cpp:341 src/app/MainFrame.cpp:385
-#: src/app/MainFrame.cpp:395 src/app/MainFrame.cpp:519
-#: src/app/MainFrame.cpp:557
+#: src/app/MainFrame.cpp:326 src/app/MainFrame.cpp:390
+#: src/app/MainFrame.cpp:401 src/app/MainFrame.cpp:554
+#: src/app/MainFrame.cpp:601 src/ui/SessionPanel.cpp:465
+#: src/ui/SessionPanel.cpp:635
 msgid "Error"
 msgstr "错误"
 
-#: src/app/MainFrame.cpp:385
+#: src/app/MainFrame.cpp:336
+#, fuzzy, c-format
+msgid "Opening connection from file: %s"
+msgstr "保存连接配置"
+
+#: src/app/MainFrame.cpp:345
+#, fuzzy, c-format
+msgid "Closing connection: %s"
+msgstr "关闭当前连接"
+
+#: src/app/MainFrame.cpp:374 src/app/MainFrame.cpp:741
+#: src/ui/SessionPanel.cpp:745
+msgid "Disconnected"
+msgstr "已断开连接"
+
+#: src/app/MainFrame.cpp:390
 #, c-format
 msgid ""
 "Connection profile not found:\n"
@@ -299,20 +303,43 @@ msgstr ""
 "找不到连接配置文件：\n"
 "%s"
 
-#: src/app/MainFrame.cpp:434
+#: src/app/MainFrame.cpp:429
+#, c-format
+msgid "AddRecentConnection: not a .json path, ignored: %s"
+msgstr ""
+
+#: src/app/MainFrame.cpp:451
 msgid "(None)"
 msgstr "（无）"
 
-#: src/app/MainFrame.cpp:439
+#: src/app/MainFrame.cpp:456
 #, c-format
 msgid "&%d %s"
 msgstr "&%d %s"
 
-#: src/app/MainFrame.cpp:489
+#: src/app/MainFrame.cpp:465
+#, fuzzy
+msgid "User selected Simplified Chinese"
+msgstr "简体中文"
+
+#: src/app/MainFrame.cpp:470 src/app/MainFrame.cpp:479
+msgid "wxTheApp is not icu::App"
+msgstr ""
+
+#: src/app/MainFrame.cpp:474
+msgid "User selected English"
+msgstr ""
+
+#: src/app/MainFrame.cpp:519
 msgid "Untitled"
 msgstr "未命名"
 
-#: src/app/MainFrame.cpp:517 src/app/MainFrame.cpp:555
+#: src/app/MainFrame.cpp:550
+#, c-format
+msgid "Profile saved: %s"
+msgstr ""
+
+#: src/app/MainFrame.cpp:552 src/app/MainFrame.cpp:599
 msgid ""
 "Failed to save connection profile.\n"
 "\n"
@@ -323,14 +350,71 @@ msgstr ""
 "\n"
 "请检查目标文件夹是否可写，或被 Windows Defender 拦截。"
 
-#: src/app/MainFrame.cpp:632
+#: src/app/MainFrame.cpp:597
+#, c-format
+msgid "Profile saved as: %s"
+msgstr ""
+
+#: src/app/MainFrame.cpp:606
+#, fuzzy
+msgid "User clicked Save Connection"
+msgstr "用户点击了打开连接"
+
+#: src/app/MainFrame.cpp:611
+#, fuzzy
+msgid "User clicked Save Connection As"
+msgstr "用户点击了打开连接"
+
+#: src/app/MainFrame.cpp:617
+#, fuzzy
+msgid "Minimized to system tray"
+msgstr "是否最小化到系统托盘而不退出？"
+
+#: src/app/MainFrame.cpp:624
+msgid "Restored from system tray"
+msgstr ""
+
+#: src/app/MainFrame.cpp:631
+#, c-format
+msgid "Unknown protocol menu id: %d"
+msgstr ""
+
+#: src/app/MainFrame.cpp:636
+#, fuzzy, c-format
+msgid "User invoked New Connection for protocol: %s"
+msgstr "用户点击了打开连接"
+
+#: src/app/MainFrame.cpp:690
+msgid "User clicked Configure Connection"
+msgstr "用户点击了配置连接"
+
+#: src/app/MainFrame.cpp:709
+msgid "User clicked Open Connection"
+msgstr "用户点击了打开连接"
+
+#: src/app/MainFrame.cpp:728
+#, c-format
+msgid "Listening on %s"
+msgstr "正在监听 %s"
+
+#: src/app/MainFrame.cpp:731
+#, c-format
+msgid "Connected [%s]: %s"
+msgstr "已连接 [%s]: %s"
+
+#: src/app/MainFrame.cpp:735 src/app/MainFrame.cpp:752
+#, c-format
+msgid "Connecting to %s ..."
+msgstr "正在连接到 %s ..."
+
+#: src/app/MainFrame.cpp:738
+#, c-format
+msgid "Reconnecting to %s ..."
+msgstr "正在重新连接到 %s ..."
+
+#: src/app/MainFrame.cpp:749
 msgid "Failed to open session"
 msgstr "无法打开会话"
-
-#: src/config/ConnectionProfile.cpp:78
-#, c-format
-msgid "Failed to parse JSON: %s"
-msgstr "解析JSON失败: %s"
 
 #: src/core/ReconnectConfig.h:22
 msgid "Auto reconnect on disconnect"
@@ -414,95 +498,95 @@ msgstr "连接成功。"
 msgid "Codec '%s' encode failed"
 msgstr "编解码器 '%s' 编码失败"
 
-#: src/protocols/modbus/ModbusProtocol.cpp:29
-#: src/protocols/modbus/ModbusProtocol.cpp:113
+#: src/protocols/modbus/ModbusProtocol.cpp:30
+#: src/protocols/modbus/ModbusProtocol.cpp:114
 msgid "Slave ID:"
 msgstr "从站 ID："
 
-#: src/protocols/modbus/ModbusProtocol.cpp:30
+#: src/protocols/modbus/ModbusProtocol.cpp:31
 msgid "Timeout (ms):"
 msgstr "超时（毫秒）："
 
-#: src/protocols/modbus/ModbusProtocol.cpp:42
+#: src/protocols/modbus/ModbusProtocol.cpp:43
 msgid "TCP"
 msgstr "TCP"
 
-#: src/protocols/modbus/ModbusProtocol.cpp:42
+#: src/protocols/modbus/ModbusProtocol.cpp:43
 msgid "RTU"
 msgstr "RTU"
 
-#: src/protocols/modbus/ModbusProtocol.cpp:42
+#: src/protocols/modbus/ModbusProtocol.cpp:43
 msgid "ASCII"
 msgstr "ASCII"
 
-#: src/protocols/modbus/ModbusProtocol.cpp:47
+#: src/protocols/modbus/ModbusProtocol.cpp:48
 msgid "Host:"
 msgstr "主机："
 
-#: src/protocols/modbus/ModbusProtocol.cpp:49
-#: src/protocols/modbus/ModbusProtocol.cpp:63
+#: src/protocols/modbus/ModbusProtocol.cpp:50
+#: src/protocols/modbus/ModbusProtocol.cpp:64
 #: src/protocols/serial/SerialProtocol.cpp:57
 msgid "Port:"
 msgstr "端口："
 
-#: src/protocols/modbus/ModbusProtocol.cpp:52
-#: src/protocols/modbus/ModbusProtocol.cpp:87
+#: src/protocols/modbus/ModbusProtocol.cpp:53
+#: src/protocols/modbus/ModbusProtocol.cpp:88
 msgid "Role:"
 msgstr "角色："
 
-#: src/protocols/modbus/ModbusProtocol.cpp:57
-#: src/protocols/modbus/ModbusProtocol.cpp:92
+#: src/protocols/modbus/ModbusProtocol.cpp:58
+#: src/protocols/modbus/ModbusProtocol.cpp:93
 msgid "Client (Master)"
 msgstr "客户端（主站）"
 
-#: src/protocols/modbus/ModbusProtocol.cpp:57
-#: src/protocols/modbus/ModbusProtocol.cpp:92
+#: src/protocols/modbus/ModbusProtocol.cpp:58
+#: src/protocols/modbus/ModbusProtocol.cpp:93
 msgid "Server (Slave)"
 msgstr "服务器（从站）"
 
-#: src/protocols/modbus/ModbusProtocol.cpp:66
+#: src/protocols/modbus/ModbusProtocol.cpp:67
 #: src/protocols/serial/SerialProtocol.cpp:60
 msgid "Baud Rate:"
 msgstr "波特率："
 
-#: src/protocols/modbus/ModbusProtocol.cpp:79
+#: src/protocols/modbus/ModbusProtocol.cpp:80
 #: src/protocols/serial/SerialProtocol.cpp:84
 msgid "Parity:"
 msgstr "校验位："
 
-#: src/protocols/modbus/ModbusProtocol.cpp:84
+#: src/protocols/modbus/ModbusProtocol.cpp:85
 #: src/protocols/serial/SerialProtocol.cpp:89
 #: src/protocols/serial/SerialProtocol.cpp:107
 msgid "None"
 msgstr "无"
 
-#: src/protocols/modbus/ModbusProtocol.cpp:84
+#: src/protocols/modbus/ModbusProtocol.cpp:85
 #: src/protocols/serial/SerialProtocol.cpp:90
 msgid "Even"
 msgstr "偶校验"
 
-#: src/protocols/modbus/ModbusProtocol.cpp:84
+#: src/protocols/modbus/ModbusProtocol.cpp:85
 #: src/protocols/serial/SerialProtocol.cpp:91
 msgid "Odd"
 msgstr "奇校验"
 
-#: src/protocols/modbus/ModbusProtocol.cpp:115
+#: src/protocols/modbus/ModbusProtocol.cpp:116
 msgid "Function Code:"
 msgstr "功能码："
 
-#: src/protocols/modbus/ModbusProtocol.cpp:128
+#: src/protocols/modbus/ModbusProtocol.cpp:129
 msgid "Start Address:"
 msgstr "起始地址："
 
-#: src/protocols/modbus/ModbusProtocol.cpp:130
+#: src/protocols/modbus/ModbusProtocol.cpp:131
 msgid "Count:"
 msgstr "数量："
 
-#: src/protocols/modbus/ModbusProtocol.cpp:131
+#: src/protocols/modbus/ModbusProtocol.cpp:132
 msgid "Write Values (comma sep):"
 msgstr "写入值（逗号分隔）："
 
-#: src/protocols/modbus/ModbusProtocol.h:12
+#: src/protocols/modbus/ModbusProtocol.h:14
 msgid "&Modbus"
 msgstr "&Modbus"
 
@@ -568,51 +652,51 @@ msgstr "串口已关闭"
 msgid "Serial port read error"
 msgstr "串口读取错误"
 
-#: src/protocols/tcp/TcpProtocol.cpp:32
+#: src/protocols/tcp/TcpProtocol.cpp:33
 msgid "Client"
 msgstr "客户端"
 
-#: src/protocols/tcp/TcpProtocol.cpp:32
+#: src/protocols/tcp/TcpProtocol.cpp:33
 msgid "Server"
 msgstr "服务器"
 
-#: src/protocols/tcp/TcpProtocol.cpp:37
+#: src/protocols/tcp/TcpProtocol.cpp:38
 msgid "Remote Host:"
 msgstr "远程主机："
 
-#: src/protocols/tcp/TcpProtocol.cpp:39
+#: src/protocols/tcp/TcpProtocol.cpp:40
 msgid "Remote Port:"
 msgstr "远程端口："
 
-#: src/protocols/tcp/TcpProtocol.cpp:41
+#: src/protocols/tcp/TcpProtocol.cpp:42
 msgid "Local Host (optional):"
 msgstr "本地主机（可选）："
 
-#: src/protocols/tcp/TcpProtocol.cpp:43
+#: src/protocols/tcp/TcpProtocol.cpp:44
 msgid "Local Port (0 = auto):"
 msgstr "本地端口（0 = 自动）："
 
-#: src/protocols/tcp/TcpProtocol.cpp:45
+#: src/protocols/tcp/TcpProtocol.cpp:46
 msgid "Connect Timeout (ms):"
 msgstr "连接超时（毫秒）："
 
-#: src/protocols/tcp/TcpProtocol.cpp:57
+#: src/protocols/tcp/TcpProtocol.cpp:58
 msgid "Listen Host:"
 msgstr "监听地址："
 
-#: src/protocols/tcp/TcpProtocol.cpp:59
+#: src/protocols/tcp/TcpProtocol.cpp:60
 msgid "Listen Port:"
 msgstr "监听端口："
 
-#: src/protocols/tcp/TcpProtocol.cpp:61
+#: src/protocols/tcp/TcpProtocol.cpp:62
 msgid "Max Clients:"
 msgstr "最大客户端数："
 
-#: src/protocols/tcp/TcpProtocol.cpp:62
+#: src/protocols/tcp/TcpProtocol.cpp:63
 msgid "Listen Backlog:"
 msgstr "监听队列长度："
 
-#: src/protocols/tcp/TcpProtocol.h:12
+#: src/protocols/tcp/TcpProtocol.h:14
 msgid "&TCP/IP"
 msgstr "TCP/IP"
 
@@ -769,11 +853,11 @@ msgstr "日志"
 msgid "Log window opened"
 msgstr "日志窗口已打开"
 
-#: src/ui/LogFrame.cpp:34 src/ui/SessionPanel.cpp:103
+#: src/ui/LogFrame.cpp:34 src/ui/SessionPanel.cpp:212
 msgid "Clear"
 msgstr "清空"
 
-#: src/ui/LogFrame.cpp:37 src/ui/SessionPanel.cpp:102
+#: src/ui/LogFrame.cpp:37 src/ui/SessionPanel.cpp:211
 msgid "Auto Scroll"
 msgstr "自动滚动"
 
@@ -781,142 +865,351 @@ msgstr "自动滚动"
 msgid "Log window hidden"
 msgstr "日志窗口已隐藏"
 
-#: src/ui/SessionPanel.cpp:59
+#: src/ui/SessionPanel.cpp:22
+msgid "Variable Name:"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:29
+msgid "Variable JSON (type, access, params):"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:107
+msgid "Manual Mode"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:108
+msgid "Interactive Mode"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:109
+#, fuzzy
+msgid "Auto Mode"
+msgstr "模式"
+
+#: src/ui/SessionPanel.cpp:138
 msgid "Session Status"
 msgstr "会话状态"
 
-#: src/ui/SessionPanel.cpp:71
+#: src/ui/SessionPanel.cpp:149
 msgid "Received: 0 bytes"
 msgstr "已接收: 0 字节"
 
-#: src/ui/SessionPanel.cpp:72
+#: src/ui/SessionPanel.cpp:150
 msgid "Sent: 0 bytes"
 msgstr "已发送: 0 字节"
 
-#: src/ui/SessionPanel.cpp:73
+#: src/ui/SessionPanel.cpp:151
 msgid "Clients: 0"
 msgstr "客户端: 0"
 
-#: src/ui/SessionPanel.cpp:81 src/ui/SessionPanel.cpp:269
+#: src/ui/SessionPanel.cpp:159 src/ui/SessionPanel.cpp:756
 msgid "Open Connection"
 msgstr "打开连接"
 
-#: src/ui/SessionPanel.cpp:85
+#: src/ui/SessionPanel.cpp:162
 msgid "Configure Connection..."
 msgstr "配置连接..."
 
-#: src/ui/SessionPanel.cpp:98
-msgid "Data Log"
-msgstr "数据日志"
+#: src/ui/SessionPanel.cpp:169
+#, fuzzy
+msgid "Communication Variables"
+msgstr "连接失败。"
 
-#: src/ui/SessionPanel.cpp:100
-msgid "HEX Display"
-msgstr "HEX 显示"
+#: src/ui/SessionPanel.cpp:173
+msgid "Name"
+msgstr ""
 
-#: src/ui/SessionPanel.cpp:101
-msgid "Timestamp"
-msgstr "时间戳"
+#: src/ui/SessionPanel.cpp:174
+msgid "Type"
+msgstr ""
 
-#: src/ui/SessionPanel.cpp:122 src/ui/SessionPanel.cpp:126
-msgid "Send"
-msgstr "发送"
+#: src/ui/SessionPanel.cpp:175
+msgid "Access"
+msgstr ""
 
-#: src/ui/SessionPanel.cpp:128
-msgid "Append newline"
-msgstr "追加换行"
+#: src/ui/SessionPanel.cpp:176
+msgid "Value"
+msgstr ""
 
-#: src/ui/SessionPanel.cpp:144
+#: src/ui/SessionPanel.cpp:181 src/ui/SessionPanel.cpp:461
+msgid "Add Variable"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:182 src/ui/SessionPanel.cpp:491
+#, fuzzy
+msgid "Edit Variable"
+msgstr "连接失败。"
+
+#: src/ui/SessionPanel.cpp:183
+msgid "Delete Variable"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:195
+#, fuzzy
 msgid "Operation Request"
 msgstr "操作请求"
 
-#: src/ui/SessionPanel.cpp:158
-msgid "Execute"
-msgstr "执行"
+#: src/ui/SessionPanel.cpp:197
+msgid "Please select a variable from the list above."
+msgstr ""
 
-#: src/ui/SessionPanel.cpp:175
+#: src/ui/SessionPanel.cpp:207
+msgid "Data Log"
+msgstr "数据日志"
+
+#: src/ui/SessionPanel.cpp:209
+msgid "HEX Display"
+msgstr "HEX 显示"
+
+#: src/ui/SessionPanel.cpp:210
+msgid "Timestamp"
+msgstr "时间戳"
+
+#: src/ui/SessionPanel.cpp:229 src/ui/SessionPanel.cpp:234
+msgid "Send"
+msgstr "发送"
+
+#: src/ui/SessionPanel.cpp:236
+msgid "Append newline"
+msgstr "追加换行"
+
+#: src/ui/SessionPanel.cpp:248
 msgid "Result Log"
 msgstr "结果日志"
 
-#: src/ui/SessionPanel.cpp:221
+#: src/ui/SessionPanel.cpp:330
+#, fuzzy
+msgid "Target Value:"
+msgstr "目标: %s"
+
+#: src/ui/SessionPanel.cpp:340
+#, fuzzy
+msgid "Read"
+msgstr "就绪"
+
+#: src/ui/SessionPanel.cpp:341
+msgid "Write"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:375
+#, fuzzy
+msgid "Reading variable: "
+msgstr "连接失败。"
+
+#: src/ui/SessionPanel.cpp:393
+#, fuzzy
+msgid "Read failed."
+msgstr "发送失败"
+
+#: src/ui/SessionPanel.cpp:432
+#, fuzzy
+msgid "Writing variable: "
+msgstr "连接失败。"
+
+#: src/ui/SessionPanel.cpp:448
+#, fuzzy
+msgid "Write failed: "
+msgstr "发送失败"
+
+#: src/ui/SessionPanel.cpp:465
+msgid "Variable name cannot be empty."
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:521
+msgid "Step Name"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:522
+#, fuzzy
+msgid "Status"
+msgstr "会话状态"
+
+#: src/ui/SessionPanel.cpp:526
+msgid "Run All"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:526
+#, fuzzy
+msgid "Execute Step"
+msgstr "执行"
+
+#: src/ui/SessionPanel.cpp:527
+msgid "Stop"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:528
+#, fuzzy
+msgid "Add"
+msgstr "奇校验"
+
+#: src/ui/SessionPanel.cpp:529
+msgid "Edit"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:530
+msgid "Delete"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:540 src/ui/SessionPanel.cpp:640
+msgid "Pending"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:550
+msgid "Add Step"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:553
+msgid "Step Name:"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:557
+msgid "Action:"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:567
+msgid "Variable:"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:574
+msgid "Assert:"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:605
+#, fuzzy
+msgid "Edit Step (JSON)"
+msgstr "执行"
+
+#: src/ui/SessionPanel.cpp:635
+msgid "No valid steps."
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:652
+msgid "Passed"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:652
+msgid "Failed"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:660
+#, fuzzy
+msgid "Test Finished Successfully"
+msgstr "任务栏图标设置成功"
+
+#: src/ui/SessionPanel.cpp:660
+#, fuzzy
+msgid "Test Failed"
+msgstr "发送失败"
+
+#: src/ui/SessionPanel.cpp:661
+#, fuzzy
+msgid "Result"
+msgstr "结果日志"
+
+#: src/ui/SessionPanel.cpp:670
+#, c-format
+msgid "Step %d finished. Ready for next step."
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:671
+msgid "Interactive"
+msgstr ""
+
+#: src/ui/SessionPanel.cpp:710
 #, c-format
 msgid "Target: %s"
 msgstr "目标: %s"
 
-#: src/ui/SessionPanel.cpp:236
+#: src/ui/SessionPanel.cpp:724
 msgid "Idle"
 msgstr "空闲"
 
-#: src/ui/SessionPanel.cpp:240
+#: src/ui/SessionPanel.cpp:728
 msgid "Connecting..."
 msgstr "连接中..."
 
-#: src/ui/SessionPanel.cpp:244
+#: src/ui/SessionPanel.cpp:732
 msgid "Reconnecting..."
 msgstr "重新连接中..."
 
-#: src/ui/SessionPanel.cpp:250
+#: src/ui/SessionPanel.cpp:738
 #, c-format
 msgid "Connected (%d)"
 msgstr "已连接 (%d)"
 
-#: src/ui/SessionPanel.cpp:251
+#: src/ui/SessionPanel.cpp:739
 msgid "Listening"
 msgstr "正在监听"
 
-#: src/ui/SessionPanel.cpp:253
+#: src/ui/SessionPanel.cpp:741
 msgid "Connected"
 msgstr "已连接"
 
-#: src/ui/SessionPanel.cpp:272
+#: src/ui/SessionPanel.cpp:759
 msgid "Cancel"
 msgstr "取消"
 
-#: src/ui/SessionPanel.cpp:275
+#: src/ui/SessionPanel.cpp:762
 msgid "Cancel Reconnecting"
 msgstr "取消重连"
 
-#: src/ui/SessionPanel.cpp:278
+#: src/ui/SessionPanel.cpp:765
 msgid "Stop Listening"
 msgstr "停止监听"
 
-#: src/ui/SessionPanel.cpp:278
+#: src/ui/SessionPanel.cpp:765
 msgid "Disconnect"
 msgstr "断开连接"
 
-#: src/ui/SessionPanel.cpp:325
+#: src/ui/SessionPanel.cpp:811
 #, c-format
 msgid "Received: %llu bytes"
 msgstr "已接收: %llu 字节"
 
-#: src/ui/SessionPanel.cpp:331
+#: src/ui/SessionPanel.cpp:817
 #, c-format
 msgid "Reconnecting (attempt %d) ..."
 msgstr "正在重连（第 %d 次）..."
 
-#: src/ui/SessionPanel.cpp:339
+#: src/ui/SessionPanel.cpp:825
 #, c-format
 msgid "Client #%d connected"
 msgstr "客户端 #%d 已连接"
 
-#: src/ui/SessionPanel.cpp:347
+#: src/ui/SessionPanel.cpp:833
 #, c-format
 msgid "Client #%d disconnected"
 msgstr "客户端 #%d 已断开"
 
-#: src/ui/SessionPanel.cpp:389
+#: src/ui/SessionPanel.cpp:874
 #, c-format
 msgid "Sent: %llu bytes"
 msgstr "已发送: %llu 字节"
 
-#: src/ui/SessionPanel.cpp:393
+#: src/ui/SessionPanel.cpp:878
 msgid "Send failed"
 msgstr "发送失败"
 
-#: src/ui/SessionPanel.cpp:404
+#: src/ui/SessionPanel.cpp:889
 #, c-format
 msgid "Clients: %d"
 msgstr "客户端: %d"
 
-#: src/ui/SessionPanel.cpp:457
-msgid "Executing request..."
-msgstr "正在执行请求..."
+#~ msgid "Execute"
+#~ msgstr "执行"
+
+#, fuzzy
+#~ msgid "Executing request in background..."
+#~ msgstr "正在执行请求..."
+
+#, fuzzy
+#~ msgid "Address"
+#~ msgstr "起始地址："
+
+#, fuzzy
+#~ msgid "Insert Step"
+#~ msgstr "执行"
+
+#, c-format
+#~ msgid "Failed to parse JSON: %s"
+#~ msgstr "解析JSON失败: %s"

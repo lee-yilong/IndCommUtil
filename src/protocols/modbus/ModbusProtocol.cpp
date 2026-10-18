@@ -1,6 +1,8 @@
 #include "ModbusProtocol.h"
 
+#include "ModbusReadStep.h"
 #include "ModbusSession.h"
+#include "ModbusWriteStep.h"
 #include "core/ReconnectConfig.h"
 
 namespace icu {
@@ -171,6 +173,17 @@ std::string ModbusProtocol::MakeDefaultFileName(
     }
     return "ModbusRTU_" + role + "_" + sanitize(GetStr(fields, "portName", "COM3")) + "_" +
            std::to_string(GetInt(fields, "baudRate", 9600)) + ".json";
+}
+
+ITestStepPtr ModbusProtocol::CreateTestStep(const std::string& stepType,
+                                            const nlohmann::json& params) {
+    if (stepType == "read" || stepType == "modbus_read" || stepType == "execute") {
+        return std::make_unique<ModbusReadStep>(params);
+    }
+    if (stepType == "write" || stepType == "modbus_write") {
+        return std::make_unique<ModbusWriteStep>(params);
+    }
+    return nullptr;
 }
 
 }  // namespace icu

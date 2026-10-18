@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(IndustrialCommunicationUtility
+project(IndCommUtil
     VERSION 0.1.0
     DESCRIPTION "工业通信实用工具（多协议通讯测试/调试工具）"
     HOMEPAGE_URL "https://github.com/lee-yilong/IndCommUtil"
@@ -9,6 +9,7 @@ project(IndustrialCommunicationUtility
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(I18N_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/resources/i18n")
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
@@ -80,175 +81,116 @@ add_subdirectory(third_party/json)
 
 set(MODBUSLIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ModbusLib")
 if(EXISTS "${MODBUSLIB_ROOT}/CMakeLists.txt")
-    add_subdirectory(${MODBUSLIB_ROOT} ${CMAKE_CURRENT_BINARY_DIR}/ModbusLib)
+    # 在引入 ModbusLib 之前，关掉它的 examples 构建
+    set(MB_BUILD_EXAMPLES OFF CACHE BOOL "Disable ModbusLib examples" FORCE)
+    add_subdirectory(${MODBUSLIB_ROOT} ${CMAKE_CURRENT_BINARY_DIR}/ModbusLib EXCLUDE_FROM_ALL)
     set(ICU_HAS_MODBUSLIB ON)
 else()
     message(WARNING "ModbusLib not found; Modbus protocol disabled")
     set(ICU_HAS_MODBUSLIB OFF)
 endif()
 
-add_executable(IndustrialCommunicationUtility WIN32
-    ${APP_SOURCES}
-    ${APP_HEADERS}
-    resources/app.rc
+# =========================================================================
+# 核心静态库（GUI 与 CLI 共用）
+# =========================================================================
+file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/core/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/protocols/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/config/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/log/*.cpp"
 )
 
-# wx 3.3 在非 NDEBUG 构建下默认 wxDEBUG_LEVEL=1，
-# 会让 wxASSERT 展开成对 wxOnAssert 的引用（只在 debug 库里有）。
-# 项目链接的是 release wx 库，需要强制 wxDEBUG_LEVEL=0 才能链接。
-# 不影响项目自己的 assert（<cassert> 依赖 NDEBUG，与此无关）。
-target_compile_definitions(IndustrialCommunicationUtility PRIVATE wxDEBUG_LEVEL=0)
+add_library(icu_core_lib STATIC ${CORE_SOURCES})
 
-# =========================================================================
-# 头文件搜索路径
-# =========================================================================
-target_include_directories(IndustrialCommunicationUtility PRIVATE
+target_compile_definitions(icu_core_lib PRIVATE wxDEBUG_LEVEL=0 NO_GUI_SINK)
+target_include_directories(icu_core_lib PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
     "${CMAKE_CURRENT_BINARY_DIR}/generated"
     "${WX_ROOT}/include"
     "${WX_SETUP_DIR}"
     "${SPDLOG_ROOT}/include"
+    "${MODBUSLIB_ROOT}/src"
 )
 
-target_link_directories(IndustrialCommunicationUtility PRIVATE
-    "${WX_LIB_DIR}"
+target_link_directories(icu_core_lib PUBLIC "${WX_LIB_DIR}")
+
+# 核心库只链接基础依赖，不链接 GUI 专用的 wx 库
+target_link_libraries(icu_core_lib PUBLIC
+    "${WX_LIB_DIR}/libwx_baseu-3.3.dll.a"
+    "${WX_LIB_DIR}/libwx_baseu_net-3.3.dll.a"
+    nlohmann_json::nlohmann_json
+    ws2_32
 )
 
+if(ICU_HAS_MODBUSLIB)
+    target_link_libraries(icu_core_lib PUBLIC modbus)
+endif()
+
 # =========================================================================
-# 链接 wxWidgets 与系统库
+# GUI 主程序 (IndComm.exe)
 # =========================================================================
-target_link_libraries(IndustrialCommunicationUtility PRIVATE
+file(GLOB_RECURSE GUI_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/app/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/settings/*.cpp"
+)
+
+# ★ 修改目标名称为 IndComm
+add_executable(IndComm WIN32
+    src/main.cpp
+    ${GUI_SOURCES}
+    ${APP_HEADERS}
+    resources/app.rc
+)
+
+target_compile_definitions(IndComm PRIVATE wxDEBUG_LEVEL=0)
+target_link_libraries(IndComm PRIVATE
+    icu_core_lib
+    # 必须放在系统库前面，确保符号解析顺序
     "${WX_LIB_DIR}/libwx_mswu_core-3.3.dll.a"
     "${WX_LIB_DIR}/libwx_baseu-3.3.dll.a"
     "${WX_LIB_DIR}/libwx_baseu_net-3.3.dll.a"
 
-    nlohmann_json::nlohmann_json
-
     kernel32 user32 gdi32 comdlg32 winspool winmm
     shell32 ole32 oleaut32 uuid comctl32 rpcrt4
-    wsock32 odbc32 ws2_32
+)
+
+# GUI 专属链接
+target_link_libraries(IndComm PRIVATE
+    kernel32 user32 gdi32 comdlg32 winspool winmm
+    shell32 ole32 oleaut32 uuid comctl32 rpcrt4
 )
 
 # =========================================================================
-# MinGW 编码与静态运行时
+# CLI 命令行工具 (indcomm-cli.exe)
 # =========================================================================
-if(MINGW)
-    target_compile_options(IndustrialCommunicationUtility PRIVATE
-        -finput-charset=UTF-8 -fexec-charset=UTF-8)
-    target_link_options(IndustrialCommunicationUtility PRIVATE
-        -static-libgcc -static-libstdc++ -static)
-endif()
+# ★ 修改目标名称为 indcomm-cli
+add_executable(indcomm-cli
+    src/cli/main.cpp
+)
+
+target_link_libraries(indcomm-cli PRIVATE icu_core_lib)
+target_compile_definitions(icu_core_lib PRIVATE)
+target_compile_definitions(IndComm PRIVATE ICU_BUILD_GUI)
 
 # =========================================================================
-# 构建后复制 wxWidgets DLL
+# 复制依赖 DLL 及 i18n 资源
 # =========================================================================
 file(GLOB WX_DLLS "${WX_LIB_DIR}/*.dll")
 
-add_custom_command(TARGET IndustrialCommunicationUtility POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${WX_DLLS}
-        $<TARGET_FILE_DIR:IndustrialCommunicationUtility>
-    COMMENT "Copying wxWidgets DLLs to output directory"
+# ★ 把目标替换为 IndComm
+# 确保 i18n 目录存在，如果不存在就创建一个（防止空目录报错）
+add_custom_command(TARGET IndComm POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${WX_DLLS} $<TARGET_FILE_DIR:IndComm>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:modbus> $<TARGET_FILE_DIR:IndComm>
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:IndComm>/resources/i18n"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/resources/i18n" "$<TARGET_FILE_DIR:IndComm>/resources/i18n"
+    COMMENT "Copying DLLs and i18n to GUI output"
 )
 
-# =========================================================================
-# i18n：每次构建都重新编译 .po -> .mo
-# =========================================================================
-find_program(GETTEXT_XGETTEXT xgettext HINTS
-    "C:/msys64/ucrt64/bin" "C:/msys64/usr/bin")
-find_program(GETTEXT_MSGMERGE msgmerge HINTS
-    "C:/msys64/ucrt64/bin" "C:/msys64/usr/bin")
-find_program(GETTEXT_MSGFMT   msgfmt   HINTS
-    "C:/msys64/ucrt64/bin" "C:/msys64/usr/bin")
-
-set(I18N_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/resources/i18n")
-set(POT_FILE    "${I18N_SRC_DIR}/IndustrialCommunicationUtility.pot")
-set(I18N_LANGS  zh_CN en_US)
-
-if(GETTEXT_XGETTEXT AND GETTEXT_MSGMERGE AND GETTEXT_MSGFMT)
-
-    # ---------- 收集相对路径的源文件（含 .h，因为 header-only Codec 里有 _()） ----------
-    file(GLOB_RECURSE I18N_SOURCES CONFIGURE_DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
-    )
-
-    set(I18N_SRC_REL "")
-    foreach(f ${I18N_SOURCES})
-        file(RELATIVE_PATH rel "${CMAKE_CURRENT_SOURCE_DIR}" "${f}")
-        list(APPEND I18N_SRC_REL "${rel}")
-    endforeach()
-
-    # ---------- i18n_update 目标：提取 + 合并 + 编译 ----------
-    add_custom_target(i18n_update ALL
-        COMMAND ${CMAKE_COMMAND} -E chdir "${CMAKE_CURRENT_SOURCE_DIR}"
-                "${GETTEXT_XGETTEXT}"
-                --language=C++
-                --keyword=_
-                --keyword=wxTRANSLATE
-                --from-code=UTF-8
-                -o "${POT_FILE}"
-                ${I18N_SRC_REL}
-        COMMENT "Extracting i18n strings (relative paths)"
-        VERBATIM
-    )
-
-    foreach(lang ${I18N_LANGS})
-        set(PO_FILE "${I18N_SRC_DIR}/${lang}/LC_MESSAGES/IndustrialCommunicationUtility.po")
-        set(MO_FILE "${I18N_SRC_DIR}/${lang}/LC_MESSAGES/IndustrialCommunicationUtility.mo")
-
-        add_custom_command(TARGET i18n_update POST_BUILD
-            COMMAND "${GETTEXT_MSGMERGE}"
-                    --update --backup=none --quiet
-                    "${PO_FILE}" "${POT_FILE}"
-            COMMAND "${GETTEXT_MSGFMT}"
-                    --check-format
-                    -o "${MO_FILE}"
-                    "${PO_FILE}"
-            COMMENT "Merging & compiling translation for ${lang}"
-            VERBATIM
-        )
-    endforeach()
-
-    add_dependencies(IndustrialCommunicationUtility i18n_update)
-
-    add_custom_command(TARGET IndustrialCommunicationUtility POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${I18N_SRC_DIR}"
-            "$<TARGET_FILE_DIR:IndustrialCommunicationUtility>/resources/i18n"
-        COMMENT "Copying i18n .mo files"
-    )
-
-else()
-    message(WARNING "gettext tools not found; i18n disabled")
-endif()
-
-# =========================================================================
-# 测试目标
-# =========================================================================
-if(ICU_BUILD_TESTS)
-    add_subdirectory(tests)
-endif()
-
-# =========================================================================
-# 覆盖率（仅当 ICU_BUILD_COVERAGE=ON 且 GCC/MinGW）
-# =========================================================================
-if(ICU_BUILD_COVERAGE AND MINGW)
-    message(STATUS "Coverage instrumentation enabled (GCC --coverage)")
-endif()
-
-if(ICU_HAS_MODBUSLIB)
-    # 1. 把 ModbusLib 的 src 目录加入头文件搜索路径
-    target_include_directories(IndustrialCommunicationUtility PRIVATE "${MODBUSLIB_ROOT}/src")
-
-    # 2. 链接库
-    target_link_libraries(IndustrialCommunicationUtility PRIVATE modbus)
-
-    # 3. 拷贝 DLL
-    add_custom_command(TARGET IndustrialCommunicationUtility POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_FILE:modbus>
-            $<TARGET_FILE_DIR:IndustrialCommunicationUtility>
-        COMMENT "Copying ModbusLib DLL to output directory"
-    )
-endif()
+# ★ 把目标替换为 indcomm-cli
+add_custom_command(TARGET indcomm-cli POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${WX_DLLS} $<TARGET_FILE_DIR:indcomm-cli>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:modbus> $<TARGET_FILE_DIR:indcomm-cli>
+    COMMENT "Copying DLLs to CLI output"
+)
