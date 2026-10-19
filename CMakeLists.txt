@@ -70,6 +70,7 @@ option(ICU_BUILD_COVERAGE "Enable code coverage instrumentation" OFF)
 if(ICU_BUILD_TESTS)
     enable_testing()
     include(CTest)
+    add_subdirectory(tests)
 endif()
 
 # =========================================================================

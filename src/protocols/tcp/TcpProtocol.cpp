@@ -122,4 +122,8 @@ ITestStepPtr TcpProtocol::CreateTestStep(const std::string& stepType,
     return nullptr;
 }
 
+std::vector<FieldDescriptor> TcpProtocol::VariableParamsFields() const {
+    return {};  // TCP 不需要额外的配置参数，直接复用变量的 currentValue
+}
+
 }  // namespace icu

@@ -26,6 +26,8 @@ public:
 
     ITestStepPtr CreateTestStep(const std::string& stepType, const nlohmann::json& params) override;
 
+    std::vector<FieldDescriptor> VariableParamsFields() const override;
+
 private:
     std::vector<FieldDescriptor> ClientFields() const;
     std::vector<FieldDescriptor> ServerFields() const;

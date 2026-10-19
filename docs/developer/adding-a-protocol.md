@@ -47,8 +47,13 @@ public:
     std::vector<std::string> ModeNames() const override { return {"Client", "Server"}; }
 
     std::vector<FieldDescriptor> FieldsForMode(int modeIndex) const override;
-    SessionPtr CreateSession(int modeIndex,
-                             const std::map<std::string, FieldValue>& fields) override;
+
+    // 如果你的协议有专属的变量参数（如 Modbus 的寄存器地址），实现此接口
+    // 如果像纯 TCP 那样只发字符串，返回空列表即可
+    std::vector<FieldDescriptor> VariableParamsFields() const override;
+
+    ISessionPtr CreateSession(int modeIndex,
+                              const std::map<std::string, FieldValue>& fields) override;
     std::string MakeDefaultFileName(
         int modeIndex, const std::map<std::string, FieldValue>& fields) const override;
 };
@@ -60,11 +65,12 @@ public:
 
 | 项 | 要求 |
 |---|---|
-| `Id()` | 全局唯一，小写，作为 `.conn` 里的 `Protocol=` 值 |
+| `Id()` | 全局唯一，小写，作为 `.json` 里的 `Protocol=` 值 |
 | `DisplayName()` | 翻译 key；`&` 是菜单助记符 |
 | `HasModes()` | 单模式协议返回 `false`，`ModeNames()` 可返回空 |
 | `ModeNames()` | 翻译 key 列表，顺序即 `modeIndex` |
 | `FieldsForMode(i)` | 返回该模式的字段描述列表，顺序即 UI 顺序 |
+| `VariableParamsFields()` | 返回变量参数描述，如 slaveId、functionCode，用于 UI 自动生成操作表单 |
 | `MakeDefaultFileName()` | 跨平台合法（不含 `\/:*?"<>|`），参考 TCP 的 `sanitize` |
 
 > `IProtocol` 的字符串接口都是 `std::string`（UTF-8）。`DisplayName()` 若要返回
@@ -90,16 +96,29 @@ std::vector<FieldDescriptor> FooProtocol::ClientFields() const {
 ```
 
 - `Int` 用 `minValue` / `maxValue` 约束（生成 `wxSpinCtrl`）。
-- `Choice` 用 `choices`，元素是 `{value, label}`：`value` 存进 `.conn`，`label` 是翻译 key。
+- `Choice` 用 `choices`，元素是 `{value, label}`：`value` 存进 `.json`，`label` 是翻译 key。
 - `Bool` 生成复选框。
 - 每个 `label` 都要能在 `.po` 里找到，否则英文界面会显示中文原文。
+
+### 描述变量专属参数（阶段 10）
+
+如果协议有专属操作参数（比如需要指定起始地址），在 `VariableParamsFields()` 中返回：
+
+```cpp
+std::vector<FieldDescriptor> FooProtocol::VariableParamsFields() const {
+    return {
+        {"address", wxTRANSLATE("Address:"), FieldValue::Type::Int, FieldValue(0), 0, 65535}
+    };
+}
+```
+UI 的 `VariableEditDialog` 和主界面的 `Operation Request` 会根据这个列表自动生成对应的控件。
 
 ---
 
 ## 4. 创建会话
 
 ```cpp
-SessionPtr FooProtocol::CreateSession(int modeIndex,
+ISessionPtr FooProtocol::CreateSession(int modeIndex,
                                       const std::map<std::string, FieldValue>& fields) {
     FooConfig cfg;
     cfg.host = GetStr(fields, "host", "127.0.0.1");
@@ -107,7 +126,7 @@ SessionPtr FooProtocol::CreateSession(int modeIndex,
 
     auto transport = std::make_unique<FooTransport>(cfg);
     auto codec = std::make_unique<ModbusRtuCodec>();   // 或 RawCodec
-    return std::make_unique<Session>(std::move(transport), std::move(codec));
+    return std::make_unique<StreamSession>(std::move(transport), std::move(codec));
 }
 ```
 
@@ -182,7 +201,7 @@ void RegisterBuiltinProtocols() {
 }
 ```
 
-> `All()` 遍历 `std::map`，所以**菜单顺序按协议 id 字母序**，与注册顺序无关。
+> `All()` 遍历 `std::vector`，**菜单顺序按协议注册顺序**。
 
 不需要改任何 UI / 菜单代码：`MainFrame` 在构造时遍历 `ProtocolRegistry::All()` 生成菜单项。
 
@@ -196,7 +215,7 @@ void RegisterBuiltinProtocols() {
 #include "doctest.h"
 
 #include "core/ProtocolRegistry.h"
-#include "core/Session.h"
+#include "core/StreamSession.h"
 #include "protocols/foo/FooProtocol.h"
 
 using namespace icu;
@@ -262,6 +281,7 @@ msgattrib --only-fuzzy   resources/i18n/zh_CN/LC_MESSAGES/*.po
 - [ ] `FieldsForMode()` 返回的 label 都是翻译 key
 - [ ] `CreateSession()` 不依赖任何 UI
 - [ ] `MakeDefaultFileName()` 生成的名称跨平台合法
+- [ ] （阶段 10）已实现 `VariableParamsFields()`（无参数则返回空）
 - [ ] 已注册到 `RegisterBuiltinProtocols()`
 - [ ] 新增 label 已在 `.po` 里翻译
 - [ ] 已在根 `README.md` 第 8 节协议清单里更新状态

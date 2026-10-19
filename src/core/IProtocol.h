@@ -41,6 +41,9 @@ public:
     virtual ITestStepPtr CreateTestStep(const std::string& stepType, const nlohmann::json& params) {
         return nullptr;  // 默认不支持测试步骤
     }
+
+    // 返回当前协议下，变量的协议专属参数描述（用于 UI 动态生成表单）
+    virtual std::vector<FieldDescriptor> VariableParamsFields() const { return {}; }
 };
 
 using IProtocolPtr = std::unique_ptr<IProtocol>;

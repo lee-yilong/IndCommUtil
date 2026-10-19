@@ -28,7 +28,7 @@ MinGW 运行时没静态链接进去。本项目 CMake 已加 `-static-libgcc -s
 ### `cannot find -lwx_mswu_core-3.3`
 
 同样的原因：wxWidgets 没构建完。确认 `third_party/wxWidgets/lib/gcc_dll/` 下有
-`libwx_mswu_core-3.3.dll.a`。
+`libwx_mswu_core-3.3.dll.a`（或者标准布局的 `lib/` 目录）。
 
 ### `gettext tools not found; i18n disabled`
 
@@ -80,14 +80,16 @@ git rm --cached -r . >/dev/null && git reset --hard
   ```
 - 超过 `Max Clients` 后新连接会被拒绝，调大该值。
 
-### 服务器模式下「发送」是广播吗
-
-是。当前所有已连接客户端都会收到。定向发送（`SendTo`）已在 Transport 层实现，
-但 UI 尚未暴露（计划在阶段 9）。
-
 ---
 
 ## 3. 数据收发
+
+### 找不到底部的通用发送框了？
+
+在阶段 10 的 UX 重构后，底部的公共发送框已删除。所有的发送操作现在均通过**通讯变量**驱动。
+1. 在左侧列表选中一个变量。
+2. 在右侧 `Operation Request` 区域的 `Value:` 输入框中输入内容。
+3. 点击 `Send` 按钮即可发送。
 
 ### 收到的数据被拆成好几段 / 几段粘在一起
 
@@ -95,7 +97,7 @@ TCP 是**字节流**，没有消息边界。当前 TCP 用 `RawCodec` **透传**
 不做切帧，所以按 `recv` 的实际结果分段显示是正常现象。
 
 需要按帧解析（定长 / 分隔符 / 协议头）时要实现 `ICodec::Feed`，
-框架已支持（`ModbusRtuCodec` 计划在阶段 6）。
+框架已支持。
 
 ### 发送了但对端收不到
 
@@ -120,7 +122,7 @@ TCP 是**字节流**，没有消息边界。当前 TCP 用 `RawCodec` **透传**
 |---|---|
 | 文件不存在 / 路径不可读 | 文件真的在吗 |
 | JSON 语法错误 | 用编辑器检查括号、逗号、引号；或贴进 `python -m json.tool` 校验 |
-| `"protocol"` 指向未注册的协议 | 必须是 `tcp`（见根 `README.md` 第 8 节协议清单）|
+| `"protocol"` 指向未注册的协议 | 必须是 `tcp` / `serial` / `modbus`（见根 `README.md` 第 8 节）|
 
 `"mode"` 写错**不会**导致失败，会回退到 `modeIndex` 0（即第一个模式）。
 
@@ -129,27 +131,13 @@ TCP 是**字节流**，没有消息边界。当前 TCP 用 `RawCodec` **透传**
 - 键名拼错 → 该字段被忽略，用默认值。
 - **键名大小写敏感**（JSON 规范），必须是 `FieldDescriptor::key` 的原始大小写
   （如 `remoteHost`，不是 `RemoteHost`）。
-- 所有字段必须在顶层 `connection` 对象内。
+- 所有连接字段必须在顶层 `connection` 对象内。
 - 类型错误（如把 `remotePort` 写成字符串 `"502"` 而不是数字 `502`）会导致加载失败。
 
 ### 保存失败
 
 - 目标目录只读，或文件被占用。
 - 保存到 `C:\Program Files\...` 之类需要管理员权限的位置会失败，换用户目录。
-
-### `.json` 文件长什么样
-
-```json
-{
-  "connection": {
-    "protocol": "tcp",
-    "mode": "Client",
-    "remoteHost": "192.168.1.10",
-    "remotePort": 5020
-  }
-```
-
-纯文本 JSON，可以直接用文本编辑器改、纳入版本管理、脚本批量生成。
 
 ---
 
@@ -172,17 +160,10 @@ scripts/update_i18n.sh
 scripts/build.sh
 ```
 
-检查还有哪些没翻译：
-
-```bash
-msgattrib --untranslated resources/i18n/zh_CN/LC_MESSAGES/*.po
-msgattrib --only-fuzzy   resources/i18n/zh_CN/LC_MESSAGES/*.po
-```
-
 ### 窗口位置/大小没有被记住
 
-窗口几何存在 `wxConfig` 里。如果配置损坏，删掉对应键或重置整个配置。
-主窗口几何键：`/Window/Main/{X,Y,Width,Height,Maximized}`。
+窗口几何存在用户配置目录的 `settings.json` 里（底层由 `settings/` 模块托管）。
+如果配置损坏，删掉 `%APPDATA%/IndustrialCommunicationUtility/settings.json` 即可重置。
 
 ---
 
@@ -245,3 +226,4 @@ cmake -S . -B build -G "MinGW Makefiles" -DICU_BUILD_TESTS=ON
 - [TCP/IP 协议](tcp.md)
 - [构建指南](../developer/building.md)
 - [测试指南](../developer/testing.md)
+

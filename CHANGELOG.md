@@ -12,25 +12,25 @@
 
 ### 计划中
 
-- 阶段 5：串口协议
-- 阶段 6：Modbus RTU 协议
-- 阶段 7：更多协议（MQTT / Modbus TCP 等）
-- 阶段 8：应用设置完善（字体 / 主题 / 图标，`ui/SettingsDialog`）
-- 阶段 9：UI 打磨
-- 阶段 10：发布准备（打包、安装程序）
+- 阶段 11：SQLite 数据持久化与实时曲线
+- 阶段 12：更多协议（MQTT 等）
+- 阶段 13：应用设置完善（字体 / 主题 / 图标，`ui/SettingsDialog`）
+- 阶段 14：发布准备（打包、安装程序）
 
-### 已完成（阶段 4.7 清理）
+### 已完成（阶段 10 UX 重构与技术债清理）
 
-- 补齐 `en_US.po` 全部翻译，并清除 fuzzy / untranslated 条目。
-- 菜单、模式名与字段标签接入 gettext：`DisplayName()` 运行时翻译；`ModeNames()` 与
-  `FieldDescriptor` 保持稳定 key，由 UI 通过 `wxGetTranslation()` 翻译，避免语言影响 `.conn` 持久化值。
-- 修复 `tests/CMakeLists.txt` 中失效的 DLL 过滤：按 Debug / Release 只复制匹配的 wxWidgets DLL。
-- README 目录树移除不存在的 `tests/fixtures/` 说明。
+- **会话面板深度重构**：引入 `wxSplitterWindow`，左侧固定展示全局通讯变量池，右侧为多模式操作区，彻底解决界面拥挤与变量割裂问题。
+- **多协议动态表单**：新增 `IProtocol::VariableParamsFields()` 接口，`VariableEditDialog` 和 `SessionPanel` 操作区均根据协议自动生成参数控件（如 Modbus 功能码下拉框、TCP 空参数）。
+- **通讯变量单一值抽象**：彻底废除底部的通用发送框，所有收发均围绕唯一的 `CommVariable` 的 `Value` 展开，并通过 `RO/RW/WO` 属性严格控制。
+- **执行联动**：`TestRunner` 新增 `OnStepLog` 回调，执行自动化流程时，底层报文日志实时滚动显示在 UI 上。
+- **步骤管理增强**：测试步骤列表支持插入（选中后添加）、上移、下移操作，优化测试流编排体验。
 
 ### 修复
 
-- Windows 下非管理员启动时，`wxFileConfig` 在用户配置目录创建临时文件失败会导致
-  can't open user configuration file. 弹窗。应用设置改用 `wxRegConfig`（HKCU 注册表）。
+- 修复 `ModbusSession` 在 CLI 模式下（无 `wxApp`）因 `wxTheApp->CallAfter` 导致的潜在崩溃。
+- 修复 `build.sh` 和 `coverage.sh` 中过时的 wxWidgets 路径检查逻辑，兼容标准布局与老式布局。
+- 修正脚本输出中的可执行文件名提示（由旧名 `IndustrialCommunicationUtility.exe` 改为 `IndComm.exe`）。
+- **i18n 全量清理**：修复 `zh_CN.po` 和 `en_US.po` 中所有的 fuzzy 标记与错误翻译，补充所有新增 UI 控件的翻译，确保界面无英文残留。
 
 ## [0.1.0] - 2026-10-14
 
@@ -147,5 +147,3 @@
 
 [未发布]: https://github.com/lee-yilong/IndCommUtil/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/lee-yilong/IndCommUtil/releases/tag/v0.1.0
-首个可运行版本：协议可插拔框架 + TCP 协议 + 数据驱动 UI + 测试与工程化配套。
-（历史记录略，详见 Git 提交历史）

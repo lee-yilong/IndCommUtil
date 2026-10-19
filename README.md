@@ -2,7 +2,7 @@
 
 > **文档定位**：本文档既是项目开发文档，也是 AI 辅助开发的 Skill 定义。所有开发按本文档推进，AI 在协助编码时必须遵循本文档的架构、约定和任务清单。
 >
-> **本版重点**：阶段 8（通用自动化测试引擎）与阶段 9（独立 CLI 工具）全部完成。**下一阶段 10：SQLite 数据持久化与实时曲线可视化。**
+> **本版重点**：阶段 10（UX 重构）已完成。**当前处于阶段 11（SQLite 数据可视化）。**
 
 ---
 
@@ -66,7 +66,7 @@
 | i18n | GNU gettext（.po / .mo） |
 | 网络/串口 | wxSocket（内置） / 自实现（`SerialPort`） |
 | Modbus | serhmarch/ModbusLib（submodule） |
-| 数据库/图表 | SQLite3（阶段 10） / wxGraphicsContext 自绘（阶段 10） |
+| 数据库/图表 | SQLite3（阶段 11） / wxGraphicsContext 自绘（阶段 11） |
 | CI | GitHub Actions |
 | 覆盖率 | gcovr + GCC `--coverage` |
 | 调试器 | LLDB-DAP（GDB 17.2 与 cpptools MI 握手失败）；CLI 用 gdb |
@@ -83,7 +83,7 @@
 ### 2.2 UI 完全数据驱动且统一
 
 - 配置对话框：通过 `FieldDescriptor` 列表自动生成 `GenericProtocolDialog`。
-- 会话面板：使用 `wxNotebook` 提供三种模式（手动、交互、自动）。字节流协议渲染收发区，事务型协议通过 `OperationFieldsForMode` 自动渲染参数表单。
+- 会话面板：使用 `wxNotebook` 提供三种模式（手动、交互、自动）。左侧固定为全局变量池，右侧通过 `VariableParamsFields` 自动渲染参数表单和唯一的操作值。
 - **新增协议绝不需要改动任何 `ui/` 下的代码**。
 
 ### 2.3 状态机与重连标准化
@@ -95,7 +95,7 @@
 
 - 所有的测试步骤抽象为 `ITestStep`。由具体协议通过 `IProtocol::CreateTestStep` 工厂生成。
 - 引入**通信变量（CommVariable）**：支持定义类型、读写权限（RO/RW）和协议专属参数。测试步骤通过变量名直接引用参数，实现业务逻辑与协议细节解耦。
-- `TestRunner` 纯粹负责流程调度，支持自动全跑与交互单步阻断。
+- `TestRunner` 纯粹负责流程调度，支持自动全跑与交互单步阻断，并实时向 UI 抛出底层日志。
 
 ### 2.5 分层清晰，依赖单向
 
@@ -108,7 +108,7 @@
 
 - **协议配置**：唯一来源是 `.json` 文件（`config/` 管）
 - **应用设置**：唯一来源是 `settings/` 模块
-- **协议描述**：唯一来源是 `IProtocol::FieldsForMode()`
+- **协议描述**：唯一来源是 `IProtocol::FieldsForMode()` 与 `VariableParamsFields()`
 - **协议列表**：唯一来源是 `ProtocolRegistry::All()`
 - **会话状态**：唯一来源是 `SessionStateMachine::State()`
 
@@ -132,7 +132,7 @@
 
 ### 3.2 统一的 UI 生成逻辑
 
-`SessionPanel` 使用 `wxNotebook` 提供三种模式的独立页面（手动、交互、自动）。构建时根据 `ISession` 动态分派：
+`SessionPanel` 采用 `wxSplitterWindow` 分栏布局。左侧为全局变量池，右侧使用 `wxNotebook` 提供三种模式。在手动模式下，构建时根据 `ISession` 动态分派：
 ```cpp
 m_streamSession = dynamic_cast<StreamSession*>(m_session);
 m_txSession = dynamic_cast<ITransactionSession*>(m_session);
@@ -223,6 +223,10 @@ public:
     virtual bool HasModes() const = 0;
     virtual std::vector<std::string> ModeNames() const = 0;
     virtual std::vector<FieldDescriptor> FieldsForMode(int modeIndex) const = 0;
+
+    // 阶段 10 新增：返回该协议通讯变量的专属参数描述（驱动 UI 自动生成操作表单）
+    virtual std::vector<FieldDescriptor> VariableParamsFields() const { return {}; }
+
     virtual ISessionPtr CreateSession(int modeIndex, const std::map<std::string, FieldValue>& fields) = 0;
     virtual std::vector<FieldDescriptor> OperationFieldsForMode(int modeIndex) const { return {}; }
     virtual ITestStepPtr CreateTestStep(const std::string& stepType, const nlohmann::json& params) = 0;
@@ -273,7 +277,7 @@ IndComm/
 ├── src/
 │   ├── main.cpp
 │   ├── app/
-│   ├── cli/                             ← ★ 独立 CLI 入口
+│   ├── cli/                             ← 独立 CLI 入口
 │   │   └── main.cpp
 │   ├── core/
 │   │   ├── ICodec.h
@@ -297,8 +301,10 @@ IndComm/
 │   ├── ui/
 │   │   ├── GenericProtocolDialog.h/.cpp
 │   │   ├── SessionPanel.h/.cpp          ← 唯一的动态生成会话面板
+│   │   ├── TestStepEditDialog.h/.cpp    ← 步骤可视化编辑器
+│   │   ├── VariableEditDialog.h/.cpp    ← 变量可视化编辑器
 │   │   ├── LogFrame.h/.cpp
-│   │   ├── LogSink.h/.cpp               ← 抽离的 GUI 日志 Sink
+│   │   ├── LogSink.h/.cpp
 │   │   └── AppTaskBarIcon.h/.cpp
 │   ├── settings/
 │   ├── config/
@@ -321,6 +327,22 @@ IndComm/
 | `src/settings/` | 应用级设置 | 协议配置、业务逻辑 | `log/` |
 | `src/config/` | `.json` 协议配置文件读写 | UI、传输 | `core/`、`nlohmann/json` |
 | `src/log/` | 日志初始化、基础配置 | 业务逻辑 | wxBase、spdlog |
+
+### 5.3 分层规则
+
+**新增功能时先问自己：改动属于哪一层？**
+
+| 需求 | 归属 |
+|---|---|
+| 新协议 | `protocols/<name>/` |
+| 新编解码 | `protocols/codec/` |
+| 新对话框 | `ui/` |
+| 新设置项 | `settings/` |
+| 协议配置格式变化 | `config/` |
+| 框架接口扩展 | `core/` |
+| 菜单项调整 | `app/MainFrame` |
+| 新增测试 | `tests/unit/` 或 `tests/integration/` |
+| 新增决策 | `docs/architecture/adr/` |
 
 ---
 
@@ -359,7 +381,7 @@ settings/
 ### 6.4 关键约定
 
 - **`Settings` 是唯一允许直接操作底层存储的类**
-- 存储位置按优先级探测：`%APPDATA%/IndustrialCommunicationUtility` → `%LOCALAPPDATA%` → exe 目录 → 当前目录。
+- 存储位置按优先级探测：`%APPDATA%` → `%LOCALAPPDATA%` → exe 目录 → 当前目录。
 - 所有 key 在 `SettingsKeys.h` 集中定义
 - 新设置项 = 加 key + 加接口 + 加实现
 
@@ -642,7 +664,7 @@ grep -rn 'ICU_SPDLOG_.*".*{.*}'  src/
 # 分层违规
 grep -rn '#include.*ui/\|#include.*settings/' src/core/ src/protocols/
 
-# 绕过 settings 直接调 wxConfigBase
+# 绕过 settings 直接调底层存储
 grep -rn "wxConfigBase" src/ | grep -v src/settings/
 
 # 循环包含
@@ -716,7 +738,8 @@ docs/
 │       ├── 0007-test-runner-engine-architecture.md
 │       ├── 0008-standalone-headless-cli-tool.md
 │       ├── 0009-sqlite-data-logging-and-charting.md
-│       └── 0010-project-file-and-test-flow-redesign.md
+│       ├── 0010-project-file-and-test-flow-redesign.md
+│       └── 0011-session-panel-ux-refactoring.md
 ├── user/
 │   ├── getting-started.md
 │   ├── tcp.md
@@ -752,19 +775,24 @@ docs/
   - [x] CMake 抽离 `icu_core_lib`。
   - [x] 编译产出 `IndComm.exe` 和 `indcomm-cli.exe`。
   - [x] CLI 支持 `-r` 自动运行、`-i` 交互、`--read` / `--write`。
+- [x] **阶段 10：UI/UX 深度重构**
+  - [x] 10.1 新建 `TestStepEditDialog`，用下拉框和输入框替代手写 JSON。
+  - [x] 10.2 新建 `VariableEditDialog`，通过表单编辑变量属性与协议参数。
+  - [x] 10.3 `SessionPanel` 布局重构，引入 `wxSplitterWindow` 分离配置与日志。
+  - [x] 10.4 `TestRunner` 执行步骤联动，实时高亮并输出底层报文日志。
 
-### 阶段 10：SQLite 数据持久化与实时曲线 ⬜ 进行中
+### 阶段 11：SQLite 数据持久化与实时曲线 ⬜ 未开始
 
-- [ ] 10.1 引入 SQLite3 库。
-- [ ] 10.2 建立 `test_runs` 和 `run_data` 数据库表。
-- [ ] 10.3 `TestRunner` 增加 `OnDataRecorded` 回调。
-- [ ] 10.4 执行测试时将变量数据写入 SQLite。
-- [ ] 10.5 实现基于 `wxGraphicsContext` 的实时折线图。
-- [ ] 10.6 历史数据查询与图表回放。
+- [ ] 11.1 引入 SQLite3 库。
+- [ ] 11.2 建立 `test_runs` 和 `run_data` 数据库表。
+- [ ] 11.3 `TestRunner` 增加 `OnDataRecorded` 回调。
+- [ ] 11.4 执行测试时将变量数据写入 SQLite。
+- [ ] 11.5 实现基于 `wxGraphicsContext` 的实时折线图。
+- [ ] 11.6 历史数据查询与图表回放。
 
-### 阶段 11：更多协议（MQTT 等） ⬜ 未开始
-### 阶段 12：应用设置完善 ⬜ 未开始
-### 阶段 13：UI 打磨与发布准备 ⬜ 未开始
+### 阶段 12：更多协议（MQTT 等） ⬜ 未开始
+### 阶段 13：应用设置完善 ⬜ 未开始
+### 阶段 14：发布准备 ⬜ 未开始
 
 ---
 
@@ -773,9 +801,8 @@ docs/
 ### 13.1 上下文理解
 
 **当前状态**：
-- 阶段 1~9 已完成（统一底层 `ISession` + Modbus 接入 + 自动化引擎 + CLI 工具）。
-- **阶段 10 进行中**：构建 SQLite 数据持久化与图表可视化。
-- **核心新增文件**：`core/ITestStep.h`、`core/TestRunner.h`、`src/cli/main.cpp`。
+- 阶段 1~10 已完成（统一底层 `ISession` + Modbus 接入 + 自动化引擎 + CLI 工具 + UX 重构）。
+- **核心新增文件**：`ui/TestStepEditDialog`、`ui/VariableEditDialog`。
 
 **遗留问题**：
 
@@ -811,7 +838,7 @@ docs/
 | 要求实现某协议 | 按 `ModbusProtocol` 或 `TcpProtocol` 模板，只写 `protocols/<name>/`，组合 `ReconnectConfig` 即可获得重连能力 |
 | 报告编译错误 | 定位根因，给最小修复 |
 | 报告崩溃 | 要求先用 gdb 抓栈（见附录 A.8），按栈定位 |
-| 要求加 UI 功能 | 先问"能否通过 `FieldDescriptor` 描述" |
+| 要求加 UI 功能 | 先问"能否通过 `FieldDescriptor` 或 `VariableParamsFields` 描述" |
 | 要求加 App 设置 | 走 `settings/` 模块 |
 | 要求加测试 | 放 `tests/unit/` 或 `tests/integration/`，用 doctest |
 
@@ -945,6 +972,7 @@ tests/unit/protocols/<protocol_id>/
 | **SQLite 数据记录与图表 (ADR 0009)** | 以 `.json` 路径为关联键，实现历史与实时数据可视化 |
 | **项目文件重构 (ADR 0010)** | 剥离 `connection` 与 `session`，引入 Action 枚举与变量双向绑定 |
 | **项目更名 `IndComm`** | 缩短可执行文件名，提升命令行输入体验 |
+| **UX 深度重构 (ADR 0011)** | 废除 JSON 弹窗，引入可视化编辑器与分栏布局 |
 
 **完整 ADR 列表**：[docs/architecture/adr/](docs/architecture/adr/README.md)
 
@@ -985,6 +1013,9 @@ tests/unit/protocols/<protocol_id>/
 | 2026-10-18 | 阶段 7 完成：Modbus 接入、`ISession` 统一、重连抽象 |
 | 2026-10-18 | 确立阶段 8/9/10 架构，新增 ADR 0007/0008/0009 |
 | 2026-10-19 | 阶段 8 & 9 完成：通信变量、自动化引擎、CLI 工具，项目更名 IndComm |
+| 2026-10-20 | 新增 ADR 0011，启动阶段 10 UX 重构 |
+| 2026-10-20 | 阶段 10 完成：UI 彻底分栏，变量池全局可见，动态参数生成 |
+| 2026-10-20 | 修复技术债：跨平台脚本兼容、`ModbusSession` 跨线程安全、i18n 全量更新 |
 
 ---
 
@@ -1043,7 +1074,7 @@ grep -rn 'ICU_SPDLOG_.*".*{.*}'  src/
 # 分层违规
 grep -rn '#include.*ui/\|#include.*settings/' src/core/ src/protocols/
 
-# 绕过 settings 直接调 wxConfigBase
+# 绕过 settings 直接调底层存储
 grep -rn "wxConfigBase" src/ | grep -v src/settings/
 
 # 循环包含
@@ -1149,6 +1180,7 @@ gdb 输出 `exited normally` 和 `No stack`。说明本次运行没触发崩溃�
 - [ ] 已加 `tests/unit/protocols/<id>/` 单测
 - [ ] 未修改任何非 `protocols/<id>/` 目录下的生产代码
 - [ ] （阶段 8）已实现 `CreateTestStep`，返回对应的测试步骤实例
+- [ ] （阶段 10）已实现 `VariableParamsFields()`，返回变量专属参数（如无专属参数则返回空）
 
 ---
 
@@ -1393,3 +1425,4 @@ tasklist | grep IndComm
 **文档结束。**
 
 > 本文档随项目演进持续更新。任何架构级改动必须先更新本文档，再动代码。
+

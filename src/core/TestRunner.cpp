@@ -51,7 +51,22 @@ void TestRunner::RunLoop() {
         std::string stepName = step->Name();
 
         // 1. 执行
+        if (m_stepLogCb) m_stepLogCb(">>> " + stepName);
         TestResult result = step->Execute(m_session, m_vars);
+
+        // 输出底层响应报文
+        if (m_stepLogCb) {
+            if (!result.rawResponse.empty()) {
+                m_stepLogCb("<<< " + result.rawResponse);
+            } else if (!result.registers.empty()) {
+                std::string regStr = "Registers: ";
+                for (auto r : result.registers) regStr += std::to_string(r) + " ";
+                m_stepLogCb("<<< " + regStr);
+            }
+            if (!result.errorMessage.empty()) {
+                m_stepLogCb("!!! " + result.errorMessage);
+            }
+        }
 
         // 2. 断言
         std::string errorMsg;

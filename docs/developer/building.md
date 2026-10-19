@@ -41,6 +41,8 @@ cmake --version
 |---|---|---|---|
 | wxWidgets | **submodule** | `469921b9`（3.3.5 开发快照） | `third_party/wxWidgets/` |
 | spdlog | **submodule** | `f544fce0`（v1.17.0 之后的快照） | `third_party/spdlog/` |
+| nlohmann/json | **submodule** | 稳定版 | `third_party/json/` |
+| ModbusLib | **submodule** | 稳定版 | `third_party/ModbusLib/` |
 | doctest 2.4.11 | 单头文件（直接提交） | 2.4.11 | `third_party/doctest/doctest.h` |
 
 > **wxWidgets 的版本注意**：上游**没有** `v3.3.5` 这个 tag（最新官方 tag 是 `v3.3.4`）。
@@ -62,7 +64,7 @@ git submodule status
 #  f544fce0... third_party/spdlog
 ```
 
-`.gitmodules` 里两个 submodule 都标了 `shallow = true`，所以拉取是浅克隆，体积很小
+`.gitmodules` 里 submodule 都标了 `shallow = true`，所以拉取是浅克隆，体积很小
 （wxWidgets 约 20 MB），CI 上很快。
 
 > ⚠️ **绝对不要用 `git submodule update --force`**。
@@ -140,12 +142,13 @@ cmake --build build -j$(nproc)
 
 | 路径 | 内容 |
 |---|---|
-| `build/IndustrialCommunicationUtility.exe` | 主程序 |
+| `build/IndComm.exe` | 主程序（GUI） |
+| `build/indcomm-cli.exe` | 无头 CLI 测试工具 |
 | `build/tests/icu_tests.exe` | 测试可执行文件 |
 | `build/generated/version.h` | 由 `cmake/version.h.in` 生成 |
 | `build/compile_commands.json` | clang-tidy / IDE 用 |
 
-构建后会自动：复制 wxWidgets DLL 到输出目录、重新生成并编译 `.po` → `.mo`、复制 i18n 资源。
+构建后会自动：复制 wxWidgets 与 ModbusLib DLL 到输出目录、重新生成并编译 `.po` → `.mo`、复制 i18n 资源。
 
 ### 3.2 CMake Presets
 
@@ -155,7 +158,7 @@ cmake --build --preset debug
 ctest --preset debug
 ```
 
-`release` preset 输出到 `build-release/`（默认 `ICU_BUILD_TESTS=OFF`）。
+`release` preset 输出到 `build-release/`。
 
 ### 3.3 常用开关
 
@@ -170,7 +173,7 @@ ctest --preset debug
 ## 4. 运行
 
 ```bash
-./build/IndustrialCommunicationUtility.exe
+./build/IndComm.exe
 ```
 
 运行时需要同目录下的 wxWidgets DLL（构建后已自动复制）与 `resources/i18n/`。
@@ -188,7 +191,7 @@ ctest --preset debug
 ### 5.2 `cannot find -lwx_mswu_core-3.3`
 
 wxWidgets 用了 release 命名但没产出对应导入库。确认 configure 参数里
-`--enable-shared --enable-unicode` 都在，并检查 `lib/gcc_dll/`。
+`--enable-shared` 在，并检查 `lib/gcc_dll/` 或 `lib/` 下是否有 `.a` 文件。
 
 ### 5.3 `gettext tools not found; i18n disabled`
 
@@ -216,3 +219,4 @@ MinGW 下 CMake 已强制 `-finput-charset=UTF-8 -fexec-charset=UTF-8`。
 - [新增协议](adding-a-protocol.md)
 - [新增设置](adding-a-setting.md)
 - 仓库根目录 `README.md` 附录 A「快速命令参考」
+

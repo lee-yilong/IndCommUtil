@@ -6,6 +6,7 @@
 #include <wx/notebook.h>
 #include <wx/simplebook.h>
 #include <wx/spinctrl.h>
+#include <wx/splitter.h>
 #include <wx/stattext.h>
 #include <wx/textctrl.h>
 #include <wx/wx.h>
@@ -22,7 +23,6 @@
 #include "core/TestRunner.h"
 
 namespace icu {
-
 class SessionPanel : public wxPanel {
 public:
     SessionPanel(wxWindow* parent, IProtocol* protocol, int modeIndex, ISession* session,
@@ -82,8 +82,6 @@ private:
 
     // --- 字节流专属 ---
     wxTextCtrl* m_dataLogTextCtrl = nullptr;
-    wxTextCtrl* m_sendTextCtrl = nullptr;
-    wxButton* m_sendBtn = nullptr;
     wxCheckBox* m_hexDisplay = nullptr;
     wxCheckBox* m_showTimestamp = nullptr;
     wxCheckBox* m_autoScroll = nullptr;
@@ -117,8 +115,6 @@ private:
 
     void AppendLine(const wxString& prefix, const wxString& content);
     wxString FormatMessage(const std::vector<uint8_t>& msg);
-    void OnSend(wxCommandEvent& evt);
-    void OnSendEnter(wxCommandEvent& evt);
     void OnClear(wxCommandEvent& evt);
     void OnAction(wxCommandEvent& evt);
     void OnConfigure(wxCommandEvent& evt);
@@ -129,7 +125,6 @@ private:
     void BindTransactionCallbacks();
 
     void OnNotebookPageChanged(wxBookCtrlEvent& evt);
-    void OnSendTextChanged(wxCommandEvent& evt);
 
     void RefreshVariableList();
     void OnVarSelected(wxListEvent& evt);
@@ -137,6 +132,14 @@ private:
     void OnEditVariable(wxCommandEvent& evt);
     void OnDeleteVariable(wxCommandEvent& evt);
     void BuildVarOpUi(const CommVariable& var);
+
+    wxWindow* CreateJsonControl(wxWindow* parent, const FieldDescriptor& fd,
+                                const nlohmann::json& currentValue,
+                                std::function<void(const nlohmann::json&)> onChanged);
+
+    wxSplitterWindow* m_mainSplitter = nullptr;
+
+    void OnExecuteSend(wxCommandEvent& evt);
 };
 
 }  // namespace icu

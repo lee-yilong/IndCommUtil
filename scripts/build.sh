@@ -38,8 +38,13 @@ if [ "$ACTION" = "clean" ]; then
     rm -rf "$BUILD_DIR"
 fi
 
-if [ ! -f third_party/wxWidgets/lib/gcc_dll/libwx_mswu_core-3.3.dll.a ]; then
-    echo "!! wxWidgets 尚未构建：third_party/wxWidgets/lib/gcc_dll 下缺少导入库" >&2
+# 兼容标准布局和老式布局
+if [ -f third_party/wxWidgets/lib/gcc_dll/libwx_mswu_core-3.3.dll.a ]; then
+    :
+elif [ -f third_party/wxWidgets/lib/libwx_mswu_core-3.3.dll.a ]; then
+    :
+else
+    echo "!! wxWidgets 尚未构建：third_party/wxWidgets/lib 下缺少导入库" >&2
     echo "   见 docs/developer/building.md 第 2.2 节" >&2
     exit 1
 fi
@@ -53,4 +58,4 @@ cmake -S . -B "$BUILD_DIR" -G "MinGW Makefiles" \
 echo ">> 编译（$(nproc) 并行）"
 cmake --build "$BUILD_DIR" -j"$(nproc)"
 
-echo ">> 完成：$BUILD_DIR/IndustrialCommunicationUtility.exe"
+echo ">> 完成：$BUILD_DIR/IndComm.exe"

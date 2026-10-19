@@ -91,7 +91,7 @@ cmake --build build-coverage --target coverage
 ```cpp
 #include "doctest.h"
 
-#include "core/Session.h"
+#include "core/StreamSession.h"
 
 #include <memory>
 #include <vector>
@@ -103,10 +103,10 @@ using namespace icu;
 using icu::test::MockCodec;
 using icu::test::MockTransport;
 
-TEST_CASE("Session: 未 Open 时 Send 失败") {
+TEST_CASE("StreamSession: 未 Open 时 Send 失败") {
     auto t = std::make_unique<MockTransport>();
     auto c = std::make_unique<MockCodec>();
-    Session s(std::move(t), std::move(c));
+    StreamSession s(std::move(t), std::move(c));
 
     CHECK(s.State() == SessionState::Idle);
     CHECK_FALSE(s.Send({0x01}));
@@ -127,9 +127,9 @@ TEST_CASE("Session: 未 Open 时 Send 失败") {
 | 成员 | 作用 |
 |---|---|
 | `Open()` | 只切到 `Opening`（对齐真实异步语义），返回 `false` 可模拟失败 |
-| `SimulateConnect()` | 切到 `Open` 并通知状态 |
-| `SimulateDisconnect()` | 切到 `Closed` |
-| `SimulateData(clientId, bytes)` | 注入收到的数据 |
+| `SimulateState(TransportState::Open)` | 切到 `Open` 并通知状态回调 |
+| `SimulateState(TransportState::Closed)` | 切到 `Closed` 并通知状态回调 |
+| `InjectData(clientId, bytes)` | 注入收到的数据 |
 | `SimulateReconnectAttempt(n)` | 触发重连回调 |
 | `SimulateClientConnected(id)` / `SimulateClientDisconnected(id)` | 服务器模式客户端事件 |
 | `SentBytes()` / `SentString()` / `ClearSent()` | 检查发出去的内容 |
@@ -150,13 +150,13 @@ using icu::test::TestEnv;
 
 TEST_CASE("...") {
     TestEnv env;                                  // 构造：建临时目录
-    const std::string path = env.Path("a.conn");  // 目录内的文件路径
+    const std::string path = env.Path("a.json");  // 目录内的文件路径
     // ... 析构：递归删除
 }
 ```
 
-`TestEnv` 会自动处理无效 `%TEMP%`：`temp_directory_path()` 失败时依次回退到
-`TEMP` / `TMP` 环境变量，最后回退到当前目录，因此 CI 与受限环境下都能跑。
+`TestEnv` 优先在当前工作目录（`ctest` 运行时是 `build/tests/`，一定可写）创建临时目录，
+如果失败，再回退到系统 `%TEMP%` 目录。因此 CI 与受限环境下都能跑。
 
 ---
 
@@ -180,11 +180,11 @@ TEST_CASE("...") {
 
 | 模块 | 覆盖 | 说明 |
 |---|---|---|
-| `core/` | 高 | `FieldValue` / `ActiveProfile` / `ProtocolRegistry` / `Session` / `SessionManager` |
+| `core/` | 高 | `FieldValue` / `ActiveProfile` / `ProtocolRegistry` / `StreamSession` / `SessionManager` |
 | `config/` | 高 | `ConnectionProfile` roundtrip（集成测试） |
-| `protocols/codec/` | 中 | `RawCodec` 完整；`ModbusRtuCodec` 待阶段 6 |
-| `protocols/tcp/` | 低 | `TcpTransport` 未单测（依赖真实 socket，见阶段 5/6 计划） |
-| `settings/` | 无 | 依赖 `wxApp`，计划阶段 8 |
+| `protocols/codec/` | 中 | `RawCodec` 完整；`ModbusRtuCodec` 待完善 |
+| `protocols/tcp/` | 低 | `TcpTransport` 未单测（依赖真实 socket） |
+| `settings/` | 无 | 依赖 `wxApp` 与文件系统，计划阶段 13 补充 |
 | `ui/` `app/` | 无 | 按设计不做单测 |
 
 **未覆盖是已知且有意为之的**，不要为了让数字好看而写无意义的测试。
@@ -199,12 +199,13 @@ TEST_CASE("...") {
 - E.2 启动检查
 - E.3 TCP 客户端（用 `nc` 做服务器）
 - E.4 TCP 服务器（多客户端并发）
-- E.5 配置文件
-- E.6 最近连接
-- E.7 窗口与 UI
-- E.8 语言切换
-- E.9 关闭与托盘
-- E.10 异常场景
+- E.5 串口测试
+- E.6 配置文件
+- E.7 最近连接
+- E.8 窗口与 UI
+- E.9 语言切换
+- E.10 关闭与托盘
+- E.11 异常场景
 
 需要 `nc`：`pacman -S netcat`。
 
@@ -215,3 +216,4 @@ TEST_CASE("...") {
 - [构建指南](building.md)
 - [新增协议](adding-a-protocol.md)
 - [架构决策 0003：用 doctest 作为测试框架](../architecture/adr/0003-doctest-as-test-framework.md)
+

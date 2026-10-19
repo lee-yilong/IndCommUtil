@@ -186,4 +186,25 @@ ITestStepPtr ModbusProtocol::CreateTestStep(const std::string& stepType,
     return nullptr;
 }
 
+std::vector<FieldDescriptor> ModbusProtocol::VariableParamsFields() const {
+    return {{"slaveId", wxTRANSLATE("Slave ID:"), FieldValue::Type::Int, FieldValue(1), 0, 247},
+            {"functionCode",
+             wxTRANSLATE("Function Code:"),
+             FieldValue::Type::Choice,
+             FieldValue(std::string("3")),
+             0,
+             0,
+             {{"1", "01 - Read Coils"},
+              {"2", "02 - Read Discrete Inputs"},
+              {"3", "03 - Read Holding Registers"},
+              {"4", "04 - Read Input Registers"},
+              {"5", "05 - Write Single Coil"},
+              {"6", "06 - Write Single Register"},
+              {"15", "15 - Write Multiple Coils"},
+              {"16", "16 - Write Multiple Registers"}}},
+            {"startAddress", wxTRANSLATE("Start Address:"), FieldValue::Type::Int, FieldValue(0), 0,
+             65535},
+            {"count", wxTRANSLATE("Count:"), FieldValue::Type::Int, FieldValue(1), 1, 2000}};
+}
+
 }  // namespace icu

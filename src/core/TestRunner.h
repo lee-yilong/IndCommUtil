@@ -40,6 +40,9 @@ public:
     void WaitForCompletion();
     bool IsRunning() const { return m_thread.joinable(); }
 
+    using StepLogCallback = std::function<void(const std::string& logMsg)>;
+    void OnStepLog(StepLogCallback cb) { m_stepLogCb = std::move(cb); }
+
 private:
     void RunLoop();
 
@@ -59,6 +62,8 @@ private:
     StepUpdateCallback m_stepCb;
     FinishCallback m_finishCb;
     WaitCallback m_waitCb;
+
+    StepLogCallback m_stepLogCb;
 };
 
 }  // namespace icu

@@ -124,12 +124,12 @@ void ModbusSession::HeartbeatLoop() {
 
             int delay = m_cfg.reconn.delaySec > 0 ? m_cfg.reconn.delaySec : 3;
 
-            wxTheApp->CallAfter([this, attempts, delay]() {
+            if (m_logCb) {
                 std::string msg = "Retrying in " + std::to_string(delay) + "s (attempt " +
                                   std::to_string(attempts) + ")...";
-                if (m_logCb) m_logCb(msg);
-            });
-
+                m_logCb(msg);
+                // UI 层（SessionPanel）在绑定 OnLog 时已经用 CallAfter 包裹了，底层直接调用是安全的
+            }
             for (int i = 0; i < delay * 10 && !m_stopHeartbeat.load(); ++i) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }

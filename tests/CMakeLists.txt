@@ -91,7 +91,8 @@ add_custom_command(TARGET icu_tests POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${WX_DLLS_TEST}
         $<TARGET_FILE_DIR:icu_tests>
-    COMMENT "Copying wxWidgets DLLs to test output directory"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:modbus> $<TARGET_FILE_DIR:icu_tests>
+    COMMENT "Copying wxWidgets and modbus DLLs to test output directory"
 )
 add_test(NAME icu_tests COMMAND icu_tests)
 

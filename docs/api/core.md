@@ -28,7 +28,7 @@ public:
     bool        AsBool() const;                // 原样返回 m_bool
     std::string AsChoice() const;              // 同 AsString
 
-    std::string Serialize() const;                              // 转成可写入 .conn 的字符串
+    std::string Serialize() const;                              // 转成可写入 .json 的字符串
     static FieldValue Deserialize(const std::string& s, Type t); // 按类型解析
 
     bool operator==(const FieldValue& o) const;   // 类型感知
@@ -42,7 +42,7 @@ public:
 - `Choice` 用 `m_str` 存值，`GetType()` 区分它和普通 `String`（`Choice` 表示取值来自固定选项集）。
 - `AsInt()` / `AsBool()` 是**直接返回成员**，不做字符串转换；需要从字符串取值时用
   `Deserialize(s, Type::Int)`。写新代码时注意这个区别。
-- `Deserialize` 传入的 `Type` 决定解析方式，`.conn` 的字段类型来自协议的 `FieldDescriptor`。
+- `Deserialize` 传入的 `Type` 决定解析方式，`.json` 的字段类型来自协议的 `FieldDescriptor`。
 
 ---
 
@@ -61,26 +61,31 @@ struct FieldDescriptor {
     int maxValue = 100;
 
     std::vector<std::pair<std::string, std::string>> choices;   // {value, label}，仅 Choice 使用
+
+    std::string group;          // UI 分组，为空则平铺
 };
 ```
 
 **约定**
 
 - `label` 必须是翻译 key，且要出现在 `.po` 里（`xgettext` 会从 `src/` 提取）。
-- `choices` 的 **label 部分**同样是翻译 key，value 部分是存进 `.conn` 的原始值。
+- `choices` 的 **label 部分**同样是翻译 key，value 部分是存进 `.json` 的原始值。
 - 字段顺序即 UI 中的显示顺序。
+- `group` 用于将相关字段在 UI 中放置到同一个 `wxStaticBoxSizer` 中（如“重连设置”）。
 
 ---
 
 ## 3. `ActiveProfile`
 
-`core/ProtocolTypes.h` —— 一份完整配置的快照，UI 与 `.conn` 读写都以它为单位。
+`core/ProtocolTypes.h` —— 一份完整配置的快照，UI 与 `.json` 读写都以它为单位。
 
 ```cpp
 struct ActiveProfile {
     std::string protocolId;                        // "tcp"
     int modeIndex = 0;                             // 协议内模式序号
-    std::map<std::string, FieldValue> fields;
+    std::map<std::string, FieldValue> fields;      // 对应 connection 节点
+
+    SessionConfig session;                         // 对应 session 节点
 
     void Clear();
     bool Empty() const;                            // protocolId 为空
@@ -110,7 +115,10 @@ public:
 
     virtual std::vector<FieldDescriptor> FieldsForMode(int modeIndex) const = 0;
 
-    virtual SessionPtr CreateSession(int modeIndex,
+    // 阶段 10 新增：返回协议专属的通讯变量参数（驱动 VariableEditDialog 和操作区表单）
+    virtual std::vector<FieldDescriptor> VariableParamsFields() const { return {}; }
+
+    virtual ISessionPtr CreateSession(int modeIndex,
                                      const std::map<std::string, FieldValue>& fields) = 0;
 
     virtual std::string MakeDefaultFileName(
@@ -210,21 +218,50 @@ public:
 
 ---
 
-## 7. `Session`
+## 7. `ISession` (统一基类)
 
-`core/Session.h` —— 组合一个 `ITransport` 和一个 `ICodec`，对 UI 暴露统一接口。
+`core/ISession.h` —— 所有会话的通用接口。
 
 ```cpp
 enum class SessionState { Idle, Connecting, Reconnecting, Connected, Disconnected };
 
-class Session {
+class ISession {
 public:
-    Session(ITransportPtr transport, ICodecPtr codec);   // 接管两者所有权
+    virtual ~ISession() = default;
 
-    bool Open();
-    void Close();
-    SessionState State() const;
-    bool IsConnected() const;
+    virtual bool Open() = 0;
+    virtual void Close() = 0;
+    virtual SessionState State() const = 0;
+    virtual bool IsConnected() const = 0;
+
+    virtual std::string Target() const = 0;
+    virtual std::string TransportName() const = 0;
+
+    virtual bool IsServerMode() const { return false; }
+
+    using StateCallback = std::function<void(SessionState)>;
+    virtual void OnStateChanged(StateCallback cb) = 0;
+
+    // UI 销毁前必须调用
+    virtual void DetachAllCallbacks() = 0;
+};
+```
+
+---
+
+## 8. `StreamSession`
+
+`core/StreamSession.h` —— 组合一个 `ITransport` 和一个 `ICodec`，对 UI 暴露统一接口。
+
+```cpp
+class StreamSession : public ISession {
+public:
+    StreamSession(ITransportPtr transport, ICodecPtr codec);   // 接管两者所有权
+
+    bool Open() override;
+    void Close() override;
+    SessionState State() const override;
+    bool IsConnected() const override;
 
     bool Send(const std::vector<uint8_t>& message);      // 经 Codec::Encode
     bool SendRaw(const uint8_t* data, size_t len);       // 不经 Codec
@@ -261,17 +298,49 @@ public:
 
 ---
 
-## 8. `SessionManager`
+## 9. `ITransactionSession`
+
+`core/ITransactionSession.h` —— 事务型协议的专用会话（如 Modbus）。
+
+```cpp
+struct TransactionRequest {
+    int slaveId = 1;
+    int functionCode = 0;
+    int startAddress = 0;
+    int count = 0;
+    std::vector<uint16_t> writeValues;
+};
+
+struct TransactionResponse {
+    bool ok = false;
+    std::string errorMessage;
+    std::vector<uint16_t> registers;
+    std::vector<bool> coils;
+};
+
+class ITransactionSession : public ISession {
+public:
+    virtual TransactionResponse Execute(const TransactionRequest& request) = 0;
+    virtual TransactionResponse Execute(const std::map<std::string, FieldValue>& fields) = 0;
+
+    using LogCallback = std::function<void(const std::string&)>;
+    virtual void OnLog(LogCallback cb) = 0;
+};
+```
+
+---
+
+## 10. `SessionManager`
 
 `core/SessionManager.h` —— 持有唯一活动会话。不可拷贝。
 
 ```cpp
 class SessionManager {
 public:
-    void SetActive(SessionPtr s);      // 会先关闭旧会话
+    void SetActive(ISessionPtr s);      // 会先关闭旧会话
     void Close();
     bool IsConnected() const;
-    Session* Active() const;
+    ISession* Active() const;
     SessionState ActiveState() const;
 };
 ```
@@ -283,7 +352,7 @@ public:
 
 ---
 
-## 9. `ProtocolRegistry`
+## 11. `ProtocolRegistry`
 
 `core/ProtocolRegistry.h` —— 协议注册中心（单例）。
 
@@ -308,7 +377,7 @@ void RegisterBuiltinProtocols();                    // 在 App::OnInit 里调用
 
 ---
 
-## 10. 相关文档
+## 12. 相关文档
 
 - [架构总览](../architecture/overview.md)
 - [新增协议](../developer/adding-a-protocol.md)
