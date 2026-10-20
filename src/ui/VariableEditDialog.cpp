@@ -23,12 +23,20 @@ VariableEditDialog::VariableEditDialog(wxWindow* parent, IProtocol* protocol,
     // Type
     grid->Add(new wxStaticText(this, wxID_ANY, _("Data Type:")), 0, wxALIGN_CENTER_VERTICAL);
     wxArrayString types;
-    types.Add("int");
-    types.Add("string");
-    types.Add("bool");
+    types.Add("int8");
+    types.Add("uint8");
+    types.Add("int16");
+    types.Add("uint16");
+    types.Add("int32");
+    types.Add("uint32");
     types.Add("float");
+    types.Add("double");
+    types.Add("bool");
+    types.Add("string");
+    types.Add("hex");
+
     m_typeCtrl = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, types);
-    m_typeCtrl->SetStringSelection(wxString::FromUTF8(varData.value("type", "int")));
+    m_typeCtrl->SetStringSelection(wxString::FromUTF8(varData.value("type", "int32")));
     grid->Add(m_typeCtrl, 1, wxEXPAND);
 
     // Access

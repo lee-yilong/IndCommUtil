@@ -12,24 +12,39 @@
 
 ### 计划中
 
-- 阶段 11：SQLite 数据持久化与实时曲线
 - 阶段 12：更多协议（MQTT 等）
 - 阶段 13：应用设置完善（字体 / 主题 / 图标，`ui/SettingsDialog`）
 - 阶段 14：发布准备（打包、安装程序）
 
-### 已完成（阶段 10 UX 重构与技术债清理）
+### 已完成（阶段 10 及阶段 11）
 
-- **会话面板深度重构**：引入 `wxSplitterWindow`，左侧固定展示全局通讯变量池，右侧为多模式操作区，彻底解决界面拥挤与变量割裂问题。
-- **多协议动态表单**：新增 `IProtocol::VariableParamsFields()` 接口，`VariableEditDialog` 和 `SessionPanel` 操作区均根据协议自动生成参数控件（如 Modbus 功能码下拉框、TCP 空参数）。
-- **通讯变量单一值抽象**：彻底废除底部的通用发送框，所有收发均围绕唯一的 `CommVariable` 的 `Value` 展开，并通过 `RO/RW/WO` 属性严格控制。
-- **执行联动**：`TestRunner` 新增 `OnStepLog` 回调，执行自动化流程时，底层报文日志实时滚动显示在 UI 上。
-- **步骤管理增强**：测试步骤列表支持插入（选中后添加）、上移、下移操作，优化测试流编排体验。
+- **SQLite 数据持久化与可视化**（阶段 11）
+  - 引入 SQLite3（通过 submodule 引入），新增 `core/Database.h/.cpp` 封装。
+  - 建立 `test_runs` 和 `run_data` 数据表，自动记录每次测试运行与变量数据。
+  - 新增 `ui/ChartPanel.h/.cpp`，基于 `wxGraphicsContext` 自绘多变量实时折线图，支持滚轮缩放与拖拽平移。
+  - 新增 `ui/HistoryDialog.h/.cpp`，实现独立的历史查询窗口，支持按时间段回放。
+- **自动化测试增强**（阶段 11）
+  - 动作彻底统一：所有协议（TCP/串口/Modbus）的测试步骤动作全部统一为 `read` / `write` / `delay`。
+  - 断言符号化与完善：测试步骤的断言从 `eq/gt/lt` 更新为 `==/!=/>/</regex`，并在底层真正生效。
+  - 步骤编辑联动：`TestStepEditDialog` 根据选择的 Action 自动显示/隐藏无关的输入控件。
+  - 支持步骤的“批量生成”：选定一个基准步骤后，可设置重复次数、间隔时间和自增/自减步长，一键生成连续测试步骤。
+  - 变量池支持多选与批量操作：左侧变量列表支持通过复选框启用/禁用，测试列表支持 Ctrl/Shift 多选删除。
+- **通讯变量与类型统一**（阶段 11）
+  - 新增 `core/BytesParser.h`，统一处理各种类型（int8/16/32、uint8/16/32、float、double、hex 等）的二进制解析。
+  - 新增 `core/DelayStep.h`，提供原生的延时测试步骤。
+- **UI/UX 深度重构**（阶段 10）
+  - 引入 `wxSplitterWindow`，左侧固定展示全局通讯变量池，右侧为多模式操作区与统一日志区。
+  - 移除底部的通用发送框，所有收发均围绕唯一的 `CommVariable` 的 `Value` 展开，通过 `RO/RW/WO` 严格限制权限。
+  - 执行步骤时，底层交互报文自动同步到统一日志窗口。
+  - 新建 `TestStepEditDialog` 和 `VariableEditDialog`，彻底废除 JSON 文本弹窗编辑。
 
 ### 修复
 
+- 修复 `TcpSendStep` 在等待接收数据时因局部变量销毁导致的 Use-After-Free 崩溃。
 - 修复 `ModbusSession` 在 CLI 模式下（无 `wxApp`）因 `wxTheApp->CallAfter` 导致的潜在崩溃。
 - 修复 `build.sh` 和 `coverage.sh` 中过时的 wxWidgets 路径检查逻辑，兼容标准布局与老式布局。
 - 修正脚本输出中的可执行文件名提示（由旧名 `IndustrialCommunicationUtility.exe` 改为 `IndComm.exe`）。
+- 修复测试环境的 DLL 缺失（`0xc0000135`），确保 `ctest` 全部通过。
 - **i18n 全量清理**：修复 `zh_CN.po` 和 `en_US.po` 中所有的 fuzzy 标记与错误翻译，补充所有新增 UI 控件的翻译，确保界面无英文残留。
 
 ## [0.1.0] - 2026-10-14
@@ -94,19 +109,17 @@
   - 新增 `src/cli/main.cpp`，编译生成 `indcomm-cli.exe`。
   - CLI 支持 `-c` 加载配置，`-r` 自动运行，`-i` 交互单步运行，`--read` / `--write` 直接读写变量。
   - 分离 GUI 日志 Sink 到 `ui/LogSink`，确保 CLI 端编译不依赖 GUI 库。
+
 ### 变更
 
 - **第三方依赖统一为 submodule**：
   - `third_party/wxWidgets` 从「被提交的普通目录」改为真正的 submodule，
     固定到上游 `469921b9`（`master` 上的 3.3.5 开发快照）。
-    经逐文件校验，该 commit 的 `include/wx/**` 1447 个文件与仓库原有头文件**完全一致**，
-    因此升级过程对代码零影响。
-    背景：上游**没有** `v3.3.5` tag（最新官方 tag 是 `v3.3.4`），
-    原来的 `.gitmodules` 声明了 submodule 但索引里是普通目录，两者不一致。
-  - `third_party/spdlog` 此前是 gitlink 却**没有 `.gitmodules` 映射**，
-    导致 `git submodule status` 直接报 fatal、`actions/checkout` 也会失败；
-    现补上映射并固定到 `f544fce0`（内容与原有工作区逐文件一致，同样零影响）。
-  - 两个 submodule 都标记 `shallow = true`，CI 拉取体积很小（wx 约 20 MB）。
+  - `third_party/spdlog` 补上 `.gitmodules` 映射并固定到 `f544fce0`。
+  - 新增 `third_party/json`（`nlohmann/json`）。
+  - 新增 `third_party/ModbusLib`。
+  - `third_party/sqlite`（阶段 11 新增）。
+  - 所有 submodule 都标记 `shallow = true`。
 - **CI（4.6.1）修正**：wxWidgets 自带 12 个嵌套 submodule，构建需要其中一部分，
   因此 CI 使用 `submodules: recursive`，并补充了 `src/zlib` 非空的校验。
 - **目录重组（阶段 4.3）**：源码按 `app/` `core/` `protocols/` `ui/` `settings/` `config/` `log/` 分层

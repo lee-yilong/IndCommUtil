@@ -14,3 +14,6 @@
 	path = third_party/ModbusLib
 	url = https://github.com/serhmarch/ModbusLib.git
 	shallow = true
+[submodule "third_party/sqlite"]
+	path = third_party/sqlite
+	url = https://github.com/algoritnl/sqlite-cmake.git

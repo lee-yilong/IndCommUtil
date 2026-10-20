@@ -4,7 +4,7 @@ project(IndCommUtil
     VERSION 0.1.0
     DESCRIPTION "工业通信实用工具（多协议通讯测试/调试工具）"
     HOMEPAGE_URL "https://github.com/lee-yilong/IndCommUtil"
-    LANGUAGES CXX RC)
+    LANGUAGES C CXX RC)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -79,6 +79,8 @@ endif()
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install OFF CACHE INTERNAL "")
 add_subdirectory(third_party/json)
+# SQLite (amalgamation)
+add_subdirectory(third_party/sqlite)
 
 set(MODBUSLIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ModbusLib")
 if(EXISTS "${MODBUSLIB_ROOT}/CMakeLists.txt")
@@ -120,6 +122,7 @@ target_link_libraries(icu_core_lib PUBLIC
     "${WX_LIB_DIR}/libwx_baseu-3.3.dll.a"
     "${WX_LIB_DIR}/libwx_baseu_net-3.3.dll.a"
     nlohmann_json::nlohmann_json
+    sqlite::sqlite
     ws2_32
 )
 

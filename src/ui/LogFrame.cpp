@@ -1,7 +1,7 @@
 #include "LogFrame.h"
 
-// ★ 包含刚才新建的 LogSink
 #include "LogSink.h"
+#include "log/Log.h"
 #include "spdlog/spdlog.h"
 
 namespace icu {
@@ -14,7 +14,14 @@ wxBEGIN_EVENT_TABLE(LogFrame, wxFrame) EVT_CLOSE(LogFrame::OnClose)
               wxDEFAULT_FRAME_STYLE) {
     BuildUi();
 
-    // ★ 调用 AttachGuiSink
+    // ★ 加载历史日志
+    auto history = log::GetHistory();
+    for (const auto& msg : history) {
+        m_textCtrl->AppendText(msg + "\n");
+    }
+    m_textCtrl->SetInsertionPointEnd();
+
+    // 实时日志追加
     log::AttachGuiSink(m_textCtrl);
     CentreOnParent();
 
@@ -22,11 +29,9 @@ wxBEGIN_EVENT_TABLE(LogFrame, wxFrame) EVT_CLOSE(LogFrame::OnClose)
 }
 
 LogFrame::~LogFrame() {
-    // ★ 调用 DetachGuiSink
     log::DetachGuiSink();
 }
 
-// ... 下面的代码保持你原来的不变 ...
 void LogFrame::BuildUi() {
     auto* panel = new wxPanel(this);
     auto* root = new wxBoxSizer(wxVERTICAL);
@@ -66,6 +71,7 @@ void LogFrame::OnClose(wxCloseEvent& evt) {
 
 void LogFrame::OnClear(wxCommandEvent&) {
     m_textCtrl->Clear();
+    log::ClearHistory();  // ★ 清空内存缓存
 }
 
 void LogFrame::ForceDestroy() {

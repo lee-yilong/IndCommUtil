@@ -4,11 +4,16 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <deque>
 #include <mutex>
 
 namespace icu::log {
 
 namespace {
+
+std::mutex g_historyMutex;
+std::deque<wxString> g_history;
+const size_t MAX_HISTORY = 1000;
 
 template <typename Mutex>
 class WxTextCtrlSink : public spdlog::sinks::base_sink<Mutex> {
@@ -20,6 +25,13 @@ protected:
         spdlog::memory_buf_t formatted;
         this->formatter_->format(msg, formatted);
         wxString wxMsg = wxString::FromUTF8(formatted.data(), formatted.size());
+
+        // 存入历史
+        {
+            std::lock_guard<std::mutex> lock(g_historyMutex);
+            g_history.push_back(wxMsg);
+            if (g_history.size() > MAX_HISTORY) g_history.pop_front();
+        }
 
         wxTextCtrl* ctrl = m_textCtrl;
         ctrl->CallAfter([ctrl, wxMsg]() {
@@ -44,7 +56,6 @@ std::shared_ptr<WxTextCtrlSink_mt> g_guiSink;
 void AttachGuiSink(wxTextCtrl* ctrl) {
     DetachGuiSink();
     if (!ctrl) return;
-
     auto logger = spdlog::default_logger();
     if (!logger) return;
 
@@ -59,6 +70,16 @@ void DetachGuiSink() {
         sinks.erase(std::remove(sinks.begin(), sinks.end(), g_guiSink), sinks.end());
     }
     g_guiSink.reset();
+}
+
+std::vector<wxString> GetLogHistory() {
+    std::lock_guard<std::mutex> lock(g_historyMutex);
+    return std::vector<wxString>(g_history.begin(), g_history.end());
+}
+
+void ClearLogHistory() {
+    std::lock_guard<std::mutex> lock(g_historyMutex);
+    g_history.clear();
 }
 
 }  // namespace icu::log

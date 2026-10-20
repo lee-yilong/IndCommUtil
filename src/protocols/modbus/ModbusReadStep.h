@@ -13,15 +13,16 @@ public:
     ~ModbusReadStep() override = default;
 
     std::string Name() const override;
-
-    // ★ 修改为接收 std::map<std::string, CommVariable>&
     TestResult Execute(ISession* session, std::map<std::string, CommVariable>& vars) override;
     bool Assert(const TestResult& result, std::string& outErrorMsg) override;
-    void Extract(const TestResult& result, std::map<std::string, CommVariable>& vars) override;
+
+    // ★ 修改返回值
+    std::vector<std::string> Extract(const TestResult& result,
+                                     std::map<std::string, CommVariable>& vars) override;
 
 private:
     std::string m_name;
-    std::string m_variableName;  // ★ 新增变量名
+    std::string m_variableName;
 
     int m_expectedValue;
     bool m_hasAssert;

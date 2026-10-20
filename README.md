@@ -2,7 +2,7 @@
 
 > **文档定位**：本文档既是项目开发文档，也是 AI 辅助开发的 Skill 定义。所有开发按本文档推进，AI 在协助编码时必须遵循本文档的架构、约定和任务清单。
 >
-> **本版重点**：阶段 10（UX 重构）已完成。**当前处于阶段 11（SQLite 数据可视化）。**
+> **本版重点**：阶段 10（UX 重构）与阶段 11（SQLite 数据可视化）已完成。**当前准备进入阶段 12（更多协议，如 MQTT）。**
 
 ---
 
@@ -36,7 +36,7 @@
 
 ### 1.1 定位
 
-**IndComm**（Industrial Communication Utility）是一个面向工业现场的多协议通讯测试/调试及自动化测试平台。目标整合 NetAssist、Modbus Poll 等工具的调试能力，并提供基于 `.json` 测试流程的无头自动化执行。
+**IndComm**（Industrial Communication Utility）是一个面向工业现场的多协议通讯测试/调试及自动化测试平台。目标整合 NetAssist、Modbus Poll 等工具的调试能力，并提供基于 `.json` 测试流程的无头自动化执行，以及基于 SQLite 的数据可视化回放。
 
 ### 1.2 核心目标
 
@@ -46,7 +46,8 @@
 | **UI 数据驱动** | 配置对话框、会话面板、菜单项全部从协议描述自动生成 |
 | **统一底层会话** | 字节流和事务型协议统一抽象为 `ISession`，UI 层不感知底层差异 |
 | **状态与重连标准化** | 提供 `ReconnectConfig` 与 `SessionStateMachine`，所有协议开箱即用 |
-| **自动化测试** | 提供通用的 `TestRunner`，支持通信变量提取、断言校验和正则匹配 |
+| **自动化测试** | 提供通用的 `TestRunner`，支持通信变量提取、断言校验和批量生成 |
+| **数据持久化与图表** | 内置 SQLite 记录运行数据，提供实时多变量折线图与历史回放 |
 | **无头 CLI 支持** | 独立 `indcomm-cli.exe`，方便接入 CI/CD 流水线与自动化测试 |
 | **分层解耦** | 应用层 / 框架层 / 协议层 / UI 层 / 服务层，依赖单向 |
 | **测试可回归** | `core/` / `protocols/` / `settings/` / `config/` 有单测覆盖 |
@@ -63,10 +64,11 @@
 | 日志 | spdlog（header-only） |
 | 测试 | doctest（header-only） |
 | JSON | nlohmann/json（submodule） |
+| 数据库 | SQLite3（submodule） |
 | i18n | GNU gettext（.po / .mo） |
 | 网络/串口 | wxSocket（内置） / 自实现（`SerialPort`） |
 | Modbus | serhmarch/ModbusLib（submodule） |
-| 数据库/图表 | SQLite3（阶段 11） / wxGraphicsContext 自绘（阶段 11） |
+| 图表 | wxGraphicsContext 自绘 |
 | CI | GitHub Actions |
 | 覆盖率 | gcovr + GCC `--coverage` |
 | 调试器 | LLDB-DAP（GDB 17.2 与 cpptools MI 握手失败）；CLI 用 gdb |
@@ -83,7 +85,8 @@
 ### 2.2 UI 完全数据驱动且统一
 
 - 配置对话框：通过 `FieldDescriptor` 列表自动生成 `GenericProtocolDialog`。
-- 会话面板：使用 `wxNotebook` 提供三种模式（手动、交互、自动）。左侧固定为全局变量池，右侧通过 `VariableParamsFields` 自动渲染参数表单和唯一的操作值。
+- 变量参数表单：通过 `IProtocol::VariableParamsFields()` 描述，自动生成 UI 控件。
+- 会话面板：使用 `wxSplitterWindow` 左右分栏，左侧统一展示变量池，右侧根据字节流或事务型自动分派操作区。
 - **新增协议绝不需要改动任何 `ui/` 下的代码**。
 
 ### 2.3 状态机与重连标准化
@@ -91,11 +94,12 @@
 - **底层差异收敛**：所有会话继承 `ISession`。字节流继承 `StreamSession`，事务型继承 `ITransactionSession`。
 - **状态与重连抽象**：任何协议都组合 `SessionStateMachine` 管理生命周期状态，组合 `ReconnectConfig` 获得统一的重连配置与 UI 字段。
 
-### 2.4 自动化测试引擎通用化（阶段 8）
+### 2.4 自动化测试引擎通用化（阶段 8 & 10）
 
+- **动作统一**：无论 TCP、串口还是 Modbus，测试步骤统一抽象为 `read`（读取/接收）、`write`（写入/发送）和 `delay`（延时）。
 - 所有的测试步骤抽象为 `ITestStep`。由具体协议通过 `IProtocol::CreateTestStep` 工厂生成。
-- 引入**通信变量（CommVariable）**：支持定义类型、读写权限（RO/RW）和协议专属参数。测试步骤通过变量名直接引用参数，实现业务逻辑与协议细节解耦。
-- `TestRunner` 纯粹负责流程调度，支持自动全跑与交互单步阻断，并实时向 UI 抛出底层日志。
+- **批量生成**：支持在 UI 上选定一个基准步骤，通过设置“重复次数”、“间隔”和“自增/自减”快速生成一系列测试步骤。
+- `TestRunner` 纯粹负责流程调度，支持自动全跑与交互单步阻断。
 
 ### 2.5 分层清晰，依赖单向
 
@@ -109,6 +113,7 @@
 - **协议配置**：唯一来源是 `.json` 文件（`config/` 管）
 - **应用设置**：唯一来源是 `settings/` 模块
 - **协议描述**：唯一来源是 `IProtocol::FieldsForMode()` 与 `VariableParamsFields()`
+- **历史数据**：唯一来源是 SQLite（`test_history.db`）
 - **协议列表**：唯一来源是 `ProtocolRegistry::All()`
 - **会话状态**：唯一来源是 `SessionStateMachine::State()`
 
@@ -132,7 +137,7 @@
 
 ### 3.2 统一的 UI 生成逻辑
 
-`SessionPanel` 采用 `wxSplitterWindow` 分栏布局。左侧为全局变量池，右侧使用 `wxNotebook` 提供三种模式。在手动模式下，构建时根据 `ISession` 动态分派：
+`SessionPanel` 采用 `wxSplitterWindow` 左右分栏。左侧为全局变量池，右侧使用 `wxNotebook` 提供三种模式（手动、交互、自动、图表）。构建时根据 `ISession` 动态分派：
 ```cpp
 m_streamSession = dynamic_cast<StreamSession*>(m_session);
 m_txSession = dynamic_cast<ITransactionSession*>(m_session);
@@ -148,6 +153,7 @@ UI/CLI 加载 test_flow (JSON)
         -> 等待响应
         -> Assert() 进行比对
         -> Extract() 提取变量存入全局池
+        -> 触发 RecordData() 写入 SQLite 并推送到实时图表
     -> 抛出回调更新 UI 或 CLI 终端
 ```
 
@@ -210,7 +216,7 @@ public:
     virtual std::string Name() const = 0;
     virtual TestResult Execute(ISession* session, std::map<std::string, CommVariable>& vars) = 0;
     virtual bool Assert(const TestResult& result, std::string& outErrorMsg) = 0;
-    virtual void Extract(const TestResult& result, std::map<std::string, CommVariable>& vars) = 0;
+    virtual std::vector<std::string> Extract(const TestResult& result, std::map<std::string, CommVariable>& vars) = 0;
 };
 ```
 
@@ -292,7 +298,10 @@ IndComm/
 │   │   ├── ProtocolRegistry.h/.cpp
 │   │   ├── ProtocolTypes.h/.cpp
 │   │   ├── StreamSession.h/.cpp         ← 字节流会话实现
-│   │   └── SessionManager.h/.cpp
+│   │   ├── SessionManager.h/.cpp
+│   │   ├── Database.h/.cpp              ← 阶段 11 新增：SQLite 封装
+│   │   ├── BytesParser.h                ← 阶段 11 新增：二进制数据解析
+│   │   └── DelayStep.h                  ← 阶段 11 新增：通用的延时步骤
 │   ├── protocols/
 │   │   ├── tcp/
 │   │   ├── serial/
@@ -303,6 +312,8 @@ IndComm/
 │   │   ├── SessionPanel.h/.cpp          ← 唯一的动态生成会话面板
 │   │   ├── TestStepEditDialog.h/.cpp    ← 步骤可视化编辑器
 │   │   ├── VariableEditDialog.h/.cpp    ← 变量可视化编辑器
+│   │   ├── HistoryDialog.h/.cpp         ← 阶段 11 新增：历史查询窗口
+│   │   ├── ChartPanel.h/.cpp            ← 阶段 11 新增：实时折线图组件
 │   │   ├── LogFrame.h/.cpp
 │   │   ├── LogSink.h/.cpp
 │   │   └── AppTaskBarIcon.h/.cpp
@@ -381,7 +392,7 @@ settings/
 ### 6.4 关键约定
 
 - **`Settings` 是唯一允许直接操作底层存储的类**
-- 存储位置按优先级探测：`%APPDATA%` → `%LOCALAPPDATA%` → exe 目录 → 当前目录。
+- 存储位置按优先级探测：`%APPDATA%` → `%LOCALAPPDATA%` → `%USERPROFILE%`。
 - 所有 key 在 `SettingsKeys.h` 集中定义
 - 新设置项 = 加 key + 加接口 + 加实现
 
@@ -411,7 +422,7 @@ settings/
 1. **加 key** —— `SettingsKeys.h`
 2. **加接口** —— `UISettings.h`
 3. **加实现** —— `UISettings.cpp`
-4. **加 UI** —— `ui/SettingsDialog`（阶段 12 待建）
+4. **加 UI** —— `ui/SettingsDialog`（阶段 13 待建）
 5. **加使用** —— 使用点调用
 
 **全程只改 `settings/` + `SettingsDialog` + 使用点，不触碰 `core/` 和 `protocols/`。**
@@ -441,8 +452,9 @@ settings/
     "active_mode": "auto",
     "variables": {
       "my_temp": {
-        "type": "int",
+        "type": "int32",
         "access": "RW",
+        "enabled": true,
         "params": {
           "slaveId": 1,
           "functionCode": 3,
@@ -473,18 +485,20 @@ settings/
 #### `session.variables` 节点（通信变量）
 | 字段名 | 类型 | 说明 |
 |---|---|---|
-| `type` | string | 数据类型（int / string / bool / float） |
+| `type` | string | 数据类型（int8/uint16/int32/float/string/hex 等） |
 | `access` | string | `RO`（只读）、`RW`（读写）、`WO`（只写） |
+| `enabled` | bool | 是否启用该变量 |
 | `params` | object | 协议专属参数（如 Modbus 的 slaveId, functionCode 等） |
 
 #### `test_flow` 节点（测试步骤）
 | 字段名 | 类型 | 说明 |
 |---|---|---|
 | `name` | string | 步骤名称 |
-| `action` | string | 动作类型：`read`, `write`, `send`, `delay` 等 |
+| `action` | string | 动作类型：`read`, `write`, `delay` |
 | `variable` | string | 引用的通信变量名 |
 | `wait_ms` | int | 发送后等待响应的时间（毫秒） |
 | `value` | string | （可选）写入操作时的目标值，不填则用变量当前值 |
+| `assert` | object | 断言规则，如 `{"type": "==", "expected": "1"}` |
 
 ---
 
@@ -569,7 +583,7 @@ ctest --test-dir build --output-on-failure
 |---|---|---|
 | `TcpTransport.cpp` 0% | 依赖真实 wxSocket 事件循环 | 阶段 7 统一评估 |
 | `SerialPort.cpp` / `SerialTransport.cpp` | 依赖真实串口硬件 | 手工回归（com0com） |
-| `settings/*.cpp` 0% | 依赖 `wxApp` 初始化 | 阶段 12 |
+| `settings/*.cpp` 0% | 依赖 `wxApp` 初始化 | 阶段 13 |
 
 ### 9.7 什么必须测
 
@@ -780,17 +794,19 @@ docs/
   - [x] 10.2 新建 `VariableEditDialog`，通过表单编辑变量属性与协议参数。
   - [x] 10.3 `SessionPanel` 布局重构，引入 `wxSplitterWindow` 分离配置与日志。
   - [x] 10.4 `TestRunner` 执行步骤联动，实时高亮并输出底层报文日志。
+- [x] **阶段 11：SQLite 数据持久化与实时曲线**
+  - [x] 11.1 引入 SQLite3 submodule 与 `Database` 封装。
+  - [x] 11.2 建立 `test_runs` 和 `run_data` 数据库表。
+  - [x] 11.3 实现 `wxGraphicsContext` 自绘实时折线图与滚轮缩放。
+  - [x] 11.4 实现独立的 `HistoryDialog` 历史回放窗口。
+  - [x] 11.5 增加步骤的批量生成（循环/自增/间隔）。
+  - [x] 11.6 通讯动作统一（read/write/delay）与断言符号化。
 
-### 阶段 11：SQLite 数据持久化与实时曲线 ⬜ 未开始
+### 阶段 12：更多协议（MQTT 等） ⬜ 进行中
 
-- [ ] 11.1 引入 SQLite3 库。
-- [ ] 11.2 建立 `test_runs` 和 `run_data` 数据库表。
-- [ ] 11.3 `TestRunner` 增加 `OnDataRecorded` 回调。
-- [ ] 11.4 执行测试时将变量数据写入 SQLite。
-- [ ] 11.5 实现基于 `wxGraphicsContext` 的实时折线图。
-- [ ] 11.6 历史数据查询与图表回放。
+- [ ] 引入 MQTT 协议支持。
+- [ ] 补充 MQTT 的专属参数和编解码。
 
-### 阶段 12：更多协议（MQTT 等） ⬜ 未开始
 ### 阶段 13：应用设置完善 ⬜ 未开始
 ### 阶段 14：发布准备 ⬜ 未开始
 
@@ -801,8 +817,8 @@ docs/
 ### 13.1 上下文理解
 
 **当前状态**：
-- 阶段 1~10 已完成（统一底层 `ISession` + Modbus 接入 + 自动化引擎 + CLI 工具 + UX 重构）。
-- **核心新增文件**：`ui/TestStepEditDialog`、`ui/VariableEditDialog`。
+- 阶段 1~11 已完成（统一底层 `ISession` + Modbus 接入 + 自动化引擎 + CLI 工具 + UX 重构 + 数据持久化及图表）。
+- **核心新增文件**：`ui/HistoryDialog`、`ui/ChartPanel`、`core/Database.h`、`core/BytesParser.h`。
 
 **遗留问题**：
 
@@ -826,8 +842,10 @@ docs/
 - `src/core/SessionStateMachine.h` — 标准化状态机
 - `src/core/ITestStep.h` — 自动化测试步骤接口
 - `src/core/IProtocol.h` — 协议接口
+- `src/core/Database.h` — SQLite 封装
 - `src/protocols/modbus/ModbusProtocol.cpp` — 事务型协议范例
 - `src/ui/SessionPanel.cpp` — 统一的动态生成 UI 面板
+- `src/ui/ChartPanel.cpp` — 实时折线图绘制
 - `src/cli/main.cpp` — 独立 CLI 入口
 
 ### 13.2 回答用户问题的流程
@@ -973,6 +991,8 @@ tests/unit/protocols/<protocol_id>/
 | **项目文件重构 (ADR 0010)** | 剥离 `connection` 与 `session`，引入 Action 枚举与变量双向绑定 |
 | **项目更名 `IndComm`** | 缩短可执行文件名，提升命令行输入体验 |
 | **UX 深度重构 (ADR 0011)** | 废除 JSON 弹窗，引入可视化编辑器与分栏布局 |
+| **测试动作统一** | 避免用户在不同的协议下对 `send/write` 等概念产生割裂感，全部统一为 `read/write/delay` |
+| **通讯变量单一值抽象** | 所有收发数据围绕唯一的 `Value` 运作，通过 `RO/RW/WO` 控制权限 |
 
 **完整 ADR 列表**：[docs/architecture/adr/](docs/architecture/adr/README.md)
 
@@ -1015,7 +1035,7 @@ tests/unit/protocols/<protocol_id>/
 | 2026-10-19 | 阶段 8 & 9 完成：通信变量、自动化引擎、CLI 工具，项目更名 IndComm |
 | 2026-10-20 | 新增 ADR 0011，启动阶段 10 UX 重构 |
 | 2026-10-20 | 阶段 10 完成：UI 彻底分栏，变量池全局可见，动态参数生成 |
-| 2026-10-20 | 修复技术债：跨平台脚本兼容、`ModbusSession` 跨线程安全、i18n 全量更新 |
+| 2026-10-21 | 阶段 11 完成：SQLite 持久化、历史查询、多变量实时图表、批量测试生成、动作与断言统一 |
 
 ---
 
@@ -1074,7 +1094,7 @@ grep -rn 'ICU_SPDLOG_.*".*{.*}'  src/
 # 分层违规
 grep -rn '#include.*ui/\|#include.*settings/' src/core/ src/protocols/
 
-# 绕过 settings 直接调底层存储
+# 绕过 settings 直接调 wxConfigBase
 grep -rn "wxConfigBase" src/ | grep -v src/settings/
 
 # 循环包含
@@ -1189,7 +1209,7 @@ gdb 输出 `exited normally` 和 `No stack`。说明本次运行没触发崩溃�
 - [ ] Key 定义在 `SettingsKeys.h`
 - [ ] 类型化接口加在对应的 `XxxSettings.h`
 - [ ] 实现走 `Settings::Instance()`
-- [ ] 在 `SettingsDialog` 里加 UI（阶段 12 之后）
+- [ ] 在 `SettingsDialog` 里加 UI（阶段 13 之后）
 - [ ] 在使用点调用
 - [ ] 未在 `core/` 或 `protocols/` 里直接访问 settings
 - [ ] 已在本 README 第 6.5 节设置项清单里更新状态
@@ -1425,4 +1445,3 @@ tasklist | grep IndComm
 **文档结束。**
 
 > 本文档随项目演进持续更新。任何架构级改动必须先更新本文档，再动代码。
-

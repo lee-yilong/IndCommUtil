@@ -196,10 +196,12 @@ void MainFrame::ShowSessionPage(IProtocol* proto, int modeIndex, ISession* sessi
 
     SessionConfig* configPtr = nullptr;
     if (m_activeProfile) {
-        configPtr = &(m_activeProfile->session);  // 传入指针
+        configPtr = &(m_activeProfile->session);
     }
 
-    m_sessionPanel = new SessionPanel(m_contentBook, proto, modeIndex, session, configPtr);
+    // ★ 传入 m_currentProfilePath
+    m_sessionPanel =
+        new SessionPanel(m_contentBook, proto, modeIndex, session, configPtr, m_currentProfilePath);
     m_contentBook->AddPage(m_sessionPanel, _("Session"));
     m_contentBook->SetSelection(1);
 }

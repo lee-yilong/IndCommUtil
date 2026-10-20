@@ -6,7 +6,7 @@ namespace icu {
 
 ModbusReadStep::ModbusReadStep(const nlohmann::json& params) {
     m_name = params.value("name", "Modbus Read");
-    m_variableName = params.value("variable", "");  // ★ 只认变量名
+    m_variableName = params.value("variable", "");
 
     m_hasAssert = false;
     if (params.contains("assert") && params["assert"].is_object()) {
@@ -37,7 +37,6 @@ TestResult ModbusReadStep::Execute(ISession* session, std::map<std::string, Comm
         return result;
     }
 
-    // 1. 查找变量
     if (vars.find(m_variableName) == vars.end()) {
         result.errorMessage = "Variable not found: " + m_variableName;
         return result;
@@ -49,14 +48,12 @@ TestResult ModbusReadStep::Execute(ISession* session, std::map<std::string, Comm
         return result;
     }
 
-    // 2. 从变量参数中提取 Modbus 专属参数
     TransactionRequest req;
     req.slaveId = var.params.value("slaveId", 1);
     req.functionCode = var.params.value("functionCode", 3);
     req.startAddress = var.params.value("startAddress", 0);
     req.count = var.params.value("count", 1);
 
-    // 3. 执行
     TransactionResponse resp = txSession->Execute(req);
     if (!resp.ok) {
         result.success = false;
@@ -85,10 +82,15 @@ bool ModbusReadStep::Assert(const TestResult& result, std::string& outErrorMsg) 
     return true;
 }
 
-void ModbusReadStep::Extract(const TestResult& result, std::map<std::string, CommVariable>& vars) {
+// ★ 修改返回值
+std::vector<std::string> ModbusReadStep::Extract(const TestResult& result,
+                                                 std::map<std::string, CommVariable>& vars) {
+    std::vector<std::string> updated;
     if (!result.registers.empty() && vars.find(m_variableName) != vars.end()) {
         vars[m_variableName].currentValue = std::to_string(result.registers[0]);
+        updated.push_back(m_variableName);
     }
+    return updated;
 }
 
 }  // namespace icu

@@ -15,7 +15,10 @@ public:
     std::string Name() const override;
     TestResult Execute(ISession* session, std::map<std::string, CommVariable>& vars) override;
     bool Assert(const TestResult& result, std::string& outErrorMsg) override;
-    void Extract(const TestResult& result, std::map<std::string, CommVariable>& vars) override;
+
+    // ★ 修改返回值
+    std::vector<std::string> Extract(const TestResult& result,
+                                     std::map<std::string, CommVariable>& vars) override;
 
 private:
     std::string m_name;

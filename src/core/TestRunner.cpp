@@ -54,7 +54,7 @@ void TestRunner::RunLoop() {
         if (m_stepLogCb) m_stepLogCb(">>> " + stepName);
         TestResult result = step->Execute(m_session, m_vars);
 
-        // 输出底层响应报文
+        // 输出底层响应报文 (阶段 10 补回)
         if (m_stepLogCb) {
             if (!result.rawResponse.empty()) {
                 m_stepLogCb("<<< " + result.rawResponse);
@@ -74,7 +74,20 @@ void TestRunner::RunLoop() {
 
         // 3. 提取变量（将结果写回变量池）
         if (isSuccess) {
-            step->Extract(result, m_vars);
+            auto updatedVars = step->Extract(result, m_vars);
+
+            // 触发数据记录回调 (阶段 11 新增)
+            if (m_dataRecordCb) {
+                for (const auto& varName : updatedVars) {
+                    if (m_vars.count(varName)) {
+                        try {
+                            double val = std::stod(m_vars[varName].currentValue);
+                            m_dataRecordCb(varName, val);
+                        } catch (...) {
+                        }
+                    }
+                }
+            }
         }
 
         // 4. 通知 UI
@@ -92,11 +105,11 @@ void TestRunner::RunLoop() {
         if (m_runMode == TestRunMode::SingleStep && i < m_steps.size() - 1) {
             std::unique_lock<std::mutex> lock(m_mutex);
             m_waitingForContinue = true;
-            lock.unlock();  // ★ 关键：先解锁，允许用户在回调里调用 Continue()
+            lock.unlock();
 
-            if (m_waitCb) m_waitCb(static_cast<int>(i + 1));  // 阻塞等待用户
+            if (m_waitCb) m_waitCb(static_cast<int>(i + 1));
 
-            lock.lock();  // ★ 重新加锁
+            lock.lock();
             m_cv.wait(lock, [this]() { return !m_waitingForContinue || m_stopFlag; });
             if (m_stopFlag) {
                 overallSuccess = false;

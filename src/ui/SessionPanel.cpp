@@ -1,25 +1,127 @@
 #include "SessionPanel.h"
 
 #include <wx/datetime.h>
+#include <wx/filename.h>
+#include <wx/stdpaths.h>
 #include <wx/tokenzr.h>
 
+#include <algorithm>
+#include <cstring>
 #include <thread>
 
 #include "TestStepEditDialog.h"
+#include "VariableEditDialog.h"
+#include "core/BytesParser.h"
+#include "core/DelayStep.h"
 #include "log/Log.h"
 #include "spdlog/spdlog.h"
 
 namespace icu {
 
+namespace {
+std::vector<uint8_t> EncodePayload(const std::string& type, const std::string& payload) {
+    std::vector<uint8_t> bytes;
+    if (type == "int8") {
+        try {
+            bytes.push_back(static_cast<uint8_t>(std::stoi(payload)));
+        } catch (...) {
+        }
+    } else if (type == "uint8") {
+        try {
+            bytes.push_back(static_cast<uint8_t>(std::stoul(payload)));
+        } catch (...) {
+        }
+    } else if (type == "int16" || type == "uint16") {
+        try {
+            uint16_t v = static_cast<uint16_t>(std::stoul(payload));
+            bytes.push_back((v >> 8) & 0xFF);
+            bytes.push_back(v & 0xFF);
+        } catch (...) {
+        }
+    } else if (type == "int" || type == "int32") {
+        try {
+            int32_t v = std::stoi(payload);
+            bytes.resize(4);
+            bytes[0] = (v >> 24) & 0xFF;
+            bytes[1] = (v >> 16) & 0xFF;
+            bytes[2] = (v >> 8) & 0xFF;
+            bytes[3] = v & 0xFF;
+        } catch (...) {
+        }
+    } else if (type == "uint" || type == "uint32") {
+        try {
+            uint32_t v = std::stoul(payload);
+            bytes.resize(4);
+            bytes[0] = (v >> 24) & 0xFF;
+            bytes[1] = (v >> 16) & 0xFF;
+            bytes[2] = (v >> 8) & 0xFF;
+            bytes[3] = v & 0xFF;
+        } catch (...) {
+        }
+    } else if (type == "float") {
+        try {
+            float v = std::stof(payload);
+            uint32_t intVal;
+            std::memcpy(&intVal, &v, sizeof(intVal));
+            bytes.resize(4);
+            bytes[0] = (intVal >> 24) & 0xFF;
+            bytes[1] = (intVal >> 16) & 0xFF;
+            bytes[2] = (intVal >> 8) & 0xFF;
+            bytes[3] = intVal & 0xFF;
+        } catch (...) {
+        }
+    } else if (type == "double") {
+        try {
+            double v = std::stod(payload);
+            uint64_t intVal;
+            std::memcpy(&intVal, &v, sizeof(intVal));
+            bytes.resize(8);
+            for (int i = 7; i >= 0; --i) bytes[7 - i] = (intVal >> (i * 8)) & 0xFF;
+        } catch (...) {
+        }
+    } else if (type == "bool") {
+        bytes.push_back((payload == "true" || payload == "1") ? 1 : 0);
+    } else {
+        bytes.assign(payload.begin(), payload.end());
+    }
+    return bytes;
+}
+
+bool TryParseNumeric(const std::string& type, const std::string& val, double& out) {
+    try {
+        if (type == "hex") {
+            std::string s = val;
+            s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
+            if (s.empty()) return false;
+            out = static_cast<double>(std::stoul(s, nullptr, 16));
+            return true;
+        } else if (type != "string" && type != "bool") {
+            out = std::stod(val);
+            return true;
+        }
+    } catch (...) {
+    }
+    return false;
+}
+}  // namespace
+
 SessionPanel::SessionPanel(wxWindow* parent, IProtocol* protocol, int modeIndex, ISession* session,
-                           SessionConfig* sessionConfig)
+                           SessionConfig* sessionConfig, const wxString& profilePath)
     : wxPanel(parent, wxID_ANY),
       m_protocol(protocol),
       m_modeIndex(modeIndex),
       m_session(session),
-      m_sessionConfig(sessionConfig) {
+      m_sessionConfig(sessionConfig),
+      m_profilePath(profilePath) {
     m_streamSession = dynamic_cast<StreamSession*>(m_session);
     m_txSession = dynamic_cast<ITransactionSession*>(m_session);
+
+    wxFileName exePath(wxStandardPaths::Get().GetExecutablePath());
+    exePath.SetFullName("test_history.db");
+    m_db.Open(std::string(exePath.GetFullPath().utf8_str()));
+
+    wxString runPath = m_profilePath.IsEmpty() ? "Untitled" : m_profilePath;
+    m_currentRunId = m_db.CreateTestRun(std::string(runPath.utf8_str()));
 
     BuildUi();
 
@@ -46,88 +148,151 @@ SessionPanel::~SessionPanel() {
     if (m_testRunner) {
         m_testRunner->Stop();
         delete m_testRunner;
+        m_testRunner = nullptr;
     }
+    if (m_currentRunId != -1) {
+        m_db.UpdateTestRunStatus(m_currentRunId, "CLOSED");
+    }
+    m_db.Close();
+}
+
+void SessionPanel::RecordData(const std::string& varName, double value) {
+    if (!m_isRecording) return;
+    if (!m_loggingVars.empty() && m_loggingVars.find(varName) == m_loggingVars.end()) return;
+
+    auto now = std::chrono::system_clock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    double timeSec = ms / 1000.0;
+
+    if (m_currentRunId != -1) {
+        m_db.InsertRunData(m_currentRunId, varName, value, timeSec);
+    }
+    if (m_chartPanel) {
+        m_chartPanel->AddDataPointWithTime(varName, value, timeSec);
+    }
+}
+
+void SessionPanel::AppendUnifiedLog(bool isRx, const std::string& varName, const std::string& type,
+                                    const std::string& value, const std::vector<uint8_t>& rawBytes,
+                                    int clientId) {
+    if (!m_commonLogCtrl) return;
+    wxString timeStr = wxDateTime::Now().Format("[%H:%M:%S.%l] ");
+
+    wxString dirStr = isRx ? (clientId > 0 ? wxString::Format("<#%d ", clientId) : "< ") : "> ";
+    wxString varStr = wxString::FromUTF8(varName);
+    if (varStr.IsEmpty()) varStr = "Unknown";
+    wxString typeStr = wxString::FromUTF8(type);
+    wxString valStr = wxString::FromUTF8(value);
+
+    wxString hexStr;
+    for (uint8_t b : rawBytes) hexStr += wxString::Format("%02X ", b);
+    hexStr = hexStr.Trim();
+
+    wxString line;
+    if (typeStr.IsEmpty() || typeStr == "Unknown") {
+        line = timeStr + dirStr + wxString::Format("%s | HEX: %s\n", varStr, hexStr);
+    } else {
+        line = timeStr + dirStr +
+               wxString::Format("%s (%s): %s | HEX: %s\n", varStr, typeStr, valStr, hexStr);
+    }
+
+    m_commonLogCtrl->AppendText(line);
+    m_commonLogCtrl->SetInsertionPointEnd();
 }
 
 void SessionPanel::BuildUi() {
     auto* main = new wxBoxSizer(wxVERTICAL);
     BuildCommonUi(main);
 
-    // 1. 先创建 Splitter（父窗口是 this）
     m_mainSplitter = new wxSplitterWindow(this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
                                           wxSP_LIVE_UPDATE | wxSP_3DSASH);
 
-    // =========================================================================
-    // 左侧：全局通讯变量池（父窗口改成 m_mainSplitter）
-    // =========================================================================
     auto* varPanel = new wxPanel(m_mainSplitter);
     auto* varSizer = new wxBoxSizer(wxVERTICAL);
-
     auto* varBox = new wxStaticBoxSizer(wxVERTICAL, varPanel, _("Communication Variables"));
+
+    // ★ 修复：变量列表使用单选 wxLC_SINGLE_SEL
     m_varList = new wxListCtrl(varBox->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize,
                                wxLC_REPORT | wxLC_SINGLE_SEL);
-    m_varList->InsertColumn(0, _("Name"), wxLIST_FORMAT_LEFT, 100);
+    m_varList->EnableCheckBoxes(true);
+    m_varList->InsertColumn(0, _("Name"), wxLIST_FORMAT_LEFT, 120);
     m_varList->InsertColumn(1, _("Type"), wxLIST_FORMAT_LEFT, 60);
     m_varList->InsertColumn(2, _("Access"), wxLIST_FORMAT_LEFT, 60);
-    m_varList->InsertColumn(3, _("Value"), wxLIST_FORMAT_LEFT, 80);
+    m_varList->InsertColumn(3, _("Value"), wxLIST_FORMAT_LEFT, 100);
+
     m_varList->Bind(wxEVT_LIST_ITEM_SELECTED, &SessionPanel::OnVarSelected, this);
+    m_varList->Bind(wxEVT_LIST_ITEM_CHECKED, &SessionPanel::OnItemChecked, this);
+    m_varList->Bind(wxEVT_LIST_ITEM_UNCHECKED, &SessionPanel::OnItemChecked, this);
     varBox->Add(m_varList, 1, wxEXPAND | wxALL, 4);
 
     auto* btnSizer = new wxBoxSizer(wxHORIZONTAL);
     m_addVarBtn = new wxButton(varBox->GetStaticBox(), wxID_ANY, _("Add"));
+    m_copyVarBtn = new wxButton(varBox->GetStaticBox(), wxID_ANY, _("Copy"));
     m_editVarBtn = new wxButton(varBox->GetStaticBox(), wxID_ANY, _("Edit"));
     m_delVarBtn = new wxButton(varBox->GetStaticBox(), wxID_ANY, _("Delete"));
+
     m_addVarBtn->Bind(wxEVT_BUTTON, &SessionPanel::OnAddVariable, this);
+    m_copyVarBtn->Bind(wxEVT_BUTTON, &SessionPanel::OnCopyVariable, this);
     m_editVarBtn->Bind(wxEVT_BUTTON, &SessionPanel::OnEditVariable, this);
     m_delVarBtn->Bind(wxEVT_BUTTON, &SessionPanel::OnDeleteVariable, this);
 
     btnSizer->Add(m_addVarBtn, 0, wxALL, 2);
+    btnSizer->Add(m_copyVarBtn, 0, wxALL, 2);
     btnSizer->Add(m_editVarBtn, 0, wxALL, 2);
     btnSizer->Add(m_delVarBtn, 0, wxALL, 2);
     varBox->Add(btnSizer, 0, wxALIGN_RIGHT);
-
     varSizer->Add(varBox, 1, wxEXPAND | wxALL, 5);
     varPanel->SetSizer(varSizer);
     RefreshVariableList();
 
-    // =========================================================================
-    // 右侧：模式选项卡（父窗口改成 m_mainSplitter）
-    // =========================================================================
-    m_modeNotebook = new wxNotebook(m_mainSplitter, wxID_ANY);
+    m_rightSplitter = new wxSplitterWindow(m_mainSplitter, wxID_ANY, wxDefaultPosition,
+                                           wxDefaultSize, wxSP_LIVE_UPDATE | wxSP_3DSASH);
+
+    m_modeNotebook = new wxNotebook(m_rightSplitter, wxID_ANY);
     m_manualPage = new wxPanel(m_modeNotebook);
     m_interactivePage = new wxPanel(m_modeNotebook);
     m_autoPage = new wxPanel(m_modeNotebook);
+    m_chartPanel = new ChartPanel(m_modeNotebook);
 
     m_modeNotebook->AddPage(m_manualPage, _("Manual Mode"));
     m_modeNotebook->AddPage(m_interactivePage, _("Interactive Mode"));
     m_modeNotebook->AddPage(m_autoPage, _("Auto Mode"));
+    m_modeNotebook->AddPage(m_chartPanel, _("Chart"));
     m_modeNotebook->Bind(wxEVT_NOTEBOOK_PAGE_CHANGED, &SessionPanel::OnNotebookPageChanged, this);
 
-    // --- 手动模式页面布局 ---
     auto* manualSizer = new wxBoxSizer(wxVERTICAL);
-
-    // 操作区
     m_varOpSizer = new wxStaticBoxSizer(wxVERTICAL, m_manualPage, _("Operation Request"));
     auto* hint = new wxStaticText(m_varOpSizer->GetStaticBox(), wxID_ANY,
                                   _("Please select a variable from the left list."));
     m_varOpSizer->Add(hint, 0, wxALL, 10);
-    manualSizer->Add(m_varOpSizer, 0, wxEXPAND | wxALL, 5);  // 0 表示不拉伸，高度随内容
-
-    // 日志区
-    if (m_streamSession)
-        BuildStreamUi(manualSizer, m_manualPage);
-    else if (m_txSession)
-        BuildTransactionUi(manualSizer, m_manualPage);
-
+    manualSizer->Add(m_varOpSizer, 0, wxEXPAND | wxALL, 5);
     m_manualPage->SetSizer(manualSizer);
 
     BuildTestFlowUi(m_interactivePage, false);
     BuildTestFlowUi(m_autoPage, true);
 
-    // =========================================================================
-    // 3. 最后执行分栏（此时它们都已经是 m_mainSplitter 的孩子了）
-    // =========================================================================
-    m_mainSplitter->SplitVertically(varPanel, m_modeNotebook, 320);
+    auto* logPanel = new wxPanel(m_rightSplitter);
+    auto* logSizer = new wxBoxSizer(wxVERTICAL);
+    auto* logBox = new wxStaticBoxSizer(wxVERTICAL, logPanel, _("Communication Log"));
+    auto* logToolbar = new wxBoxSizer(wxHORIZONTAL);
+    m_clearBtn = new wxButton(logBox->GetStaticBox(), wxID_ANY, _("Clear"));
+    m_clearBtn->Bind(wxEVT_BUTTON, &SessionPanel::OnClear, this);
+    logToolbar->AddStretchSpacer();
+    logToolbar->Add(m_clearBtn, 0, wxALL, 4);
+    logBox->Add(logToolbar, 0, wxEXPAND);
+
+    m_commonLogCtrl = new wxTextCtrl(logBox->GetStaticBox(), wxID_ANY, "", wxDefaultPosition,
+                                     wxDefaultSize, wxTE_MULTILINE | wxTE_READONLY | wxTE_RICH2);
+    wxFont mono(10, wxFONTFAMILY_TELETYPE, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
+    m_commonLogCtrl->SetFont(mono);
+    logBox->Add(m_commonLogCtrl, 1, wxEXPAND | wxALL, 4);
+    logSizer->Add(logBox, 1, wxEXPAND);
+    logPanel->SetSizer(logSizer);
+
+    m_rightSplitter->SplitHorizontally(m_modeNotebook, logPanel, 400);
+    m_rightSplitter->SetMinimumPaneSize(150);
+
+    m_mainSplitter->SplitVertically(varPanel, m_rightSplitter, 320);
     m_mainSplitter->SetMinimumPaneSize(200);
 
     main->Add(m_mainSplitter, 1, wxEXPAND | wxALL, 5);
@@ -169,144 +334,17 @@ void SessionPanel::BuildCommonUi(wxBoxSizer* mainSizer) {
     btnSizer->Add(m_actionBtn, 0, wxRIGHT, 8);
     m_configBtn = new wxButton(this, wxID_ANY, _("Configure Connection..."));
     m_configBtn->Bind(wxEVT_BUTTON, &SessionPanel::OnConfigure, this);
-    btnSizer->Add(m_configBtn, 0);
+    btnSizer->Add(m_configBtn, 0, wxRIGHT, 8);
+
+    m_recordBtn = new wxButton(this, wxID_ANY, _("Record Settings"));
+    m_recordBtn->Bind(wxEVT_BUTTON, &SessionPanel::OnRecordSettings, this);
+    btnSizer->Add(m_recordBtn, 0, wxRIGHT, 8);
+
+    m_historyBtn = new wxButton(this, wxID_ANY, _("History Query"));
+    m_historyBtn->Bind(wxEVT_BUTTON, &SessionPanel::OnHistoryQuery, this);
+    btnSizer->Add(m_historyBtn, 0, wxRIGHT, 8);
+
     mainSizer->Add(btnSizer, 0, wxALL, 10);
-}
-
-void SessionPanel::BuildVariableUi(wxBoxSizer* mainSizer, wxWindow* parentWindow) {
-    auto* varBox = new wxStaticBoxSizer(wxVERTICAL, parentWindow, _("Communication Variables"));
-
-    m_varList = new wxListCtrl(varBox->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxSize(-1, 150),
-                               wxLC_REPORT | wxLC_SINGLE_SEL);
-    m_varList->InsertColumn(0, _("Name"), wxLIST_FORMAT_LEFT, 150);
-    m_varList->InsertColumn(1, _("Type"), wxLIST_FORMAT_LEFT, 100);
-    m_varList->InsertColumn(2, _("Access"), wxLIST_FORMAT_LEFT, 80);
-    m_varList->InsertColumn(3, _("Value"), wxLIST_FORMAT_LEFT, 150);
-    m_varList->Bind(wxEVT_LIST_ITEM_SELECTED, &SessionPanel::OnVarSelected, this);
-    varBox->Add(m_varList, 1, wxEXPAND | wxALL, 4);
-
-    auto* btnSizer = new wxBoxSizer(wxHORIZONTAL);
-    m_addVarBtn = new wxButton(varBox->GetStaticBox(), wxID_ANY, _("Add Variable"));
-    m_editVarBtn = new wxButton(varBox->GetStaticBox(), wxID_ANY, _("Edit Variable"));
-    m_delVarBtn = new wxButton(varBox->GetStaticBox(), wxID_ANY, _("Delete Variable"));
-    m_addVarBtn->Bind(wxEVT_BUTTON, &SessionPanel::OnAddVariable, this);
-    m_editVarBtn->Bind(wxEVT_BUTTON, &SessionPanel::OnEditVariable, this);
-    m_delVarBtn->Bind(wxEVT_BUTTON, &SessionPanel::OnDeleteVariable, this);
-
-    btnSizer->Add(m_addVarBtn, 0, wxALL, 4);
-    btnSizer->Add(m_editVarBtn, 0, wxALL, 4);
-    btnSizer->Add(m_delVarBtn, 0, wxALL, 4);
-    varBox->Add(btnSizer, 0, wxALIGN_RIGHT);
-    mainSizer->Add(varBox, 0, wxEXPAND | wxALL, 10);
-    RefreshVariableList();
-
-    m_varOpSizer = new wxStaticBoxSizer(wxVERTICAL, parentWindow, _("Operation Request"));
-    auto* hint = new wxStaticText(m_varOpSizer->GetStaticBox(), wxID_ANY,
-                                  _("Please select a variable from the list above."));
-    m_varOpSizer->Add(hint, 0, wxALL, 10);
-    mainSizer->Add(m_varOpSizer, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
-}
-
-void SessionPanel::BuildStreamUi(wxBoxSizer* mainSizer, wxWindow* parentWindow) {
-    if (m_streamSession->IsServerMode())
-        m_clientsLabel->Show();
-    else
-        m_clientsLabel->Hide();
-
-    // 日志区
-    auto* logBox = new wxStaticBoxSizer(wxVERTICAL, parentWindow, _("Data Log"));
-
-    // 工具栏
-    auto* logToolbar = new wxBoxSizer(wxHORIZONTAL);
-    m_hexDisplay = new wxCheckBox(logBox->GetStaticBox(), wxID_ANY, _("HEX Display"));
-    m_showTimestamp = new wxCheckBox(logBox->GetStaticBox(), wxID_ANY, _("Timestamp"));
-    m_autoScroll = new wxCheckBox(logBox->GetStaticBox(), wxID_ANY, _("Auto Scroll"));
-    m_clearBtn = new wxButton(logBox->GetStaticBox(), wxID_ANY, _("Clear"));
-
-    m_showTimestamp->SetValue(true);
-    m_autoScroll->SetValue(true);
-    m_clearBtn->Bind(wxEVT_BUTTON, &SessionPanel::OnClear, this);
-
-    logToolbar->Add(m_hexDisplay, 0, wxALIGN_CENTER_VERTICAL | wxALL, 4);
-    logToolbar->Add(m_showTimestamp, 0, wxALIGN_CENTER_VERTICAL | wxALL, 4);
-    logToolbar->Add(m_autoScroll, 0, wxALIGN_CENTER_VERTICAL | wxALL, 4);
-    logToolbar->AddStretchSpacer();
-    logToolbar->Add(m_clearBtn, 0, wxALIGN_CENTER_VERTICAL | wxALL, 4);
-
-    // 把工具栏加到 logBox
-    logBox->Add(logToolbar, 0, wxEXPAND);
-
-    // 文本框
-    m_dataLogTextCtrl =
-        new wxTextCtrl(logBox->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition,
-                       wxDefaultSize, wxTE_MULTILINE | wxTE_READONLY | wxTE_RICH2);
-    logBox->Add(m_dataLogTextCtrl, 1, wxEXPAND | wxALL, 4);
-
-    // 把 logBox 加到主 Sizer（1 表示占据剩余所有垂直空间）
-    mainSizer->Add(logBox, 1, wxEXPAND | wxALL, 5);
-}
-
-void SessionPanel::BuildTransactionUi(wxBoxSizer* mainSizer, wxWindow* parentWindow) {
-    m_rxLabel->Hide();
-    m_txLabel->Hide();
-    m_clientsLabel->Hide();
-    auto* logBox = new wxStaticBoxSizer(wxVERTICAL, parentWindow, _("Result Log"));
-    m_txLogTextCtrl =
-        new wxTextCtrl(logBox->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition,
-                       wxDefaultSize, wxTE_MULTILINE | wxTE_READONLY | wxTE_RICH2);
-    wxFont mono(10, wxFONTFAMILY_TELETYPE, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
-    m_txLogTextCtrl->SetFont(mono);
-    logBox->Add(m_txLogTextCtrl, 1, wxEXPAND | wxALL, 4);
-    mainSizer->Add(logBox, 1, wxEXPAND | wxLEFT | wxRIGHT, 10);
-}
-
-wxWindow* SessionPanel::CreateControl(wxWindow* parent, const FieldDescriptor& fd) {
-    switch (fd.type) {
-        case FieldValue::Type::String:
-            return new wxTextCtrl(parent, wxID_ANY, wxString::FromUTF8(fd.defaultValue.AsString()));
-        case FieldValue::Type::Int:
-            return new wxSpinCtrl(parent, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
-                                  wxSP_ARROW_KEYS, fd.minValue, fd.maxValue,
-                                  fd.defaultValue.AsInt());
-        case FieldValue::Type::Bool: {
-            auto* c = new wxCheckBox(parent, wxID_ANY, "");
-            c->SetValue(fd.defaultValue.AsBool());
-            return c;
-        }
-        case FieldValue::Type::Choice: {
-            wxArrayString labels;
-            int sel = 0;
-            for (size_t i = 0; i < fd.choices.size(); ++i) {
-                labels.Add(wxGetTranslation(wxString::FromUTF8(fd.choices[i].second)));
-                if (fd.choices[i].first == fd.defaultValue.AsString()) sel = (int)i;
-            }
-            auto* ch = new wxChoice(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, labels);
-            ch->SetSelection(sel);
-            return ch;
-        }
-    }
-    return new wxTextCtrl(parent, wxID_ANY);
-}
-
-void SessionPanel::RefreshVariableList() {
-    if (!m_varList || !m_sessionConfig) return;
-    m_varList->DeleteAllItems();
-    int idx = 0;
-    for (const auto& [name, var] : m_sessionConfig->variables) {
-        long item = m_varList->InsertItem(idx++, wxString::FromUTF8(name));
-        m_varList->SetItem(item, 1, wxString::FromUTF8(var.type));
-        m_varList->SetItem(item, 2, wxString::FromUTF8(var.access));
-        m_varList->SetItem(item, 3, wxString::FromUTF8(var.currentValue));
-    }
-}
-
-void SessionPanel::OnVarSelected(wxListEvent& evt) {
-    long item = evt.GetIndex();
-    if (item < 0) return;
-    m_selectedVarName = std::string(m_varList->GetItemText(item).utf8_str());
-    if (m_sessionConfig && m_sessionConfig->variables.count(m_selectedVarName)) {
-        BuildVarOpUi(m_sessionConfig->variables[m_selectedVarName]);
-    }
 }
 
 wxWindow* SessionPanel::CreateJsonControl(wxWindow* parent, const FieldDescriptor& fd,
@@ -329,7 +367,6 @@ wxWindow* SessionPanel::CreateJsonControl(wxWindow* parent, const FieldDescripto
             auto* s = new wxSpinCtrl(parent, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
                                      wxSP_ARROW_KEYS, fd.minValue, fd.maxValue, defInt);
             s->Bind(wxEVT_SPINCTRL, [s, onChanged](wxSpinEvent&) { onChanged(s->GetValue()); });
-            // 补充：如果用户直接键盘输入不按箭头，在失焦时也能同步
             s->Bind(wxEVT_KILL_FOCUS, [s, onChanged](wxFocusEvent& e) {
                 onChanged(s->GetValue());
                 e.Skip();
@@ -374,7 +411,6 @@ void SessionPanel::BuildVarOpUi(const CommVariable& var) {
     auto* grid = new wxFlexGridSizer(2, 8, 8);
     grid->AddGrowableCol(1, 1);
 
-    // 1. 渲染协议专属参数
     auto fields = m_protocol->VariableParamsFields();
     for (const auto& fd : fields) {
         grid->Add(new wxStaticText(m_varOpSizer->GetStaticBox(), wxID_ANY,
@@ -393,7 +429,6 @@ void SessionPanel::BuildVarOpUi(const CommVariable& var) {
         m_varOpControls[fd.key] = ctrl;
     }
 
-    // 2. 统一的值显示/输入框
     grid->Add(new wxStaticText(m_varOpSizer->GetStaticBox(), wxID_ANY, _("Value:")), 0,
               wxALIGN_CENTER_VERTICAL);
 
@@ -401,22 +436,50 @@ void SessionPanel::BuildVarOpUi(const CommVariable& var) {
                                      wxString::FromUTF8(var.currentValue));
     valueCtrl->Bind(wxEVT_TEXT, [this, valueCtrl](wxCommandEvent&) {
         if (!m_selectedVarName.empty() && m_sessionConfig) {
-            m_sessionConfig->variables[m_selectedVarName].currentValue =
-                std::string(valueCtrl->GetValue().utf8_str());
+            std::string text = std::string(valueCtrl->GetValue().utf8_str());
+            m_sessionConfig->variables[m_selectedVarName].currentValue = text;
+
+            wxString rawStr;
+            if (m_streamSession) {
+                std::vector<uint8_t> bytes =
+                    EncodePayload(m_sessionConfig->variables[m_selectedVarName].type, text);
+                for (uint8_t b : bytes) rawStr += wxString::Format("%02X ", b);
+                rawStr = rawStr.Trim();
+            } else if (m_txSession) {
+                try {
+                    int val = std::stoi(text);
+                    uint16_t reg = static_cast<uint16_t>(val);
+                    rawStr = wxString::Format("%02X %02X", (reg >> 8) & 0xFF, reg & 0xFF);
+                } catch (...) {
+                }
+            }
+            m_sessionConfig->variables[m_selectedVarName].rawBytes = std::string(rawStr.utf8_str());
+
+            if (m_varOpControls.count("__raw_bytes")) {
+                if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__raw_bytes"])) {
+                    txt->ChangeValue(rawStr);
+                }
+            }
         }
     });
-
     if (var.access == "RO") {
         valueCtrl->SetEditable(false);
         valueCtrl->SetBackgroundColour(wxColour(240, 240, 240));
     }
-
     grid->Add(valueCtrl, 1, wxEXPAND);
     m_varOpControls["__value"] = valueCtrl;
 
+    grid->Add(new wxStaticText(m_varOpSizer->GetStaticBox(), wxID_ANY, _("Raw Bytes:")), 0,
+              wxALIGN_CENTER_VERTICAL);
+    auto* rawCtrl =
+        new wxTextCtrl(m_varOpSizer->GetStaticBox(), wxID_ANY, wxString::FromUTF8(var.rawBytes),
+                       wxDefaultPosition, wxDefaultSize, wxTE_READONLY);
+    rawCtrl->SetBackgroundColour(wxColour(240, 240, 240));
+    grid->Add(rawCtrl, 1, wxEXPAND);
+    m_varOpControls["__raw_bytes"] = rawCtrl;
+
     m_varOpSizer->Add(grid, 1, wxEXPAND | wxALL, 8);
 
-    // 3. 按钮区
     auto* btnSizer = new wxBoxSizer(wxHORIZONTAL);
     if (m_streamSession) {
         if (var.access != "RO") {
@@ -439,21 +502,58 @@ void SessionPanel::BuildVarOpUi(const CommVariable& var) {
 
     m_varOpSizer->Add(btnSizer, 0, wxALIGN_RIGHT);
 
-    // 强制重新布局页面
+    m_varOpSizer->Layout();
     m_manualPage->Layout();
+}
+
+void SessionPanel::RefreshVariableList() {
+    if (!m_varList || !m_sessionConfig) return;
+    m_varList->DeleteAllItems();
+    int idx = 0;
+    for (const auto& [name, var] : m_sessionConfig->variables) {
+        long item = m_varList->InsertItem(idx++, wxString::FromUTF8(name));
+        m_varList->SetItem(item, 1, wxString::FromUTF8(var.type));
+        m_varList->SetItem(item, 2, wxString::FromUTF8(var.access));
+        m_varList->SetItem(item, 3, wxString::FromUTF8(var.currentValue));
+
+        m_varList->CheckItem(item, var.enabled);
+
+        if (!var.enabled) {
+            m_varList->SetItemTextColour(item, wxColour(150, 150, 150));
+        }
+    }
+}
+
+void SessionPanel::OnVarSelected(wxListEvent& evt) {
+    long item = evt.GetIndex();
+    if (item < 0) return;
+    m_selectedVarName = std::string(m_varList->GetItemText(item).utf8_str());
+    if (m_sessionConfig && m_sessionConfig->variables.count(m_selectedVarName)) {
+        BuildVarOpUi(m_sessionConfig->variables[m_selectedVarName]);
+    }
+}
+
+void SessionPanel::OnItemChecked(wxListEvent& evt) {
+    long item = evt.GetIndex();
+    if (item < 0) return;
+    std::string name = std::string(m_varList->GetItemText(item).utf8_str());
+    if (m_sessionConfig && m_sessionConfig->variables.count(name)) {
+        m_sessionConfig->variables[name].enabled = m_varList->IsItemChecked(item);
+        if (!m_sessionConfig->variables[name].enabled) {
+            m_varList->SetItemTextColour(item, wxColour(150, 150, 150));
+        } else {
+            m_varList->SetItemTextColour(item, *wxBLACK);
+        }
+    }
 }
 
 void SessionPanel::OnExecuteRead(wxCommandEvent&) {
     if (!m_txSession || !m_txSession->IsConnected()) return;
     if (!m_sessionConfig || !m_sessionConfig->variables.count(m_selectedVarName)) return;
-
-    // 直接使用已经同步好的变量参数
     auto varCopy = m_sessionConfig->variables[m_selectedVarName];
 
     TransactionRequest req;
     req.slaveId = varCopy.params.value("slaveId", 1);
-
-    // 如果 params 里存的是字符串形式的功能码，这里兼容解析一下
     if (varCopy.params.contains("functionCode")) {
         if (varCopy.params["functionCode"].is_string()) {
             req.functionCode = std::stoi(varCopy.params["functionCode"].get<std::string>());
@@ -461,11 +561,9 @@ void SessionPanel::OnExecuteRead(wxCommandEvent&) {
             req.functionCode = varCopy.params["functionCode"].get<int>();
         }
     }
-
     req.startAddress = varCopy.params.value("startAddress", 0);
     req.count = varCopy.params.value("count", 1);
 
-    AppendTxLog(_("Reading variable: ") + wxString::FromUTF8(m_selectedVarName));
     m_executeReadBtn->Enable(false);
 
     std::thread([this, req, name = m_selectedVarName]() {
@@ -475,17 +573,31 @@ void SessionPanel::OnExecuteRead(wxCommandEvent&) {
             if (resp.ok && !resp.registers.empty()) {
                 std::string valStr = std::to_string(resp.registers[0]);
                 m_sessionConfig->variables[name].currentValue = valStr;
-                if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__value"]))
-                    m_sessionConfig->variables[name].currentValue = valStr;
+
+                std::vector<uint8_t> raw;
+                for (auto r : resp.registers) {
+                    raw.push_back((r >> 8) & 0xFF);
+                    raw.push_back(r & 0xFF);
+                }
+                wxString rawStr;
+                for (uint8_t b : raw) rawStr += wxString::Format("%02X ", b);
+                m_sessionConfig->variables[name].rawBytes = std::string(rawStr.Trim().utf8_str());
+
                 if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__value"]))
                     txt->ChangeValue(valStr);
-                for (int i = 0; i < m_varList->GetItemCount(); ++i) {
-                    if (m_varList->GetItemText(i) == name) m_varList->SetItem(i, 3, valStr);
+                if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__raw_bytes"]))
+                    txt->ChangeValue(rawStr);
+
+                RefreshVariableList();
+                AppendUnifiedLog(true, name, m_sessionConfig->variables[name].type, valStr, raw);
+
+                double chartVal;
+                if (TryParseNumeric(m_sessionConfig->variables[name].type, valStr, chartVal)) {
+                    RecordData(name, chartVal);
                 }
-                AppendTxLog(wxString::Format("Read Success: %s = %s", wxString::FromUTF8(name),
-                                             wxString::FromUTF8(valStr)));
-            } else
-                AppendTxLog(_("Read failed."));
+            } else {
+                AppendUnifiedLog(true, name, "Error", resp.errorMessage, {});
+            }
         });
     }).detach();
 }
@@ -493,7 +605,6 @@ void SessionPanel::OnExecuteRead(wxCommandEvent&) {
 void SessionPanel::OnExecuteWrite(wxCommandEvent&) {
     if (!m_txSession || !m_txSession->IsConnected()) return;
     if (!m_sessionConfig || !m_sessionConfig->variables.count(m_selectedVarName)) return;
-
     auto varCopy = m_sessionConfig->variables[m_selectedVarName];
 
     std::string targetVal =
@@ -510,8 +621,6 @@ void SessionPanel::OnExecuteWrite(wxCommandEvent&) {
             fc = varCopy.params["functionCode"].get<int>();
         }
     }
-
-    // 智能映射（保留你原有的写功能码映射逻辑）
     if (fc == 1)
         fc = 5;
     else if (fc == 3)
@@ -526,8 +635,6 @@ void SessionPanel::OnExecuteWrite(wxCommandEvent&) {
     } catch (...) {
     }
 
-    AppendTxLog(_("Writing variable: ") + wxString::FromUTF8(m_selectedVarName) + " = " +
-                wxString::FromUTF8(targetVal));
     m_executeWriteBtn->Enable(false);
 
     std::thread([this, req, name = m_selectedVarName, targetVal]() {
@@ -536,42 +643,134 @@ void SessionPanel::OnExecuteWrite(wxCommandEvent&) {
             m_executeWriteBtn->Enable(true);
             if (resp.ok) {
                 m_sessionConfig->variables[name].currentValue = targetVal;
-                for (int i = 0; i < m_varList->GetItemCount(); ++i) {
-                    if (m_varList->GetItemText(i) == name) m_varList->SetItem(i, 3, targetVal);
+
+                std::vector<uint8_t> raw;
+                try {
+                    int val = std::stoi(targetVal);
+                    raw.push_back((val >> 8) & 0xFF);
+                    raw.push_back(val & 0xFF);
+                } catch (...) {
                 }
-                AppendTxLog(wxString::Format("Write Success: %s = %s", wxString::FromUTF8(name),
-                                             wxString::FromUTF8(targetVal)));
-            } else
-                AppendTxLog(_("Write failed: ") + wxString::FromUTF8(resp.errorMessage.c_str()));
+                wxString rawStr;
+                for (uint8_t b : raw) rawStr += wxString::Format("%02X ", b);
+                m_sessionConfig->variables[name].rawBytes = std::string(rawStr.Trim().utf8_str());
+
+                if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__raw_bytes"]))
+                    txt->ChangeValue(rawStr);
+
+                RefreshVariableList();
+                AppendUnifiedLog(false, name, m_sessionConfig->variables[name].type, targetVal,
+                                 raw);
+
+                double chartVal;
+                if (TryParseNumeric(m_sessionConfig->variables[name].type, targetVal, chartVal)) {
+                    RecordData(name, chartVal);
+                }
+            } else {
+                AppendUnifiedLog(false, name, "Error", resp.errorMessage, {});
+            }
         });
     }).detach();
+}
+
+void SessionPanel::OnExecuteSend(wxCommandEvent&) {
+    if (!m_streamSession || !m_streamSession->IsConnected()) return;
+    if (!m_sessionConfig || !m_sessionConfig->variables.count(m_selectedVarName)) return;
+
+    auto& var = m_sessionConfig->variables[m_selectedVarName];
+    std::string payload = var.currentValue;
+
+    if (payload.empty()) {
+        wxMessageBox(_("Payload is empty. Please fill in the 'Value' field."), _("Notice"),
+                     wxOK | wxICON_WARNING, this);
+        return;
+    }
+
+    std::vector<uint8_t> bytes = EncodePayload(var.type, payload);
+    if (bytes.empty() && !payload.empty()) {
+        wxMessageBox(_("Failed to encode value to binary."), _("Error"), wxOK | wxICON_ERROR);
+        return;
+    }
+
+    if (m_streamSession->Send(bytes)) {
+        m_txBytes += bytes.size();
+        if (m_txLabel) {
+            m_txLabel->SetLabel(
+                wxString::Format(_("Sent: %llu bytes"), (unsigned long long)m_txBytes));
+        }
+
+        wxString rawStr;
+        for (uint8_t b : bytes) rawStr += wxString::Format("%02X ", b);
+        var.rawBytes = std::string(rawStr.Trim().utf8_str());
+
+        if (m_varOpControls.count("__raw_bytes")) {
+            if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__raw_bytes"]))
+                txt->ChangeValue(rawStr.Trim());
+        }
+
+        AppendUnifiedLog(false, m_selectedVarName, var.type, payload, bytes);
+
+        double chartVal;
+        if (TryParseNumeric(var.type, payload, chartVal)) {
+            RecordData(m_selectedVarName, chartVal);
+        }
+    } else {
+        wxMessageBox(_("Send failed"), _("Error"), wxOK | wxICON_ERROR);
+    }
 }
 
 void SessionPanel::OnAddVariable(wxCommandEvent&) {
     if (!m_sessionConfig) return;
 
-    // ★ 不再硬编码 Modbus 默认参数
-    nlohmann::json defaultJson = {
-        {"type", "int"}, {"access", "RW"}, {"params", nlohmann::json::object()}};
+    std::string baseName = "new_var";
+    std::string name = baseName;
+    int suffix = 1;
+    while (m_sessionConfig->variables.count(name)) {
+        name = baseName + "_" + std::to_string(suffix++);
+    }
 
-    // ★ 传入 m_protocol
-    VariableEditDialog dlg(this, m_protocol, "new_var", defaultJson, false);
+    nlohmann::json defaultJson = {
+        {"type", "int32"}, {"access", "RW"}, {"params", nlohmann::json::object()}};
+
+    VariableEditDialog dlg(this, m_protocol, name, defaultJson, false);
     if (dlg.ShowModal() == wxID_OK) {
-        std::string name = dlg.GetVarName();
-        if (name.empty()) {
+        std::string newName = dlg.GetVarName();
+        if (newName.empty()) {
             wxMessageBox(_("Variable name cannot be empty."), _("Error"), wxOK | wxICON_ERROR);
             return;
         }
         auto j = dlg.GetVarJson();
         CommVariable var;
-        var.name = name;
-        var.type = j.value("type", "int");
+        var.name = newName;
+        var.type = j.value("type", "int32");
         var.access = j.value("access", "RW");
         if (j.contains("params")) var.params = j["params"];
+        var.enabled = true;
 
-        m_sessionConfig->variables[name] = var;
+        m_sessionConfig->variables[newName] = var;
         RefreshVariableList();
     }
+}
+
+void SessionPanel::OnCopyVariable(wxCommandEvent&) {
+    long sel = m_varList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
+    if (sel == -1) return;
+
+    std::string oldName = std::string(m_varList->GetItemText(sel).utf8_str());
+    auto it = m_sessionConfig->variables.find(oldName);
+    if (it == m_sessionConfig->variables.end()) return;
+
+    std::string baseName = oldName + "_copy";
+    std::string newName = baseName;
+    int suffix = 1;
+    while (m_sessionConfig->variables.count(newName)) {
+        newName = baseName + "_" + std::to_string(suffix++);
+    }
+
+    CommVariable newVar = it->second;
+    newVar.name = newName;
+    m_sessionConfig->variables[newName] = newVar;
+    RefreshVariableList();
 }
 
 void SessionPanel::OnEditVariable(wxCommandEvent&) {
@@ -584,12 +783,11 @@ void SessionPanel::OnEditVariable(wxCommandEvent&) {
     nlohmann::json editJson = {
         {"type", it->second.type}, {"access", it->second.access}, {"params", it->second.params}};
 
-    // ★ 传入 m_protocol
     VariableEditDialog dlg(this, m_protocol, key, editJson, true);
 
     if (dlg.ShowModal() == wxID_OK) {
         auto j = dlg.GetVarJson();
-        it->second.type = j.value("type", "int");
+        it->second.type = j.value("type", "int32");
         it->second.access = j.value("access", "RW");
         if (j.contains("params")) it->second.params = j["params"];
         RefreshVariableList();
@@ -606,15 +804,18 @@ void SessionPanel::OnDeleteVariable(wxCommandEvent&) {
 
 void SessionPanel::OnNotebookPageChanged(wxBookCtrlEvent& evt) {
     int sel = m_modeNotebook->GetSelection();
-    if (m_sessionConfig) m_sessionConfig->activeMode = static_cast<SessionMode>(sel);
+    if (m_sessionConfig && sel >= 0 && sel <= 2) {
+        m_sessionConfig->activeMode = static_cast<SessionMode>(sel);
+    }
     evt.Skip();
 }
 
 void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     auto* main = new wxBoxSizer(wxVERTICAL);
 
-    auto* stepList = new wxListCtrl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-                                    wxLC_REPORT | wxLC_SINGLE_SEL);
+    // ★ 修复：步骤列表默认就是多选（可以按住 Ctrl 和 Shift），不需要 wxLC_EXTENDED_SEL
+    auto* stepList =
+        new wxListCtrl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT);
     stepList->InsertColumn(0, _("Step Name"), wxLIST_FORMAT_LEFT, 250);
     stepList->InsertColumn(1, _("Status"), wxLIST_FORMAT_LEFT, 100);
     main->Add(stepList, 1, wxEXPAND | wxALL, 5);
@@ -624,10 +825,10 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
         new wxButton(parent, wxID_ANY, isAutoMode ? _("Run All") : _("Run (Step-by-Step)"));
     auto* stopBtn = new wxButton(parent, wxID_ANY, _("Stop"));
     auto* addBtn = new wxButton(parent, wxID_ANY, _("Add"));
+    auto* copyBtn = new wxButton(parent, wxID_ANY, _("Copy"));
+    auto* batchBtn = new wxButton(parent, wxID_ANY, _("Batch Create"));
     auto* editBtn = new wxButton(parent, wxID_ANY, _("Edit"));
     auto* delBtn = new wxButton(parent, wxID_ANY, _("Delete"));
-
-    // ★ 新增：上移和下移按钮
     auto* upBtn = new wxButton(parent, wxID_ANY, _("Up"));
     auto* downBtn = new wxButton(parent, wxID_ANY, _("Down"));
 
@@ -646,29 +847,139 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
 
     addBtn->Bind(wxEVT_BUTTON, [this, isAutoMode, stepList, refreshList](wxCommandEvent&) {
         if (!m_sessionConfig) return;
+        auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
+                                : m_sessionConfig->interactiveMode.testFlow;
+
+        std::string baseName = "New Step";
+        std::string defName = baseName;
+        int idx = 1;
+        auto hasName = [&](const std::string& n) {
+            for (const auto& s : flow)
+                if (s.value("name", "") == n) return true;
+            return false;
+        };
+        while (hasName(defName)) defName = baseName + " " + std::to_string(idx++);
+
+        nlohmann::json initial;
+        initial["name"] = defName;
+
         std::vector<std::string> varNames;
         for (const auto& [n, v] : m_sessionConfig->variables) varNames.push_back(n);
 
-        TestStepEditDialog dlg(this, nlohmann::json::object(), varNames);
+        TestStepEditDialog dlg(this, initial, varNames);
         if (dlg.ShowModal() == wxID_OK) {
             nlohmann::json step = dlg.GetStepJson();
-            auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
-                                    : m_sessionConfig->interactiveMode.testFlow;
 
-            // ★ 修改：判断是否选中了某一行，有则插入其后，无则追加末尾
             long sel = stepList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
-            if (sel != -1 && sel < static_cast<long>(flow.size())) {
-                flow.insert(flow.begin() + sel + 1, step);
-            } else {
-                flow.push_back(step);
-            }
+            int insertPos = (sel != -1) ? sel + 1 : flow.size();
+
+            flow.insert(flow.begin() + insertPos, step);
 
             refreshList();
-
-            // 插入后自动选中新插入的行
             int newIdx = (sel != -1) ? sel + 1 : stepList->GetItemCount() - 1;
             stepList->SetItemState(newIdx, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
             stepList->EnsureVisible(newIdx);
+        }
+    });
+
+    copyBtn->Bind(wxEVT_BUTTON, [this, isAutoMode, stepList, refreshList](wxCommandEvent&) {
+        if (!m_sessionConfig) return;
+        long sel = stepList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
+        if (sel == -1) return;
+
+        auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
+                                : m_sessionConfig->interactiveMode.testFlow;
+        if (sel >= static_cast<long>(flow.size())) return;
+
+        nlohmann::json copyStep = flow[sel];
+        std::string oldName = copyStep.value("name", "Step");
+
+        std::string baseName = oldName + " Copy";
+        std::string newName = baseName;
+        int idx = 1;
+        auto hasName = [&](const std::string& n) {
+            for (const auto& s : flow)
+                if (s.value("name", "") == n) return true;
+            return false;
+        };
+        while (hasName(newName)) newName = baseName + " " + std::to_string(idx++);
+
+        copyStep["name"] = newName;
+        flow.insert(flow.begin() + sel + 1, copyStep);
+        refreshList();
+
+        stepList->SetItemState(sel + 1, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
+        stepList->EnsureVisible(sel + 1);
+    });
+
+    batchBtn->Bind(wxEVT_BUTTON, [this, isAutoMode, stepList, refreshList](wxCommandEvent&) {
+        if (!m_sessionConfig) return;
+        long sel = stepList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
+        if (sel == -1) {
+            wxMessageBox(_("Please select a base step first."), _("Notice"), wxOK);
+            return;
+        }
+
+        auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
+                                : m_sessionConfig->interactiveMode.testFlow;
+        if (sel >= static_cast<long>(flow.size())) return;
+
+        wxDialog dlg(this, wxID_ANY, _("Batch Generate Steps"), wxDefaultPosition, wxSize(300, -1));
+        auto* sizer = new wxBoxSizer(wxVERTICAL);
+        auto* grid = new wxFlexGridSizer(2, 8, 8);
+        grid->AddGrowableCol(1, 1);
+
+        grid->Add(new wxStaticText(&dlg, wxID_ANY, _("Repeat Count:")), 0, wxALIGN_CENTER_VERTICAL);
+        wxSpinCtrl* countCtrl = new wxSpinCtrl(&dlg, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
+                                               wxSP_ARROW_KEYS, 1, 10000, 10);
+        grid->Add(countCtrl, 1, wxEXPAND);
+
+        grid->Add(new wxStaticText(&dlg, wxID_ANY, _("Interval (ms):")), 0,
+                  wxALIGN_CENTER_VERTICAL);
+        wxSpinCtrl* intervalCtrl = new wxSpinCtrl(&dlg, wxID_ANY, "", wxDefaultPosition,
+                                                  wxDefaultSize, wxSP_ARROW_KEYS, 0, 600000, 1000);
+        grid->Add(intervalCtrl, 1, wxEXPAND);
+
+        grid->Add(new wxStaticText(&dlg, wxID_ANY, _("Auto Increment/Decrement:")), 0,
+                  wxALIGN_CENTER_VERTICAL);
+        wxSpinCtrl* incCtrl = new wxSpinCtrl(&dlg, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
+                                             wxSP_ARROW_KEYS, -1000000, 1000000, 1);
+        grid->Add(incCtrl, 1, wxEXPAND);
+
+        sizer->Add(grid, 1, wxEXPAND | wxALL, 15);
+        sizer->Add(dlg.CreateButtonSizer(wxOK | wxCANCEL), 0, wxEXPAND | wxALL, 10);
+        dlg.SetSizerAndFit(sizer);
+
+        if (dlg.ShowModal() == wxID_OK) {
+            int repeat = countCtrl->GetValue();
+            int interval = intervalCtrl->GetValue();
+            int autoInc = incCtrl->GetValue();
+
+            nlohmann::json baseStep = flow[sel];
+            std::string baseValue = baseStep.value("value", "");
+            long long baseValInt = 0;
+            bool isInt = false;
+            if (baseStep["action"] == "write" || baseStep["action"] == "send") {
+                try {
+                    baseValInt = std::stoll(baseValue);
+                    isInt = true;
+                } catch (...) {
+                }
+            }
+
+            for (int i = 1; i < repeat; ++i) {
+                nlohmann::json subStep = baseStep;
+                subStep["name"] =
+                    baseStep.value("name", "Step") + " (" + std::to_string(i + 1) + ")";
+                subStep["wait_ms"] = interval;
+
+                if (isInt && autoInc != 0) {
+                    long long val = baseValInt + (i * autoInc);
+                    subStep["value"] = std::to_string(val);
+                }
+                flow.insert(flow.begin() + sel + i, subStep);
+            }
+            refreshList();
         }
     });
 
@@ -692,19 +1003,27 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
 
     delBtn->Bind(wxEVT_BUTTON, [this, isAutoMode, stepList, refreshList](wxCommandEvent&) {
         if (!m_sessionConfig) return;
-        long sel = stepList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
-        if (sel == -1) return;
         auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
                                 : m_sessionConfig->interactiveMode.testFlow;
-        flow.erase(flow.begin() + sel);
+
+        std::vector<long> toDelete;
+        long item = -1;
+        while ((item = stepList->GetNextItem(item, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED)) != -1) {
+            toDelete.push_back(item);
+        }
+
+        for (auto it = toDelete.rbegin(); it != toDelete.rend(); ++it) {
+            if (*it < static_cast<long>(flow.size())) {
+                flow.erase(flow.begin() + *it);
+            }
+        }
         refreshList();
     });
 
-    // ★ 新增：上移逻辑
     upBtn->Bind(wxEVT_BUTTON, [this, isAutoMode, stepList, refreshList](wxCommandEvent&) {
         if (!m_sessionConfig) return;
         long sel = stepList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
-        if (sel <= 0) return;  // 未选中或已经是第一行
+        if (sel <= 0) return;
 
         auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
                                 : m_sessionConfig->interactiveMode.testFlow;
@@ -712,18 +1031,16 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
         std::swap(flow[sel], flow[sel - 1]);
         refreshList();
 
-        // 保持选中状态跟随
         stepList->SetItemState(sel - 1, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
         stepList->EnsureVisible(sel - 1);
     });
 
-    // ★ 新增：下移逻辑
     downBtn->Bind(wxEVT_BUTTON, [this, isAutoMode, stepList, refreshList](wxCommandEvent&) {
         if (!m_sessionConfig) return;
         long sel = stepList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
         auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
                                 : m_sessionConfig->interactiveMode.testFlow;
-        if (sel == -1 || sel >= static_cast<long>(flow.size()) - 1) return;  // 未选中或已是最后一行
+        if (sel == -1 || sel >= static_cast<long>(flow.size()) - 1) return;
 
         std::swap(flow[sel], flow[sel + 1]);
         refreshList();
@@ -741,8 +1058,23 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
         std::vector<ITestStepPtr> steps;
         for (const auto& stepJson : flow) {
             std::string type = stepJson.value("action", "");
-            auto step = m_protocol->CreateTestStep(type, stepJson);
-            if (step) steps.push_back(std::move(step));
+            ITestStepPtr step;
+
+            if (type == "delay") {
+                step = std::make_unique<DelayStep>(stepJson);
+            } else {
+                step = m_protocol->CreateTestStep(type, stepJson);
+            }
+
+            if (step) {
+                steps.push_back(std::move(step));
+            } else {
+                wxMessageBox(wxString::Format(_("Protocol '%s' does not support action '%s'."),
+                                              wxString::FromUTF8(m_protocol->Id()),
+                                              wxString::FromUTF8(type)),
+                             _("Unsupported Action"), wxOK | wxICON_ERROR);
+                return;
+            }
         }
         if (steps.empty()) {
             wxMessageBox(_("No valid steps."), _("Error"), wxOK);
@@ -756,17 +1088,6 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
 
         m_testRunner =
             new TestRunner(m_protocol, m_session, std::move(steps), m_sessionConfig->variables);
-        m_testRunner->OnStepLog([this](const std::string& msg) {
-            CallAfter([this, msg]() {
-                if (m_dataLogTextCtrl) {
-                    // TCP/串口模式下，打到数据日志
-                    AppendLine("", wxString::FromUTF8(msg));
-                } else if (m_txLogTextCtrl) {
-                    // Modbus 模式下，打到结果日志
-                    AppendTxLog(wxString::FromUTF8(msg));
-                }
-            });
-        });
         m_testRunner->SetRunMode(isAutoMode ? TestRunMode::Auto : TestRunMode::SingleStep);
 
         m_testRunner->OnStepUpdated(
@@ -775,33 +1096,49 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
                     if (index < 0 || index >= stepList->GetItemCount()) return;
                     stepList->SetItem(index, 1, success ? _("Passed") : _("Failed"));
                     stepList->SetItemTextColour(index, success ? *wxGREEN : *wxRED);
-
-                    // ★ 新增：每次步骤执行完（变量已被 Extract 更新），刷新左侧变量池
                     RefreshVariableList();
                 });
             });
+
+        m_testRunner->OnStepLog([this](const std::string& msg) {
+            CallAfter([this, msg]() {
+                if (m_commonLogCtrl) {
+                    m_commonLogCtrl->AppendText(wxDateTime::Now().Format("[%H:%M:%S.%l] ") +
+                                                wxString::FromUTF8(msg) + "\n");
+                    m_commonLogCtrl->SetInsertionPointEnd();
+                }
+            });
+        });
+
+        m_testRunner->OnDataRecorded(
+            [this](const std::string& varName, double val) { RecordData(varName, val); });
+
         m_testRunner->OnFinished([this, runBtn, stopBtn](bool overallSuccess) {
             wxTheApp->CallAfter([this, runBtn, stopBtn, overallSuccess]() {
                 runBtn->Enable(true);
                 stopBtn->Enable(false);
-                wxMessageBox(overallSuccess ? _("Test Finished Successfully") : _("Test Failed"),
-                             _("Result"),
-                             wxOK | (overallSuccess ? wxICON_INFORMATION : wxICON_ERROR), this);
+
+                if (m_commonLogCtrl) {
+                    m_commonLogCtrl->AppendText(
+                        wxDateTime::Now().Format("[%H:%M:%S.%l] ") +
+                        (overallSuccess ? _("Test Finished Successfully\n") : _("Test Failed\n")));
+                    m_commonLogCtrl->SetInsertionPointEnd();
+                }
+
                 if (m_testRunner) {
                     delete m_testRunner;
                     m_testRunner = nullptr;
                 }
             });
         });
+
         m_testRunner->OnWaitForNextStep([this, stepList](int nextIndex) {
             wxTheApp->CallAfter([this, stepList, nextIndex]() {
-                // 1. 在列表中高亮即将执行的下一步
                 if (nextIndex < stepList->GetItemCount()) {
                     stepList->SetItemState(nextIndex, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
                     stepList->EnsureVisible(nextIndex);
                 }
 
-                // 2. 弹出确认框
                 int ret = wxMessageBox(
                     wxString::Format(_("Step %d finished.\n\nReady to execute Step %d. Continue?"),
                                      nextIndex - 1, nextIndex),
@@ -830,10 +1167,14 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     btnSizer->Add(stopBtn, 0, wxALL, 4);
     btnSizer->AddSpacer(20);
     btnSizer->Add(addBtn, 0, wxALL, 4);
+    btnSizer->Add(copyBtn, 0, wxALL, 4);
+    btnSizer->Add(batchBtn, 0, wxALL, 4);
     btnSizer->Add(editBtn, 0, wxALL, 4);
     btnSizer->Add(delBtn, 0, wxALL, 4);
+    btnSizer->AddSpacer(10);
     btnSizer->Add(upBtn, 0, wxALL, 4);
     btnSizer->Add(downBtn, 0, wxALL, 4);
+
     main->Add(btnSizer, 0, wxALIGN_LEFT);
     parent->SetSizer(main);
 }
@@ -902,6 +1243,7 @@ void SessionPanel::UpdateActionButton(SessionState st) {
             break;
     }
     m_configBtn->Enable(st == SessionState::Idle || st == SessionState::Disconnected);
+
     if (m_txSession) {
         if (m_executeReadBtn) m_executeReadBtn->Enable(st == SessionState::Connected);
         if (m_executeWriteBtn) m_executeWriteBtn->Enable(st == SessionState::Connected);
@@ -942,49 +1284,86 @@ void SessionPanel::BindStreamCallbacks() {
                 m_rxLabel->SetLabel(
                     wxString::Format(_("Received: %llu bytes"), (unsigned long long)m_rxBytes));
 
-            // ★ 日志记录
-            AppendLine(cid > 0 ? wxString::Format("<#%d", cid) : "<", FormatMessage(copy));
+            std::string parsedValue;
+            std::string varType = "string";
+            std::string varName = m_selectedVarName.empty() ? "Unknown" : m_selectedVarName;
 
-            // ★ 覆盖变量值（只要不是只写 WO）
             if (!m_selectedVarName.empty() && m_sessionConfig &&
                 m_sessionConfig->variables.count(m_selectedVarName)) {
                 auto& var = m_sessionConfig->variables[m_selectedVarName];
-                if (var.access != "WO") {
-                    std::string text(copy.begin(), copy.end());
-                    var.currentValue = text;  // 覆盖
+                varType = var.type;
+                if (BytesParser::Parse(var.type, copy, parsedValue)) {
+                    var.currentValue = parsedValue;
+
+                    wxString rawStr;
+                    for (uint8_t b : copy) rawStr += wxString::Format("%02X ", b);
+                    var.rawBytes = std::string(rawStr.Trim().utf8_str());
+
                     RefreshVariableList();
 
-                    // 刷新操作区输入框的值 (用 ChangeValue 避免触发 wxEVT_TEXT 导致死循环)
                     if (m_varOpControls.count("__value")) {
                         if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__value"])) {
-                            txt->ChangeValue(wxString::FromUTF8(text));
+                            txt->ChangeValue(wxString::FromUTF8(var.currentValue));
                         }
                     }
+                    if (m_varOpControls.count("__raw_bytes")) {
+                        if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__raw_bytes"])) {
+                            txt->ChangeValue(rawStr.Trim());
+                        }
+                    }
+
+                    double chartVal;
+                    if (TryParseNumeric(var.type, var.currentValue, chartVal)) {
+                        RecordData(m_selectedVarName, chartVal);
+                    }
+                } else {
+                    parsedValue = "<Parse Failed>";
                 }
+            } else {
+                parsedValue = "<No Variable Selected>";
+            }
+
+            AppendUnifiedLog(true, varName, varType, parsedValue, copy, cid);
+        });
+    });
+
+    m_streamSession->OnReconnectAttempt([this](int attempt) {
+        CallAfter([this, attempt]() {
+            if (m_commonLogCtrl) {
+                m_commonLogCtrl->AppendText(
+                    wxDateTime::Now().Format("[%H:%M:%S.%l] ") +
+                    wxString::Format(_("Reconnecting (attempt %d) ...\n"), attempt));
+                m_commonLogCtrl->SetInsertionPointEnd();
             }
         });
     });
-    m_streamSession->OnReconnectAttempt([this](int attempt) {
-        CallAfter([this, attempt]() {
-            AppendLine("", wxString::Format(_("Reconnecting (attempt %d) ..."), attempt));
-        });
-    });
+
     m_streamSession->OnClientConnected([this](int cid) {
         CallAfter([this, cid]() {
             ++m_clientCount;
             UpdateClientsLabel();
             UpdateStateLabel(m_session->State());
-            AppendLine("", wxString::Format(_("Client #%d connected"), cid));
+            if (m_commonLogCtrl) {
+                m_commonLogCtrl->AppendText(wxDateTime::Now().Format("[%H:%M:%S.%l] ") +
+                                            wxString::Format(_("Client #%d connected\n"), cid));
+                m_commonLogCtrl->SetInsertionPointEnd();
+            }
         });
     });
+
     m_streamSession->OnClientDisconnected([this](int cid) {
         CallAfter([this, cid]() {
             if (m_clientCount > 0) --m_clientCount;
             UpdateClientsLabel();
             UpdateStateLabel(m_session->State());
-            AppendLine("", wxString::Format(_("Client #%d disconnected"), cid));
+            if (m_commonLogCtrl) {
+                m_commonLogCtrl->AppendText(wxDateTime::Now().Format("[%H:%M:%S.%l] ") +
+                                            wxString::Format(_("Client #%d disconnected\n"), cid));
+                m_commonLogCtrl->SetInsertionPointEnd();
+            }
         });
     });
+
     m_streamSession->OnStateChanged([this](SessionState st) {
         CallAfter([this, st]() {
             RefreshFromSession();
@@ -993,30 +1372,10 @@ void SessionPanel::BindStreamCallbacks() {
     });
 }
 
-wxString SessionPanel::FormatMessage(const std::vector<uint8_t>& msg) {
-    if (m_hexDisplay && m_hexDisplay->IsChecked()) {
-        wxString text;
-        for (uint8_t b : msg) text += wxString::Format("%02X ", b);
-        if (!text.IsEmpty()) text.RemoveLast();
-        return text;
-    }
-    return wxString::FromUTF8(reinterpret_cast<const char*>(msg.data()), msg.size());
-}
-
-void SessionPanel::AppendLine(const wxString& prefix, const wxString& content) {
-    if (!m_dataLogTextCtrl) return;
-    wxString line;
-    if (m_showTimestamp && m_showTimestamp->IsChecked())
-        line = wxDateTime::Now().Format("[%Y-%m-%d %H:%M:%S] ");
-    if (!prefix.IsEmpty()) line += prefix + " ";
-    line += content + "\n";
-    m_dataLogTextCtrl->AppendText(line);
-    if (!m_autoScroll || m_autoScroll->IsChecked()) m_dataLogTextCtrl->SetInsertionPointEnd();
-}
-
 void SessionPanel::OnClear(wxCommandEvent&) {
-    if (m_dataLogTextCtrl) m_dataLogTextCtrl->Clear();
+    if (m_commonLogCtrl) m_commonLogCtrl->Clear();
 }
+
 void SessionPanel::UpdateClientsLabel() {
     if (m_clientsLabel) m_clientsLabel->SetLabel(wxString::Format(_("Clients: %d"), m_clientCount));
 }
@@ -1029,36 +1388,69 @@ void SessionPanel::BindTransactionCallbacks() {
         });
     });
     m_txSession->OnLog([this](const std::string& msg) {
-        CallAfter([this, msg]() { AppendTxLog(wxString::FromUTF8(msg.c_str())); });
+        CallAfter([this, msg]() {
+            if (m_commonLogCtrl) {
+                m_commonLogCtrl->AppendText(wxDateTime::Now().Format("[%H:%M:%S.%l] ") +
+                                            wxString::FromUTF8(msg) + "\n");
+                m_commonLogCtrl->SetInsertionPointEnd();
+            }
+        });
     });
 }
 
-void SessionPanel::AppendTxLog(const wxString& line) {
-    if (m_txLogTextCtrl) {
-        m_txLogTextCtrl->AppendText(line + "\n");
-        m_txLogTextCtrl->SetInsertionPointEnd();
+void SessionPanel::OnRecordSettings(wxCommandEvent&) {
+    if (m_isRecording) {
+        m_isRecording = false;
+        m_recordBtn->SetLabel(_("Record Settings"));
+        return;
+    }
+
+    if (!m_sessionConfig) return;
+
+    wxArrayString choices;
+    for (const auto& [name, var] : m_sessionConfig->variables) {
+        if (var.enabled) choices.Add(wxString::FromUTF8(name));
+    }
+    if (choices.IsEmpty()) {
+        wxMessageBox(_("No enabled variables to record."), _("Notice"), wxOK);
+        return;
+    }
+
+    wxMultiChoiceDialog dlg(this, _("Select variables to record:"), _("Record Settings"), choices);
+
+    wxArrayInt selections;
+    for (unsigned int i = 0; i < choices.GetCount(); ++i) selections.Add(i);
+    dlg.SetSelections(selections);
+
+    if (dlg.ShowModal() == wxID_OK) {
+        m_loggingVars.clear();
+        for (int sel : dlg.GetSelections()) {
+            m_loggingVars.insert(std::string(choices[sel].utf8_str()));
+        }
+
+        m_isRecording = true;
+        m_recordBtn->SetLabel(_("Stop Recording"));
+        if (m_chartPanel) m_chartPanel->Clear();
     }
 }
 
-void SessionPanel::OnExecuteSend(wxCommandEvent&) {
-    if (!m_streamSession || !m_streamSession->IsConnected()) return;
-    if (!m_sessionConfig || !m_sessionConfig->variables.count(m_selectedVarName)) return;
+void SessionPanel::OnHistoryQuery(wxCommandEvent&) {
+    if (!m_sessionConfig) return;
 
-    auto& var = m_sessionConfig->variables[m_selectedVarName];
-    std::string payload = var.currentValue;  // ★ 直接取唯一的值
-
-    if (payload.empty()) return;  // 允许发空包的话可以去掉此行
-
-    std::vector<uint8_t> bytes(payload.begin(), payload.end());
-    if (m_streamSession->Send(bytes)) {
-        m_txBytes += bytes.size();
-        if (m_txLabel)
-            m_txLabel->SetLabel(
-                wxString::Format(_("Sent: %llu bytes"), (unsigned long long)m_txBytes));
-        AppendLine(">", wxString::FromUTF8(payload));  // 日志记录
-    } else {
-        AppendLine("!", _("Send failed"));
+    std::vector<std::string> varNames;
+    for (const auto& [n, v] : m_sessionConfig->variables) {
+        if (v.access != "WO") {
+            varNames.push_back(n);
+        }
     }
+
+    if (varNames.empty()) {
+        wxMessageBox(_("No readable variables found."), _("Notice"), wxOK);
+        return;
+    }
+
+    HistoryDialog dlg(this, &m_db, std::string(m_profilePath.utf8_str()), varNames);
+    dlg.ShowModal();
 }
 
 }  // namespace icu

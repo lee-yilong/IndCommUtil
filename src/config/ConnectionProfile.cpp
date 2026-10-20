@@ -67,6 +67,7 @@ void ParseSession(const json& j, SessionConfig& outSession) {
             var.type = v.value("type", "string");
             var.access = v.value("access", "RO");
             if (v.contains("params")) var.params = v["params"];
+            var.enabled = v.value("enabled", true);
             outSession.variables[key] = var;
         }
     }
@@ -114,6 +115,7 @@ void WriteSession(json& j, const SessionConfig& session) {
         v["type"] = var.type;
         v["access"] = var.access;
         v["params"] = var.params;
+        v["enabled"] = var.enabled;
         s["variables"][key] = v;
     }
 

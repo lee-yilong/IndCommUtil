@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "VariableEditDialog.h"
-
 namespace icu {
 
 class TestStepEditDialog : public wxDialog {
@@ -23,13 +21,25 @@ public:
 private:
     wxTextCtrl* m_nameCtrl = nullptr;
     wxChoice* m_actionCtrl = nullptr;
+
+    wxStaticText* m_varLabel = nullptr;
     wxChoice* m_varCtrl = nullptr;
+
+    wxStaticText* m_valueLabel = nullptr;
     wxTextCtrl* m_valueCtrl = nullptr;
+
     wxSpinCtrl* m_waitCtrl = nullptr;
+
+    wxStaticText* m_assertTypeLabel = nullptr;
     wxChoice* m_assertTypeCtrl = nullptr;
+
+    wxStaticText* m_assertExpectedLabel = nullptr;
     wxTextCtrl* m_assertExpectedCtrl = nullptr;
 
     std::vector<std::string> m_varNames;
+
+    void OnActionChanged(wxCommandEvent& evt);
+    void UpdateUiVisibility();
 };
 
 }  // namespace icu

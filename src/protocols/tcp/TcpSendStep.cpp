@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <condition_variable>
+#include <memory>
 #include <mutex>
 #include <regex>
 
@@ -11,10 +12,22 @@
 namespace icu {
 
 TcpSendStep::TcpSendStep(const nlohmann::json& params) {
-    m_name = params.value("name", "TCP Send");
-    m_variableName = params.value("variable", "");  // ★ 只认变量名
+    m_name = params.value("name", "TCP Step");
+    m_variableName = params.value("variable", "");
     m_waitMs = params.value("wait_ms", 1000);
-    if (params.contains("assert")) m_regexPattern = params["assert"].value("regex", "");
+
+    m_isReadOnly = (params.value("action", "") == "read");
+
+    if (params.contains("assert") && params["assert"].is_object()) {
+        const auto& a = params["assert"];
+        m_assertType = a.value("type", "");
+        if (a.contains("expected")) {
+            if (a["expected"].is_string())
+                m_expectedValue = a["expected"].get<std::string>();
+            else if (a["expected"].is_number())
+                m_expectedValue = std::to_string(a["expected"].get<double>());
+        }
+    }
 }
 
 std::string TcpSendStep::Name() const {
@@ -29,70 +42,121 @@ TestResult TcpSendStep::Execute(ISession* session, std::map<std::string, CommVar
         return result;
     }
 
-    // 1. 查找变量
     if (vars.find(m_variableName) == vars.end()) {
         result.errorMessage = "Variable not found: " + m_variableName;
         return result;
     }
     auto& var = vars[m_variableName];
 
-    if (var.access != "RW" && var.access != "WO") {
+    if (!m_isReadOnly && var.access == "RO") {
         result.errorMessage = "Variable is RO, cannot send.";
         return result;
     }
 
-    // 2. 从变量参数中提取 payload
-    std::string payload = var.params.value("payload", "");
-    if (payload.empty()) {
-        result.errorMessage = "Variable payload is empty.";
-        return result;
-    }
+    // ★ 关键修复：使用 shared_ptr 保存异步回调的状态，防止 Use-After-Free
+    struct WaitState {
+        std::mutex mtx;
+        std::condition_variable cv;
+        std::string receivedData;
+        bool dataReceived = false;
+    };
+    auto state = std::make_shared<WaitState>();
 
-    // 3. 执行发送和等待逻辑
-    std::string receivedData;
-    std::mutex mtx;
-    std::condition_variable cv;
-    bool dataReceived = false;
-
-    streamSession->OnRawData([&](int clientId, const uint8_t* data, size_t len) {
-        std::lock_guard<std::mutex> lock(mtx);
-        receivedData.append(reinterpret_cast<const char*>(data), len);
-        dataReceived = true;
-        cv.notify_all();
+    streamSession->OnRawData([state](int clientId, const uint8_t* data, size_t len) {
+        std::lock_guard<std::mutex> lock(state->mtx);
+        state->receivedData.append(reinterpret_cast<const char*>(data), len);
+        state->dataReceived = true;
+        state->cv.notify_all();
     });
 
-    bool sendSuccess =
-        streamSession->SendRaw(reinterpret_cast<const uint8_t*>(payload.data()), payload.size());
-    if (!sendSuccess) {
-        result.errorMessage = "Failed to send payload";
-        return result;
+    if (!m_isReadOnly) {
+        std::string payload = var.currentValue;
+        if (payload.empty()) {
+            streamSession->OnRawData(nullptr);  // 清理回调
+            result.errorMessage = "Variable payload is empty.";
+            return result;
+        }
+        bool sendSuccess = streamSession->SendRaw(reinterpret_cast<const uint8_t*>(payload.data()),
+                                                  payload.size());
+        if (!sendSuccess) {
+            streamSession->OnRawData(nullptr);
+            result.errorMessage = "Failed to send payload";
+            return result;
+        }
     }
 
-    std::unique_lock<std::mutex> lock(mtx);
-    cv.wait_for(lock, std::chrono::milliseconds(m_waitMs), [&]() { return dataReceived; });
+    {
+        std::unique_lock<std::mutex> lock(state->mtx);
+        state->cv.wait_for(lock, std::chrono::milliseconds(m_waitMs),
+                           [&]() { return state->dataReceived; });
+    }
+
+    // ★ 关键修复：执行完毕或超时后，必须清空回调，防止底层异步调用导致崩溃
+    streamSession->OnRawData(nullptr);
+
+    if (state->dataReceived) {
+        var.currentValue = state->receivedData;
+        result.rawResponse = state->receivedData;
+    } else {
+        result.rawResponse = var.currentValue;
+    }
 
     result.success = true;
-    result.rawResponse = receivedData;
     return result;
 }
 
 bool TcpSendStep::Assert(const TestResult& result, std::string& outErrorMsg) {
-    if (m_regexPattern.empty()) return true;
-    try {
-        std::regex re(m_regexPattern);
-        if (std::regex_search(result.rawResponse, re)) return true;
-        outErrorMsg = "Response does not match regex.";
-        return false;
-    } catch (const std::regex_error& e) {
-        outErrorMsg = "Invalid regex pattern.";
+    if (m_assertType.empty()) return true;
+
+    if (m_assertType == "regex") {
+        try {
+            std::regex re(m_expectedValue);
+            if (std::regex_search(result.rawResponse, re)) return true;
+            outErrorMsg = "Response does not match regex.";
+            return false;
+        } catch (const std::regex_error& e) {
+            outErrorMsg = "Invalid regex pattern.";
+            return false;
+        }
+    }
+
+    if (m_assertType == "==") {
+        if (result.rawResponse == m_expectedValue) return true;
+        outErrorMsg = "Expected '" + m_expectedValue + "', got '" + result.rawResponse + "'";
         return false;
     }
+
+    if (m_assertType == "!=") {
+        if (result.rawResponse != m_expectedValue) return true;
+        outErrorMsg = "Expected not equal to '" + m_expectedValue + "'";
+        return false;
+    }
+
+    if (m_assertType == ">" || m_assertType == "<") {
+        try {
+            double actual = std::stod(result.rawResponse);
+            double expected = std::stod(m_expectedValue);
+            if (m_assertType == ">" && actual > expected) return true;
+            if (m_assertType == "<" && actual < expected) return true;
+            outErrorMsg =
+                "Expected " + m_assertType + " " + m_expectedValue + ", got " + result.rawResponse;
+            return false;
+        } catch (...) {
+            outErrorMsg = "Cannot compare non-numeric values.";
+            return false;
+        }
+    }
+    return true;
 }
 
-void TcpSendStep::Extract(const TestResult& result, std::map<std::string, CommVariable>& vars) {
-    if (vars.find(m_variableName) != vars.end()) {
+std::vector<std::string> TcpSendStep::Extract(const TestResult& result,
+                                              std::map<std::string, CommVariable>& vars) {
+    std::vector<std::string> updated;
+    if (!result.rawResponse.empty() && vars.find(m_variableName) != vars.end()) {
         vars[m_variableName].currentValue = result.rawResponse;
+        updated.push_back(m_variableName);
     }
+    return updated;
 }
 
 }  // namespace icu

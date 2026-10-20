@@ -10,7 +10,6 @@
 namespace icu {
 
 namespace {
-
 std::string GetStr(const std::map<std::string, FieldValue>& f, const char* key,
                    const std::string& def = "") {
     auto it = f.find(key);
@@ -46,7 +45,6 @@ std::vector<FieldDescriptor> TcpProtocol::ClientFields() const {
         {"timeoutMs", wxTRANSLATE("Connect Timeout (ms):"), FieldValue::Type::Int, FieldValue(3000),
          100, 600000}};
 
-    // 插入标准重连字段
     auto reconn = ReconnectConfig::GetFieldDescriptors();
     f.insert(f.end(), reconn.begin(), reconn.end());
 
@@ -68,6 +66,11 @@ std::vector<FieldDescriptor> TcpProtocol::FieldsForMode(int modeIndex) const {
     return (modeIndex == 1) ? ServerFields() : ClientFields();
 }
 
+std::vector<FieldDescriptor> TcpProtocol::VariableParamsFields() const {
+    // TCP 的变量不需要特殊的协议参数
+    return {};
+}
+
 ISessionPtr TcpProtocol::CreateSession(int modeIndex,
                                        const std::map<std::string, FieldValue>& fields) {
     if (modeIndex == 1) {
@@ -86,7 +89,6 @@ ISessionPtr TcpProtocol::CreateSession(int modeIndex,
     cfg.remotePort = GetInt(fields, "remotePort", 502);
     cfg.connectTimeoutMs = GetInt(fields, "timeoutMs", 3000);
 
-    // 统一解析重连配置
     auto reconn = ReconnectConfig::FromFields(fields);
     cfg.autoReconnect = reconn.autoReconnect;
     cfg.reconnectMaxAttempts = reconn.maxAttempts;
@@ -116,14 +118,11 @@ std::string TcpProtocol::MakeDefaultFileName(
 
 ITestStepPtr TcpProtocol::CreateTestStep(const std::string& stepType,
                                          const nlohmann::json& params) {
-    if (stepType == "send" || stepType == "tcp_send") {
+    // ★ 统一：把 write、send、read 全部映射到 TcpSendStep
+    if (stepType == "write" || stepType == "send" || stepType == "tcp_send" || stepType == "read") {
         return std::make_unique<TcpSendStep>(params);
     }
     return nullptr;
-}
-
-std::vector<FieldDescriptor> TcpProtocol::VariableParamsFields() const {
-    return {};  // TCP 不需要额外的配置参数，直接复用变量的 currentValue
 }
 
 }  // namespace icu

@@ -6,6 +6,7 @@
 #include <wx/translation.h>
 
 #include <string>
+#include <vector>
 
 // 为 wxString 定义 fmt formatter
 template <>
@@ -18,9 +19,12 @@ struct fmt::formatter<wxString> : fmt::formatter<std::string> {
 namespace icu::log {
 void Init();
 void Shutdown();
+
+// ★ 新增：内存历史记录
+std::vector<wxString> GetHistory();
+void ClearHistory();
 }  // namespace icu::log
 
-// 日志翻译宏
 #define ICU_SPDLOG_INFO(fmt, ...) \
     SPDLOG_INFO("{}", std::string(wxString::Format(fmt, ##__VA_ARGS__).utf8_str()))
 

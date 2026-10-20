@@ -31,7 +31,9 @@ public:
     virtual bool Assert(const TestResult& result, std::string& outErrorMsg) = 0;
 
     // 将执行结果写入变量池（由 TestRunner 调用）
-    virtual void Extract(const TestResult& result, std::map<std::string, CommVariable>& vars) = 0;
+    // ★ 返回值：返回被更新过的变量名列表
+    virtual std::vector<std::string> Extract(const TestResult& result,
+                                             std::map<std::string, CommVariable>& vars) = 0;
 };
 
 using ITestStepPtr = std::unique_ptr<ITestStep>;

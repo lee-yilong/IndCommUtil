@@ -14,8 +14,10 @@ struct CommVariable {
     std::string name;          // 变量名，如 "temp_val"
     std::string type;          // 类型，如 "int", "string", "bool"
     std::string access;        // "RO" (只读), "RW" (读写), "WO" (只写)
-    nlohmann::json params;     // 协议专属参数，如 Modbus 的 slaveId, functionCode 等
+    nlohmann::json params;     // 协议专属参数
     std::string currentValue;  // 运行时提取的值
+    std::string rawBytes;      // 原始字节的十六进制字符串
+    bool enabled = true;       // ★ 新增：是否启用
 };
 
 struct ManualModeConfig {
@@ -38,7 +40,7 @@ struct AutoModeConfig {
 
 struct SessionConfig {
     SessionMode activeMode = SessionMode::Manual;
-    std::map<std::string, CommVariable> variables;  // ★ 变量池
+    std::map<std::string, CommVariable> variables;
     ManualModeConfig manualMode;
     InteractiveModeConfig interactiveMode;
     AutoModeConfig autoMode;

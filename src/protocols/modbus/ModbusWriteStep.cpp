@@ -7,8 +7,7 @@ namespace icu {
 ModbusWriteStep::ModbusWriteStep(const nlohmann::json& params) {
     m_name = params.value("name", "Modbus Write");
     m_variableName = params.value("variable", "");
-    m_writeValue =
-        params.value("value", "");  // 如果 json 里指定了 value 就写入这个，否则用变量的当前值
+    m_writeValue = params.value("value", "");
 }
 
 std::string ModbusWriteStep::Name() const {
@@ -44,10 +43,10 @@ TestResult ModbusWriteStep::Execute(ISession* session, std::map<std::string, Com
         fc = 6;
     else if (fc == 4)
         fc = 6;
+
     req.functionCode = fc;
     req.startAddress = var.params.value("startAddress", 0);
 
-    // 决定要写入的值：优先取 step 里的 value，否则取变量的当前值
     std::string valStr = m_writeValue.empty() ? var.currentValue : m_writeValue;
     if (valStr.empty()) {
         result.errorMessage = "No value to write.";
@@ -74,15 +73,18 @@ TestResult ModbusWriteStep::Execute(ISession* session, std::map<std::string, Com
 }
 
 bool ModbusWriteStep::Assert(const TestResult& result, std::string& outErrorMsg) {
-    // 写操作默认成功
     return true;
 }
 
-void ModbusWriteStep::Extract(const TestResult& result, std::map<std::string, CommVariable>& vars) {
-    // 写入之后，同步更新变量池
+// ★ 修改返回值
+std::vector<std::string> ModbusWriteStep::Extract(const TestResult& result,
+                                                  std::map<std::string, CommVariable>& vars) {
+    std::vector<std::string> updated;
     if (!result.rawResponse.empty() && vars.find(m_variableName) != vars.end()) {
         vars[m_variableName].currentValue = result.rawResponse;
+        updated.push_back(m_variableName);
     }
+    return updated;
 }
 
 }  // namespace icu
