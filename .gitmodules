@@ -17,3 +17,9 @@
 [submodule "third_party/sqlite"]
 	path = third_party/sqlite
 	url = https://github.com/algoritnl/sqlite-cmake.git
+[submodule "third_party/paho.mqtt.c"]
+	path = third_party/paho.mqtt.c
+	url = https://github.com/eclipse/paho.mqtt.c.git
+[submodule "third_party/paho.mqtt.cpp"]
+	path = third_party/paho.mqtt.cpp
+	url = https://github.com/eclipse/paho.mqtt.cpp.git

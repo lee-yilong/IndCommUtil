@@ -115,6 +115,7 @@ SessionPanel::SessionPanel(wxWindow* parent, IProtocol* protocol, int modeIndex,
       m_profilePath(profilePath) {
     m_streamSession = dynamic_cast<StreamSession*>(m_session);
     m_txSession = dynamic_cast<ITransactionSession*>(m_session);
+    m_mqttSession = dynamic_cast<MqttSession*>(m_session);
 
     wxFileName exePath(wxStandardPaths::Get().GetExecutablePath());
     exePath.SetFullName("test_history.db");
@@ -129,6 +130,8 @@ SessionPanel::SessionPanel(wxWindow* parent, IProtocol* protocol, int modeIndex,
         BindStreamCallbacks();
     else if (m_txSession)
         BindTransactionCallbacks();
+    else if (m_mqttSession)
+        BindMqttCallbacks();
 
     if (m_session) {
         m_lastState = m_session->State();
@@ -211,7 +214,6 @@ void SessionPanel::BuildUi() {
     auto* varSizer = new wxBoxSizer(wxVERTICAL);
     auto* varBox = new wxStaticBoxSizer(wxVERTICAL, varPanel, _("Communication Variables"));
 
-    // ★ 修复：变量列表使用单选 wxLC_SINGLE_SEL
     m_varList = new wxListCtrl(varBox->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize,
                                wxLC_REPORT | wxLC_SINGLE_SEL);
     m_varList->EnableCheckBoxes(true);
@@ -266,6 +268,12 @@ void SessionPanel::BuildUi() {
                                   _("Please select a variable from the left list."));
     m_varOpSizer->Add(hint, 0, wxALL, 10);
     manualSizer->Add(m_varOpSizer, 0, wxEXPAND | wxALL, 5);
+
+    if (m_streamSession || m_mqttSession)
+        BuildStreamUi(manualSizer, m_manualPage);
+    else if (m_txSession)
+        BuildTransactionUi(manualSizer, m_manualPage);
+
     m_manualPage->SetSizer(manualSizer);
 
     BuildTestFlowUi(m_interactivePage, false);
@@ -345,6 +353,34 @@ void SessionPanel::BuildCommonUi(wxBoxSizer* mainSizer) {
     btnSizer->Add(m_historyBtn, 0, wxRIGHT, 8);
 
     mainSizer->Add(btnSizer, 0, wxALL, 10);
+}
+
+void SessionPanel::BuildStreamUi(wxBoxSizer* mainSizer, wxWindow* parentWindow) {
+    if (m_streamSession && m_streamSession->IsServerMode())
+        m_clientsLabel->Show();
+    else
+        m_clientsLabel->Hide();
+
+    auto* logBox = new wxStaticBoxSizer(wxVERTICAL, parentWindow, _("Data Log"));
+    auto* logToolbar = new wxBoxSizer(wxHORIZONTAL);
+    m_clearBtn = new wxButton(logBox->GetStaticBox(), wxID_ANY, _("Clear"));
+    m_clearBtn->Bind(wxEVT_BUTTON, &SessionPanel::OnClear, this);
+    logToolbar->AddStretchSpacer();
+    logToolbar->Add(m_clearBtn, 0, wxALIGN_CENTER_VERTICAL | wxALL, 4);
+    logBox->Add(logToolbar, 0, wxEXPAND);
+    mainSizer->Add(logBox, 1, wxEXPAND | wxALL, 5);
+}
+
+void SessionPanel::BuildTransactionUi(wxBoxSizer* mainSizer, wxWindow* parentWindow) {
+    m_rxLabel->Hide();
+    m_txLabel->Hide();
+    m_clientsLabel->Hide();
+    auto* logBox = new wxStaticBoxSizer(wxVERTICAL, parentWindow, _("Result Log"));
+    wxFont mono(10, wxFONTFAMILY_TELETYPE, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
+    logBox->Add(new wxTextCtrl(logBox->GetStaticBox(), wxID_ANY, "", wxDefaultPosition,
+                               wxDefaultSize, wxTE_MULTILINE | wxTE_READONLY | wxTE_RICH2),
+                1, wxEXPAND | wxALL, 4);
+    mainSizer->Add(logBox, 1, wxEXPAND | wxALL, 5);
 }
 
 wxWindow* SessionPanel::CreateJsonControl(wxWindow* parent, const FieldDescriptor& fd,
@@ -440,7 +476,7 @@ void SessionPanel::BuildVarOpUi(const CommVariable& var) {
             m_sessionConfig->variables[m_selectedVarName].currentValue = text;
 
             wxString rawStr;
-            if (m_streamSession) {
+            if (m_streamSession || m_mqttSession) {
                 std::vector<uint8_t> bytes =
                     EncodePayload(m_sessionConfig->variables[m_selectedVarName].type, text);
                 for (uint8_t b : bytes) rawStr += wxString::Format("%02X ", b);
@@ -481,7 +517,7 @@ void SessionPanel::BuildVarOpUi(const CommVariable& var) {
     m_varOpSizer->Add(grid, 1, wxEXPAND | wxALL, 8);
 
     auto* btnSizer = new wxBoxSizer(wxHORIZONTAL);
-    if (m_streamSession) {
+    if (m_streamSession || m_mqttSession) {
         if (var.access != "RO") {
             auto* sendBtn = new wxButton(m_varOpSizer->GetStaticBox(), wxID_ANY, _("Send"));
             sendBtn->Bind(wxEVT_BUTTON, &SessionPanel::OnExecuteSend, this);
@@ -501,7 +537,6 @@ void SessionPanel::BuildVarOpUi(const CommVariable& var) {
     }
 
     m_varOpSizer->Add(btnSizer, 0, wxALIGN_RIGHT);
-
     m_varOpSizer->Layout();
     m_manualPage->Layout();
 }
@@ -515,12 +550,8 @@ void SessionPanel::RefreshVariableList() {
         m_varList->SetItem(item, 1, wxString::FromUTF8(var.type));
         m_varList->SetItem(item, 2, wxString::FromUTF8(var.access));
         m_varList->SetItem(item, 3, wxString::FromUTF8(var.currentValue));
-
         m_varList->CheckItem(item, var.enabled);
-
-        if (!var.enabled) {
-            m_varList->SetItemTextColour(item, wxColour(150, 150, 150));
-        }
+        if (!var.enabled) m_varList->SetItemTextColour(item, wxColour(150, 150, 150));
     }
 }
 
@@ -539,11 +570,8 @@ void SessionPanel::OnItemChecked(wxListEvent& evt) {
     std::string name = std::string(m_varList->GetItemText(item).utf8_str());
     if (m_sessionConfig && m_sessionConfig->variables.count(name)) {
         m_sessionConfig->variables[name].enabled = m_varList->IsItemChecked(item);
-        if (!m_sessionConfig->variables[name].enabled) {
-            m_varList->SetItemTextColour(item, wxColour(150, 150, 150));
-        } else {
-            m_varList->SetItemTextColour(item, *wxBLACK);
-        }
+        m_varList->SetItemTextColour(
+            item, m_varList->IsItemChecked(item) ? *wxBLACK : wxColour(150, 150, 150));
     }
 }
 
@@ -590,7 +618,6 @@ void SessionPanel::OnExecuteRead(wxCommandEvent&) {
 
                 RefreshVariableList();
                 AppendUnifiedLog(true, name, m_sessionConfig->variables[name].type, valStr, raw);
-
                 double chartVal;
                 if (TryParseNumeric(m_sessionConfig->variables[name].type, valStr, chartVal)) {
                     RecordData(name, chartVal);
@@ -674,7 +701,9 @@ void SessionPanel::OnExecuteWrite(wxCommandEvent&) {
 }
 
 void SessionPanel::OnExecuteSend(wxCommandEvent&) {
-    if (!m_streamSession || !m_streamSession->IsConnected()) return;
+    if ((!m_streamSession || !m_streamSession->IsConnected()) &&
+        (!m_mqttSession || !m_mqttSession->IsConnected()))
+        return;
     if (!m_sessionConfig || !m_sessionConfig->variables.count(m_selectedVarName)) return;
 
     auto& var = m_sessionConfig->variables[m_selectedVarName];
@@ -687,17 +716,22 @@ void SessionPanel::OnExecuteSend(wxCommandEvent&) {
     }
 
     std::vector<uint8_t> bytes = EncodePayload(var.type, payload);
-    if (bytes.empty() && !payload.empty()) {
-        wxMessageBox(_("Failed to encode value to binary."), _("Error"), wxOK | wxICON_ERROR);
-        return;
+
+    bool success = false;
+    if (m_mqttSession) {
+        std::string topic = var.params.value("topic", "test/topic");
+        int qos = var.params.value("qos", 0);
+        m_mqttSession->Publish(topic, payload, qos);
+        success = true;
+    } else if (m_streamSession) {
+        success = m_streamSession->Send(bytes);
     }
 
-    if (m_streamSession->Send(bytes)) {
+    if (success) {
         m_txBytes += bytes.size();
-        if (m_txLabel) {
+        if (m_txLabel)
             m_txLabel->SetLabel(
                 wxString::Format(_("Sent: %llu bytes"), (unsigned long long)m_txBytes));
-        }
 
         wxString rawStr;
         for (uint8_t b : bytes) rawStr += wxString::Format("%02X ", b);
@@ -721,24 +755,17 @@ void SessionPanel::OnExecuteSend(wxCommandEvent&) {
 
 void SessionPanel::OnAddVariable(wxCommandEvent&) {
     if (!m_sessionConfig) return;
-
     std::string baseName = "new_var";
     std::string name = baseName;
     int suffix = 1;
-    while (m_sessionConfig->variables.count(name)) {
-        name = baseName + "_" + std::to_string(suffix++);
-    }
+    while (m_sessionConfig->variables.count(name)) name = baseName + "_" + std::to_string(suffix++);
 
     nlohmann::json defaultJson = {
         {"type", "int32"}, {"access", "RW"}, {"params", nlohmann::json::object()}};
-
     VariableEditDialog dlg(this, m_protocol, name, defaultJson, false);
     if (dlg.ShowModal() == wxID_OK) {
         std::string newName = dlg.GetVarName();
-        if (newName.empty()) {
-            wxMessageBox(_("Variable name cannot be empty."), _("Error"), wxOK | wxICON_ERROR);
-            return;
-        }
+        if (newName.empty()) return;
         auto j = dlg.GetVarJson();
         CommVariable var;
         var.name = newName;
@@ -746,7 +773,6 @@ void SessionPanel::OnAddVariable(wxCommandEvent&) {
         var.access = j.value("access", "RW");
         if (j.contains("params")) var.params = j["params"];
         var.enabled = true;
-
         m_sessionConfig->variables[newName] = var;
         RefreshVariableList();
     }
@@ -755,18 +781,13 @@ void SessionPanel::OnAddVariable(wxCommandEvent&) {
 void SessionPanel::OnCopyVariable(wxCommandEvent&) {
     long sel = m_varList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
     if (sel == -1) return;
-
     std::string oldName = std::string(m_varList->GetItemText(sel).utf8_str());
     auto it = m_sessionConfig->variables.find(oldName);
     if (it == m_sessionConfig->variables.end()) return;
-
-    std::string baseName = oldName + "_copy";
-    std::string newName = baseName;
+    std::string newName = oldName + "_copy";
     int suffix = 1;
-    while (m_sessionConfig->variables.count(newName)) {
-        newName = baseName + "_" + std::to_string(suffix++);
-    }
-
+    while (m_sessionConfig->variables.count(newName))
+        newName = oldName + "_copy" + std::to_string(suffix++);
     CommVariable newVar = it->second;
     newVar.name = newName;
     m_sessionConfig->variables[newName] = newVar;
@@ -782,7 +803,6 @@ void SessionPanel::OnEditVariable(wxCommandEvent&) {
 
     nlohmann::json editJson = {
         {"type", it->second.type}, {"access", it->second.access}, {"params", it->second.params}};
-
     VariableEditDialog dlg(this, m_protocol, key, editJson, true);
 
     if (dlg.ShowModal() == wxID_OK) {
@@ -797,23 +817,19 @@ void SessionPanel::OnEditVariable(wxCommandEvent&) {
 void SessionPanel::OnDeleteVariable(wxCommandEvent&) {
     long sel = m_varList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
     if (sel == -1) return;
-    std::string key = std::string(m_varList->GetItemText(sel).utf8_str());
-    m_sessionConfig->variables.erase(key);
+    m_sessionConfig->variables.erase(std::string(m_varList->GetItemText(sel).utf8_str()));
     RefreshVariableList();
 }
 
 void SessionPanel::OnNotebookPageChanged(wxBookCtrlEvent& evt) {
     int sel = m_modeNotebook->GetSelection();
-    if (m_sessionConfig && sel >= 0 && sel <= 2) {
+    if (m_sessionConfig && sel >= 0 && sel <= 2)
         m_sessionConfig->activeMode = static_cast<SessionMode>(sel);
-    }
     evt.Skip();
 }
 
 void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     auto* main = new wxBoxSizer(wxVERTICAL);
-
-    // ★ 修复：步骤列表默认就是多选（可以按住 Ctrl 和 Shift），不需要 wxLC_EXTENDED_SEL
     auto* stepList =
         new wxListCtrl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT);
     stepList->InsertColumn(0, _("Step Name"), wxLIST_FORMAT_LEFT, 250);
@@ -849,7 +865,6 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
         if (!m_sessionConfig) return;
         auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
                                 : m_sessionConfig->interactiveMode.testFlow;
-
         std::string baseName = "New Step";
         std::string defName = baseName;
         int idx = 1;
@@ -859,7 +874,6 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
             return false;
         };
         while (hasName(defName)) defName = baseName + " " + std::to_string(idx++);
-
         nlohmann::json initial;
         initial["name"] = defName;
 
@@ -869,12 +883,9 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
         TestStepEditDialog dlg(this, initial, varNames);
         if (dlg.ShowModal() == wxID_OK) {
             nlohmann::json step = dlg.GetStepJson();
-
             long sel = stepList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
             int insertPos = (sel != -1) ? sel + 1 : flow.size();
-
             flow.insert(flow.begin() + insertPos, step);
-
             refreshList();
             int newIdx = (sel != -1) ? sel + 1 : stepList->GetItemCount() - 1;
             stepList->SetItemState(newIdx, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
@@ -886,28 +897,13 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
         if (!m_sessionConfig) return;
         long sel = stepList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
         if (sel == -1) return;
-
         auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
                                 : m_sessionConfig->interactiveMode.testFlow;
         if (sel >= static_cast<long>(flow.size())) return;
-
         nlohmann::json copyStep = flow[sel];
-        std::string oldName = copyStep.value("name", "Step");
-
-        std::string baseName = oldName + " Copy";
-        std::string newName = baseName;
-        int idx = 1;
-        auto hasName = [&](const std::string& n) {
-            for (const auto& s : flow)
-                if (s.value("name", "") == n) return true;
-            return false;
-        };
-        while (hasName(newName)) newName = baseName + " " + std::to_string(idx++);
-
-        copyStep["name"] = newName;
+        copyStep["name"] = copyStep.value("name", "Step") + " Copy";
         flow.insert(flow.begin() + sel + 1, copyStep);
         refreshList();
-
         stepList->SetItemState(sel + 1, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
         stepList->EnsureVisible(sel + 1);
     });
@@ -919,7 +915,6 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
             wxMessageBox(_("Please select a base step first."), _("Notice"), wxOK);
             return;
         }
-
         auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
                                 : m_sessionConfig->interactiveMode.testFlow;
         if (sel >= static_cast<long>(flow.size())) return;
@@ -928,24 +923,20 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
         auto* sizer = new wxBoxSizer(wxVERTICAL);
         auto* grid = new wxFlexGridSizer(2, 8, 8);
         grid->AddGrowableCol(1, 1);
-
         grid->Add(new wxStaticText(&dlg, wxID_ANY, _("Repeat Count:")), 0, wxALIGN_CENTER_VERTICAL);
         wxSpinCtrl* countCtrl = new wxSpinCtrl(&dlg, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
                                                wxSP_ARROW_KEYS, 1, 10000, 10);
         grid->Add(countCtrl, 1, wxEXPAND);
-
         grid->Add(new wxStaticText(&dlg, wxID_ANY, _("Interval (ms):")), 0,
                   wxALIGN_CENTER_VERTICAL);
         wxSpinCtrl* intervalCtrl = new wxSpinCtrl(&dlg, wxID_ANY, "", wxDefaultPosition,
                                                   wxDefaultSize, wxSP_ARROW_KEYS, 0, 600000, 1000);
         grid->Add(intervalCtrl, 1, wxEXPAND);
-
         grid->Add(new wxStaticText(&dlg, wxID_ANY, _("Auto Increment/Decrement:")), 0,
                   wxALIGN_CENTER_VERTICAL);
         wxSpinCtrl* incCtrl = new wxSpinCtrl(&dlg, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
                                              wxSP_ARROW_KEYS, -1000000, 1000000, 1);
         grid->Add(incCtrl, 1, wxEXPAND);
-
         sizer->Add(grid, 1, wxEXPAND | wxALL, 15);
         sizer->Add(dlg.CreateButtonSizer(wxOK | wxCANCEL), 0, wxEXPAND | wxALL, 10);
         dlg.SetSizerAndFit(sizer);
@@ -954,7 +945,6 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
             int repeat = countCtrl->GetValue();
             int interval = intervalCtrl->GetValue();
             int autoInc = incCtrl->GetValue();
-
             nlohmann::json baseStep = flow[sel];
             std::string baseValue = baseStep.value("value", "");
             long long baseValInt = 0;
@@ -966,17 +956,13 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
                 } catch (...) {
                 }
             }
-
             for (int i = 1; i < repeat; ++i) {
                 nlohmann::json subStep = baseStep;
                 subStep["name"] =
                     baseStep.value("name", "Step") + " (" + std::to_string(i + 1) + ")";
                 subStep["wait_ms"] = interval;
-
-                if (isInt && autoInc != 0) {
-                    long long val = baseValInt + (i * autoInc);
-                    subStep["value"] = std::to_string(val);
-                }
+                if (isInt && autoInc != 0)
+                    subStep["value"] = std::to_string(baseValInt + (i * autoInc));
                 flow.insert(flow.begin() + sel + i, subStep);
             }
             refreshList();
@@ -987,13 +973,10 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
         if (!m_sessionConfig) return;
         long sel = stepList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
         if (sel == -1) return;
-
         auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
                                 : m_sessionConfig->interactiveMode.testFlow;
-
         std::vector<std::string> varNames;
         for (const auto& [n, v] : m_sessionConfig->variables) varNames.push_back(n);
-
         TestStepEditDialog dlg(this, flow[sel], varNames);
         if (dlg.ShowModal() == wxID_OK) {
             flow[sel] = dlg.GetStepJson();
@@ -1005,18 +988,12 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
         if (!m_sessionConfig) return;
         auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
                                 : m_sessionConfig->interactiveMode.testFlow;
-
         std::vector<long> toDelete;
         long item = -1;
-        while ((item = stepList->GetNextItem(item, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED)) != -1) {
+        while ((item = stepList->GetNextItem(item, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED)) != -1)
             toDelete.push_back(item);
-        }
-
-        for (auto it = toDelete.rbegin(); it != toDelete.rend(); ++it) {
-            if (*it < static_cast<long>(flow.size())) {
-                flow.erase(flow.begin() + *it);
-            }
-        }
+        for (auto it = toDelete.rbegin(); it != toDelete.rend(); ++it)
+            if (*it < static_cast<long>(flow.size())) flow.erase(flow.begin() + *it);
         refreshList();
     });
 
@@ -1024,13 +1001,10 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
         if (!m_sessionConfig) return;
         long sel = stepList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
         if (sel <= 0) return;
-
         auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
                                 : m_sessionConfig->interactiveMode.testFlow;
-
         std::swap(flow[sel], flow[sel - 1]);
         refreshList();
-
         stepList->SetItemState(sel - 1, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
         stepList->EnsureVisible(sel - 1);
     });
@@ -1041,10 +1015,8 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
         auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
                                 : m_sessionConfig->interactiveMode.testFlow;
         if (sel == -1 || sel >= static_cast<long>(flow.size()) - 1) return;
-
         std::swap(flow[sel], flow[sel + 1]);
         refreshList();
-
         stepList->SetItemState(sel + 1, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
         stepList->EnsureVisible(sel + 1);
     });
@@ -1059,16 +1031,14 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
         for (const auto& stepJson : flow) {
             std::string type = stepJson.value("action", "");
             ITestStepPtr step;
-
-            if (type == "delay") {
+            if (type == "delay")
                 step = std::make_unique<DelayStep>(stepJson);
-            } else {
+            else
                 step = m_protocol->CreateTestStep(type, stepJson);
-            }
 
-            if (step) {
+            if (step)
                 steps.push_back(std::move(step));
-            } else {
+            else {
                 wxMessageBox(wxString::Format(_("Protocol '%s' does not support action '%s'."),
                                               wxString::FromUTF8(m_protocol->Id()),
                                               wxString::FromUTF8(type)),
@@ -1092,7 +1062,7 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
 
         m_testRunner->OnStepUpdated(
             [this, stepList](int index, bool success, const std::string& msg) {
-                wxTheApp->CallAfter([this, stepList, index, success, msg]() {
+                wxTheApp->CallAfter([this, stepList, index, success]() {
                     if (index < 0 || index >= stepList->GetItemCount()) return;
                     stepList->SetItem(index, 1, success ? _("Passed") : _("Failed"));
                     stepList->SetItemTextColour(index, success ? *wxGREEN : *wxRED);
@@ -1117,14 +1087,12 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
             wxTheApp->CallAfter([this, runBtn, stopBtn, overallSuccess]() {
                 runBtn->Enable(true);
                 stopBtn->Enable(false);
-
                 if (m_commonLogCtrl) {
                     m_commonLogCtrl->AppendText(
                         wxDateTime::Now().Format("[%H:%M:%S.%l] ") +
                         (overallSuccess ? _("Test Finished Successfully\n") : _("Test Failed\n")));
                     m_commonLogCtrl->SetInsertionPointEnd();
                 }
-
                 if (m_testRunner) {
                     delete m_testRunner;
                     m_testRunner = nullptr;
@@ -1138,18 +1106,15 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
                     stepList->SetItemState(nextIndex, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
                     stepList->EnsureVisible(nextIndex);
                 }
-
                 int ret = wxMessageBox(
                     wxString::Format(_("Step %d finished.\n\nReady to execute Step %d. Continue?"),
                                      nextIndex - 1, nextIndex),
                     _("Interactive Mode"), wxYES_NO | wxICON_QUESTION, this);
-
                 if (m_testRunner) {
-                    if (ret == wxYES) {
+                    if (ret == wxYES)
                         m_testRunner->Continue();
-                    } else {
+                    else
                         m_testRunner->Stop();
-                    }
                 }
             });
         });
@@ -1174,7 +1139,6 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     btnSizer->AddSpacer(10);
     btnSizer->Add(upBtn, 0, wxALL, 4);
     btnSizer->Add(downBtn, 0, wxALL, 4);
-
     main->Add(btnSizer, 0, wxALIGN_LEFT);
     parent->SetSizer(main);
 }
@@ -1243,7 +1207,6 @@ void SessionPanel::UpdateActionButton(SessionState st) {
             break;
     }
     m_configBtn->Enable(st == SessionState::Idle || st == SessionState::Disconnected);
-
     if (m_txSession) {
         if (m_executeReadBtn) m_executeReadBtn->Enable(st == SessionState::Connected);
         if (m_executeWriteBtn) m_executeWriteBtn->Enable(st == SessionState::Connected);
@@ -1294,34 +1257,23 @@ void SessionPanel::BindStreamCallbacks() {
                 varType = var.type;
                 if (BytesParser::Parse(var.type, copy, parsedValue)) {
                     var.currentValue = parsedValue;
-
                     wxString rawStr;
                     for (uint8_t b : copy) rawStr += wxString::Format("%02X ", b);
                     var.rawBytes = std::string(rawStr.Trim().utf8_str());
-
                     RefreshVariableList();
-
-                    if (m_varOpControls.count("__value")) {
-                        if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__value"])) {
+                    if (m_varOpControls.count("__value"))
+                        if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__value"]))
                             txt->ChangeValue(wxString::FromUTF8(var.currentValue));
-                        }
-                    }
-                    if (m_varOpControls.count("__raw_bytes")) {
-                        if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__raw_bytes"])) {
+                    if (m_varOpControls.count("__raw_bytes"))
+                        if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__raw_bytes"]))
                             txt->ChangeValue(rawStr.Trim());
-                        }
-                    }
-
                     double chartVal;
-                    if (TryParseNumeric(var.type, var.currentValue, chartVal)) {
+                    if (TryParseNumeric(var.type, var.currentValue, chartVal))
                         RecordData(m_selectedVarName, chartVal);
-                    }
-                } else {
+                } else
                     parsedValue = "<Parse Failed>";
-                }
-            } else {
+            } else
                 parsedValue = "<No Variable Selected>";
-            }
 
             AppendUnifiedLog(true, varName, varType, parsedValue, copy, cid);
         });
@@ -1372,14 +1324,6 @@ void SessionPanel::BindStreamCallbacks() {
     });
 }
 
-void SessionPanel::OnClear(wxCommandEvent&) {
-    if (m_commonLogCtrl) m_commonLogCtrl->Clear();
-}
-
-void SessionPanel::UpdateClientsLabel() {
-    if (m_clientsLabel) m_clientsLabel->SetLabel(wxString::Format(_("Clients: %d"), m_clientCount));
-}
-
 void SessionPanel::BindTransactionCallbacks() {
     m_txSession->OnStateChanged([this](SessionState st) {
         CallAfter([this, st]() {
@@ -1398,36 +1342,81 @@ void SessionPanel::BindTransactionCallbacks() {
     });
 }
 
+void SessionPanel::BindMqttCallbacks() {
+    m_mqttSession->OnStateChanged([this](SessionState st) {
+        CallAfter([this, st]() {
+            RefreshFromSession();
+            if (m_onStateUpdated) m_onStateUpdated(st);
+        });
+    });
+
+    m_mqttSession->OnMqttMessage([this](const std::string& topic, const std::string& payload) {
+        CallAfter([this, topic, payload]() {
+            m_rxBytes += payload.size();
+            if (m_rxLabel)
+                m_rxLabel->SetLabel(
+                    wxString::Format(_("Received: %llu bytes"), (unsigned long long)m_rxBytes));
+
+            std::vector<uint8_t> copy(payload.begin(), payload.end());
+            AppendUnifiedLog(true, "Topic: " + topic, "mqtt", payload, copy);
+
+            if (!m_selectedVarName.empty() && m_sessionConfig &&
+                m_sessionConfig->variables.count(m_selectedVarName)) {
+                auto& var = m_sessionConfig->variables[m_selectedVarName];
+                std::string varTopic = var.params.value("topic", "test/topic");
+                if (topic == varTopic) {
+                    var.currentValue = payload;
+                    wxString rawStr;
+                    for (uint8_t b : copy) rawStr += wxString::Format("%02X ", b);
+                    var.rawBytes = std::string(rawStr.Trim().utf8_str());
+                    RefreshVariableList();
+                    if (m_varOpControls.count("__value"))
+                        if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__value"]))
+                            txt->ChangeValue(wxString::FromUTF8(payload));
+                    if (m_varOpControls.count("__raw_bytes"))
+                        if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__raw_bytes"]))
+                            txt->ChangeValue(rawStr.Trim());
+                    double chartVal;
+                    if (TryParseNumeric(var.type, var.currentValue, chartVal))
+                        RecordData(m_selectedVarName, chartVal);
+                }
+            }
+        });
+    });
+}
+
+void SessionPanel::OnClear(wxCommandEvent&) {
+    if (m_commonLogCtrl) m_commonLogCtrl->Clear();
+}
+void SessionPanel::UpdateClientsLabel() {
+    if (m_clientsLabel) m_clientsLabel->SetLabel(wxString::Format(_("Clients: %d"), m_clientCount));
+}
+
 void SessionPanel::OnRecordSettings(wxCommandEvent&) {
     if (m_isRecording) {
         m_isRecording = false;
         m_recordBtn->SetLabel(_("Record Settings"));
         return;
     }
-
     if (!m_sessionConfig) return;
 
     wxArrayString choices;
-    for (const auto& [name, var] : m_sessionConfig->variables) {
+    for (const auto& [name, var] : m_sessionConfig->variables)
         if (var.enabled) choices.Add(wxString::FromUTF8(name));
-    }
     if (choices.IsEmpty()) {
         wxMessageBox(_("No enabled variables to record."), _("Notice"), wxOK);
         return;
     }
 
     wxMultiChoiceDialog dlg(this, _("Select variables to record:"), _("Record Settings"), choices);
-
     wxArrayInt selections;
     for (unsigned int i = 0; i < choices.GetCount(); ++i) selections.Add(i);
     dlg.SetSelections(selections);
 
     if (dlg.ShowModal() == wxID_OK) {
         m_loggingVars.clear();
-        for (int sel : dlg.GetSelections()) {
+        for (int sel : dlg.GetSelections())
             m_loggingVars.insert(std::string(choices[sel].utf8_str()));
-        }
-
         m_isRecording = true;
         m_recordBtn->SetLabel(_("Stop Recording"));
         if (m_chartPanel) m_chartPanel->Clear();
@@ -1436,14 +1425,9 @@ void SessionPanel::OnRecordSettings(wxCommandEvent&) {
 
 void SessionPanel::OnHistoryQuery(wxCommandEvent&) {
     if (!m_sessionConfig) return;
-
     std::vector<std::string> varNames;
-    for (const auto& [n, v] : m_sessionConfig->variables) {
-        if (v.access != "WO") {
-            varNames.push_back(n);
-        }
-    }
-
+    for (const auto& [n, v] : m_sessionConfig->variables)
+        if (v.access != "WO") varNames.push_back(n);
     if (varNames.empty()) {
         wxMessageBox(_("No readable variables found."), _("Notice"), wxOK);
         return;

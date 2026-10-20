@@ -1,166 +1,94 @@
-name: build
+name: Build and Test
 
 on:
   push:
-    branches: [ main, master, dev ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ main, master, dev ]
-  workflow_dispatch:
-
-env:
-  CLANG_FORMAT_VERSION: "19.1.5"
+    branches: [ "main" ]
 
 jobs:
-  # =======================================================================
-  # wxWidgets：先构建并缓存（build 矩阵的 Debug / Release 共用）
-  # =======================================================================
-  wxwidgets:
-    name: wxWidgets 3.3.5
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: msys2 {0}
-
-    steps:
-      - name: Checkout (with submodules)
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 1
-
-      - name: Setup MSYS2 (UCRT64)
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: UCRT64
-          install: >-
-            mingw-w64-ucrt-x86_64-gcc
-            mingw-w64-ucrt-x86_64-cmake
-            mingw-w64-ucrt-x86_64-ninja
-            mingw-w64-ucrt-x86_64-gettext
-            make
-
-      - name: Verify submodules
-        run: |
-          test -f third_party/wxWidgets/configure || (echo "wxWidgets source missing" && exit 1)
-          test -d third_party/wxWidgets/src || (echo "wxWidgets src/ missing" && exit 1)
-          test -f third_party/spdlog/include/spdlog/spdlog.h || (echo "spdlog missing" && exit 1)
-          test -f third_party/doctest/doctest.h || (echo "doctest missing" && exit 1)
-
-      - name: Cache wxWidgets build
-        id: wx-cache
-        uses: actions/cache@v4
-        with:
-          path: third_party/wxWidgets/lib
-          key: wx-3.3.5-release-cc-${{ runner.os }}-ucrt64-gcc-${{ hashFiles('third_party/wxWidgets/include/wx/version.h') }}
-
-      - name: Build wxWidgets (shared, release, in-tree)
-        if: steps.wx-cache.outputs.cache-hit != 'true'
-        run: |
-          cd third_party/wxWidgets
-          ./configure \
-            --enable-shared \
-            --disable-debug \
-            --disable-tests \
-            --disable-monolithic \
-            --with-msw \
-            CC=gcc CXX=g++ \
-            CFLAGS="-O2" CXXFLAGS="-O2"
-          make -j$(nproc)
-
-      - name: Verify wxWidgets libraries
-        run: |
-          if [ -f third_party/wxWidgets/lib/gcc_dll/libwx_mswu_core-3.3.dll.a ]; then
-            echo "wxWidgets layout: legacy (lib/gcc_dll)"
-          elif [ -f third_party/wxWidgets/lib/libwx_mswu_core-3.3.dll.a ]; then
-            echo "wxWidgets layout: standard (lib/)"
-          else
-            echo "wxWidgets core import library missing"
-            find third_party/wxWidgets/lib -name "libwx*mswu*core*" || true
-            exit 1
-          fi
-
-  # =======================================================================
-  # Debug / Release：构建 + 测试
-  # =======================================================================
   build:
-    name: build (${{ matrix.build_type }})
-    needs: wxwidgets
     runs-on: windows-latest
     strategy:
-      fail-fast: false
       matrix:
-        build_type: [ Debug, Release ]
-    defaults:
-      run:
-        shell: msys2 {0}
+        build_type: [Debug, Release]
 
     steps:
-      - name: Checkout (with submodules)
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 1
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
-      - name: Setup MSYS2 (UCRT64)
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: UCRT64
-          install: >-
-            mingw-w64-ucrt-x86_64-gcc
-            mingw-w64-ucrt-x86_64-cmake
-            mingw-w64-ucrt-x86_64-ninja
-            mingw-w64-ucrt-x86_64-gettext
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: UCRT64
+        update: true
+        install: >-
+          mingw-w64-ucrt-x86_64-gcc
+          mingw-w64-ucrt-x86_64-cmake
+          mingw-w64-ucrt-x86_64-ninja
+          mingw-w64-ucrt-x86_64-gettext
 
-      - name: Restore wxWidgets build
-        uses: actions/cache/restore@v4
-        with:
-          path: third_party/wxWidgets/lib
-          key: wx-3.3.5-release-cc-${{ runner.os }}-ucrt64-gcc-${{ hashFiles('third_party/wxWidgets/include/wx/version.h') }}
-          fail-on-cache-miss: true
+    # =========================================================================
+    # 缓存 wxWidgets 和 Paho 的编译产物
+    # =========================================================================
+    - name: Cache wxWidgets
+      id: cache-wx
+      uses: actions/cache@v4
+      with:
+        path: third_party/wxWidgets/lib
+        key: wxwidgets-${{ runner.os }}-${{ hashFiles('.gitmodules') }}-release
 
-      - name: Configure
-        run: |
-          rm -rf build-ci
-          cmake -S . -B build-ci -G Ninja \
-            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-            -DICU_BUILD_TESTS=ON \
-            -DICU_BUILD_COVERAGE=OFF
+    - name: Cache Paho
+      id: cache-paho
+      uses: actions/cache@v4
+      with:
+        path: |
+          third_party/paho.mqtt.c/build/install
+          third_party/paho.mqtt.cpp/build/install
+        key: paho-${{ runner.os }}-${{ hashFiles('.gitmodules') }}-release
 
-      - name: Build
-        run: cmake --build build-ci -j$(nproc)
+    # =========================================================================
+    # 编译依赖 (如果没有命中缓存)
+    # =========================================================================
+    - name: Build wxWidgets
+      if: steps.cache-wx.outputs.cache-hit != 'true'
+      shell: msys2 {0}
+      run: |
+        cd third_party/wxWidgets
+        mkdir -p build-ci && cd build-ci
+        ../configure --enable-shared --disable-tests --disable-monolithic --with-msw CFLAGS="-O2" CXXFLAGS="-O2"
+        make -j$(nproc)
 
-      - name: Test
-        run: ctest --test-dir build-ci --output-on-failure
+    - name: Build Paho
+      if: steps.cache-paho.outputs.cache-hit != 'true'
+      shell: msys2 {0}
+      run: |
+        ./scripts/build_paho.sh
 
-  # =======================================================================
-  # 代码格式：clang-format
-  # =======================================================================
-  format:
-    name: clang-format
-    runs-on: windows-latest
+    # =========================================================================
+    # 编译与测试
+    # =========================================================================
+    - name: Configure CMake
+      shell: msys2 {0}
+      run: |
+        cmake -S . -B build -G "Ninja" \
+              -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+              -DICU_BUILD_TESTS=ON
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Build
+      shell: msys2 {0}
+      run: |
+        cmake --build build -j$(nproc)
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+    - name: Test
+      shell: msys2 {0}
+      run: |
+        cd build
+        ctest --output-on-failure -C ${{ matrix.build_type }}
 
-      - name: Install clang-format
-        run: pip install "clang-format==$env:CLANG_FORMAT_VERSION"
-
-      - name: Check formatting
-        run: |
-          $files = Get-ChildItem src, tests -Recurse -Include *.cpp, *.h |
-                   Select-Object -ExpandProperty FullName
-          if (-not $files) { Write-Error "no source files found"; exit 1 }
-          $out = & clang-format --style=file --dry-run --Werror $files 2>&1
-          $code = $LASTEXITCODE
-          $out | ForEach-Object { Write-Host $_ }
-          if ($code -ne 0) {
-            Write-Error "clang-format found formatting violations."
-            exit 1
-          }
-          Write-Host "clang-format: all files clean"
+    - name: Format Check
+      shell: msys2 {0}
+      run: |
+        pip install clang-format==19.1.5
+        ./scripts/format.sh check

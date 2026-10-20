@@ -15,9 +15,6 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
 endif()
 
-# =========================================================================
-# 版本信息（cmake/version.h.in → <build>/generated/version.h）
-# =========================================================================
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.h.in"
     "${CMAKE_CURRENT_BINARY_DIR}/generated/version.h"
@@ -28,13 +25,6 @@ set(WX_ROOT     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/wxWidgets")
 set(SPDLOG_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/spdlog")
 set(JSON_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/json")
 
-# -------------------------------------------------------------------------
-# 探测 wxWidgets 布局：wx 3.3 有两种
-#   老式（in-tree build）：lib/gcc_dll/libwx_mswu_core-3.3.dll.a
-#                         lib/gcc_dll/mswu/wx/setup.h
-#   新式（std layout）：   lib/libwx_mswu_core-3.3.dll.a
-#                         lib/wx/include/msw-unicode-3.3/wx/setup.h
-# -------------------------------------------------------------------------
 if(EXISTS "${WX_ROOT}/lib/gcc_dll/libwx_mswu_core-3.3.dll.a")
     set(WX_LIB_DIR   "${WX_ROOT}/lib/gcc_dll")
     set(WX_SETUP_DIR "${WX_ROOT}/lib/gcc_dll/mswu")
@@ -51,40 +41,34 @@ else()
         "See docs/developer/building.md")
 endif()
 
-# =========================================================================
-# 源文件：递归扫描 src/ 下所有 .cpp 和 .h
-# 使用 CONFIGURE_DEPENDS 让 CMake 每次构建都重新检查文件变化
-# =========================================================================
+set(PAHO_C_INSTALL "${CMAKE_CURRENT_SOURCE_DIR}/third_party/paho.mqtt.c/build/install")
+set(PAHO_CPP_INSTALL "${CMAKE_CURRENT_SOURCE_DIR}/third_party/paho.mqtt.cpp/build/install")
+
+if(EXISTS "${PAHO_C_INSTALL}/lib/libpaho-mqtt3a-static.a" AND EXISTS "${PAHO_CPP_INSTALL}/lib/libpaho-mqttpp3-static.a")
+    set(ICU_HAS_MQTT ON)
+    message(STATUS "Paho MQTT: found pre-compiled static libraries")
+else()
+    message(WARNING "Paho MQTT: static libraries not found! Run scripts/build_paho.sh first.")
+    set(ICU_HAS_MQTT OFF)
+endif()
+
 file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
 file(GLOB_RECURSE APP_HEADERS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
 
-# =========================================================================
-# 测试开关
-# =========================================================================
 option(ICU_BUILD_TESTS "Build unit/integration tests" OFF)
 option(ICU_BUILD_COVERAGE "Enable code coverage instrumentation" OFF)
 
-if(ICU_BUILD_TESTS)
-    enable_testing()
-    include(CTest)
-    add_subdirectory(tests)
-endif()
-
-# =========================================================================
-# nlohmann/json（header-only，通过 CMake target 引入）
-# =========================================================================
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install OFF CACHE INTERNAL "")
 add_subdirectory(third_party/json)
-# SQLite (amalgamation)
+
 add_subdirectory(third_party/sqlite)
 
 set(MODBUSLIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ModbusLib")
 if(EXISTS "${MODBUSLIB_ROOT}/CMakeLists.txt")
-    # 在引入 ModbusLib 之前，关掉它的 examples 构建
     set(MB_BUILD_EXAMPLES OFF CACHE BOOL "Disable ModbusLib examples" FORCE)
     add_subdirectory(${MODBUSLIB_ROOT} ${CMAKE_CURRENT_BINARY_DIR}/ModbusLib EXCLUDE_FROM_ALL)
     set(ICU_HAS_MODBUSLIB ON)
@@ -93,9 +77,6 @@ else()
     set(ICU_HAS_MODBUSLIB OFF)
 endif()
 
-# =========================================================================
-# 核心静态库（GUI 与 CLI 共用）
-# =========================================================================
 file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/protocols/*.cpp"
@@ -115,9 +96,15 @@ target_include_directories(icu_core_lib PUBLIC
     "${MODBUSLIB_ROOT}/src"
 )
 
+if(ICU_HAS_MQTT)
+    target_include_directories(icu_core_lib PUBLIC
+        "${PAHO_C_INSTALL}/include"
+        "${PAHO_CPP_INSTALL}/include"
+    )
+endif()
+
 target_link_directories(icu_core_lib PUBLIC "${WX_LIB_DIR}")
 
-# 核心库只链接基础依赖，不链接 GUI 专用的 wx 库
 target_link_libraries(icu_core_lib PUBLIC
     "${WX_LIB_DIR}/libwx_baseu-3.3.dll.a"
     "${WX_LIB_DIR}/libwx_baseu_net-3.3.dll.a"
@@ -130,16 +117,20 @@ if(ICU_HAS_MODBUSLIB)
     target_link_libraries(icu_core_lib PUBLIC modbus)
 endif()
 
-# =========================================================================
-# GUI 主程序 (IndComm.exe)
-# =========================================================================
+if(ICU_HAS_MQTT)
+    target_link_libraries(icu_core_lib PUBLIC
+        "${PAHO_CPP_INSTALL}/lib/libpaho-mqttpp3-static.a"
+        "${PAHO_C_INSTALL}/lib/libpaho-mqtt3a-static.a"
+        ws2_32 crypt32 rpcrt4
+    )
+endif()
+
 file(GLOB_RECURSE GUI_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/app/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/settings/*.cpp"
 )
 
-# ★ 修改目标名称为 IndComm
 add_executable(IndComm WIN32
     src/main.cpp
     ${GUI_SOURCES}
@@ -150,40 +141,23 @@ add_executable(IndComm WIN32
 target_compile_definitions(IndComm PRIVATE wxDEBUG_LEVEL=0)
 target_link_libraries(IndComm PRIVATE
     icu_core_lib
-    # 必须放在系统库前面，确保符号解析顺序
     "${WX_LIB_DIR}/libwx_mswu_core-3.3.dll.a"
     "${WX_LIB_DIR}/libwx_baseu-3.3.dll.a"
     "${WX_LIB_DIR}/libwx_baseu_net-3.3.dll.a"
-
     kernel32 user32 gdi32 comdlg32 winspool winmm
     shell32 ole32 oleaut32 uuid comctl32 rpcrt4
 )
 
-# GUI 专属链接
-target_link_libraries(IndComm PRIVATE
-    kernel32 user32 gdi32 comdlg32 winspool winmm
-    shell32 ole32 oleaut32 uuid comctl32 rpcrt4
-)
+target_compile_definitions(IndComm PRIVATE ICU_BUILD_GUI)
 
-# =========================================================================
-# CLI 命令行工具 (indcomm-cli.exe)
-# =========================================================================
-# ★ 修改目标名称为 indcomm-cli
 add_executable(indcomm-cli
     src/cli/main.cpp
 )
 
 target_link_libraries(indcomm-cli PRIVATE icu_core_lib)
-target_compile_definitions(icu_core_lib PRIVATE)
-target_compile_definitions(IndComm PRIVATE ICU_BUILD_GUI)
 
-# =========================================================================
-# 复制依赖 DLL 及 i18n 资源
-# =========================================================================
 file(GLOB WX_DLLS "${WX_LIB_DIR}/*.dll")
 
-# ★ 把目标替换为 IndComm
-# 确保 i18n 目录存在，如果不存在就创建一个（防止空目录报错）
 add_custom_command(TARGET IndComm POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${WX_DLLS} $<TARGET_FILE_DIR:IndComm>
     COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:modbus> $<TARGET_FILE_DIR:IndComm>
@@ -192,9 +166,15 @@ add_custom_command(TARGET IndComm POST_BUILD
     COMMENT "Copying DLLs and i18n to GUI output"
 )
 
-# ★ 把目标替换为 indcomm-cli
 add_custom_command(TARGET indcomm-cli POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${WX_DLLS} $<TARGET_FILE_DIR:indcomm-cli>
     COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:modbus> $<TARGET_FILE_DIR:indcomm-cli>
     COMMENT "Copying DLLs to CLI output"
 )
+
+# ★ 修复：把测试目录放到最后，确保所有 target（如 modbus）都已生成
+if(ICU_BUILD_TESTS)
+    enable_testing()
+    include(CTest)
+    add_subdirectory(tests)
+endif()

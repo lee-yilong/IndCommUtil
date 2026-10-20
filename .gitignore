@@ -11,26 +11,21 @@ logs/
 # 覆盖率报告
 coverage/
 
-# i18n 的中间产物，由构建自动生成
+# i18n 的中间产物
 resources/i18n/*.pot
 resources/i18n/*/LC_MESSAGES/*.mo
 
-# wxWidgets 编译产物（submodule 里不进仓库）
+# wxWidgets 编译产物
 third_party/wxWidgets/lib/
 third_party/wxWidgets/build/
 third_party/wxWidgets/*.o
 
-# 本地备份（如果有）
+# Paho 编译产物
+third_party/paho.mqtt.c/build/
+third_party/paho.mqtt.cpp/build/
+
 third_party/wxWidgets.local-backup/
-
-# spdlog / doctest 是 header-only，可以提交源码
-# 如果也想用 submodule：
-# third_party/spdlog/
-# third_party/doctest/
-
-# wxWidgets 旧头文件备份（改名时产生）
 third_party/wxWidgets/include.7z-old/
 
-# 用户测试用的 .json 配置文件（只忽略项目根，不递归到 third_party）
 /*.json
 !/CMakePresets.json

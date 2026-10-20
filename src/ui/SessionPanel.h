@@ -22,6 +22,7 @@
 #include "core/SessionConfig.h"
 #include "core/StreamSession.h"
 #include "core/TestRunner.h"
+#include "protocols/mqtt/MqttSession.h"
 #include "ui/ChartPanel.h"
 #include "ui/HistoryDialog.h"
 
@@ -50,10 +51,10 @@ private:
 
     StreamSession* m_streamSession = nullptr;
     ITransactionSession* m_txSession = nullptr;
+    MqttSession* m_mqttSession = nullptr;
 
     SessionState m_lastState = SessionState::Idle;
 
-    // --- 数据库与图表 ---
     Database m_db;
     int64_t m_currentRunId = -1;
     ChartPanel* m_chartPanel = nullptr;
@@ -68,7 +69,6 @@ private:
                           const std::string& value, const std::vector<uint8_t>& rawBytes,
                           int clientId = 0);
 
-    // --- 主区域分栏 ---
     wxSplitterWindow* m_mainSplitter = nullptr;
     wxSplitterWindow* m_rightSplitter = nullptr;
     wxNotebook* m_modeNotebook = nullptr;
@@ -76,37 +76,31 @@ private:
     wxPanel* m_interactivePage = nullptr;
     wxPanel* m_autoPage = nullptr;
 
-    // --- 测试流组件 ---
     wxButton* m_runBtn = nullptr;
     wxButton* m_stopBtn = nullptr;
     TestRunner* m_testRunner = nullptr;
 
-    // --- 通信变量（全局） ---
     wxListCtrl* m_varList = nullptr;
     wxButton* m_addVarBtn = nullptr;
     wxButton* m_editVarBtn = nullptr;
     wxButton* m_delVarBtn = nullptr;
     wxButton* m_copyVarBtn = nullptr;
 
-    // --- 变量操作区（动态） ---
     wxStaticBoxSizer* m_varOpSizer = nullptr;
     std::map<std::string, wxWindow*> m_varOpControls;
     wxButton* m_executeReadBtn = nullptr;
     wxButton* m_executeWriteBtn = nullptr;
     std::string m_selectedVarName;
 
-    // --- 公共组件 ---
     wxStaticText* m_titleLabel = nullptr;
     wxStaticText* m_statusLabel = nullptr;
     wxStaticText* m_targetLabel = nullptr;
     wxButton* m_actionBtn = nullptr;
     wxButton* m_configBtn = nullptr;
 
-    // --- 全局统一日志 ---
     wxTextCtrl* m_commonLogCtrl = nullptr;
     wxButton* m_clearBtn = nullptr;
 
-    // --- 统计标签 ---
     wxStaticText* m_rxLabel = nullptr;
     wxStaticText* m_txLabel = nullptr;
     wxStaticText* m_clientsLabel = nullptr;
@@ -121,6 +115,10 @@ private:
     void BuildUi();
     void BuildCommonUi(wxBoxSizer* mainSizer);
     void BuildTestFlowUi(wxPanel* parent, bool isAutoMode);
+
+    // ★ 确保这两行存在
+    void BuildStreamUi(wxBoxSizer* mainSizer, wxWindow* parentWindow);
+    void BuildTransactionUi(wxBoxSizer* mainSizer, wxWindow* parentWindow);
 
     wxWindow* CreateJsonControl(wxWindow* parent, const FieldDescriptor& fd,
                                 const nlohmann::json& currentValue,
@@ -139,12 +137,13 @@ private:
 
     void BindStreamCallbacks();
     void BindTransactionCallbacks();
+    void BindMqttCallbacks();
 
     void OnNotebookPageChanged(wxBookCtrlEvent& evt);
 
     void RefreshVariableList();
     void OnVarSelected(wxListEvent& evt);
-    void OnItemChecked(wxListEvent& evt);  // ★ 新增：勾选事件
+    void OnItemChecked(wxListEvent& evt);
     void OnAddVariable(wxCommandEvent& evt);
     void OnCopyVariable(wxCommandEvent& evt);
     void OnEditVariable(wxCommandEvent& evt);

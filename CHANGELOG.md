@@ -12,11 +12,19 @@
 
 ### 计划中
 
-- 阶段 12：更多协议（MQTT 等）
 - 阶段 13：应用设置完善（字体 / 主题 / 图标，`ui/SettingsDialog`）
 - 阶段 14：发布准备（打包、安装程序）
 
-### 已完成（阶段 10 及阶段 11）
+### 已完成（阶段 12 MQTT 协议接入）
+
+- **MQTT 协议支持**：引入 Eclipse Paho MQTT C++ 库（通过独立脚本编译为静态库）。
+  - 新增 `MqttProtocol`，注册到 `ProtocolRegistry`。
+  - 新增 `MqttSession`，封装 Paho 异步客户端，支持自动重连和 QoS。
+  - 新增 `MqttPublishStep`，支持通过测试步骤发送 MQTT 消息。
+  - 支持通过 `VariableParamsFields()` 动态配置 Topic 与 QoS。
+  - 接收回调通过全局日志窗口实时展示。
+
+### 已完成（阶段 11 SQLite 持久化与可视化及自动化增强）
 
 - **SQLite 数据持久化与可视化**（阶段 11）
   - 引入 SQLite3（通过 submodule 引入），新增 `core/Database.h/.cpp` 封装。
@@ -24,7 +32,7 @@
   - 新增 `ui/ChartPanel.h/.cpp`，基于 `wxGraphicsContext` 自绘多变量实时折线图，支持滚轮缩放与拖拽平移。
   - 新增 `ui/HistoryDialog.h/.cpp`，实现独立的历史查询窗口，支持按时间段回放。
 - **自动化测试增强**（阶段 11）
-  - 动作彻底统一：所有协议（TCP/串口/Modbus）的测试步骤动作全部统一为 `read` / `write` / `delay`。
+  - 动作彻底统一：所有协议（TCP/串口/Modbus/MQTT）的测试步骤动作全部统一为 `read` / `write` / `delay`。
   - 断言符号化与完善：测试步骤的断言从 `eq/gt/lt` 更新为 `==/!=/>/</regex`，并在底层真正生效。
   - 步骤编辑联动：`TestStepEditDialog` 根据选择的 Action 自动显示/隐藏无关的输入控件。
   - 支持步骤的“批量生成”：选定一个基准步骤后，可设置重复次数、间隔时间和自增/自减步长，一键生成连续测试步骤。
@@ -118,7 +126,9 @@
   - `third_party/spdlog` 补上 `.gitmodules` 映射并固定到 `f544fce0`。
   - 新增 `third_party/json`（`nlohmann/json`）。
   - 新增 `third_party/ModbusLib`。
-  - `third_party/sqlite`（阶段 11 新增）。
+  - 新增 `third_party/sqlite`。
+  - 新增 `third_party/paho.mqtt.c`。
+  - 新增 `third_party/paho.mqtt.cpp`。
   - 所有 submodule 都标记 `shallow = true`。
 - **CI（4.6.1）修正**：wxWidgets 自带 12 个嵌套 submodule，构建需要其中一部分，
   因此 CI 使用 `submodules: recursive`，并补充了 `src/zlib` 非空的校验。

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <wx/string.h>
+#include <wx/translation.h>  // ★ 新增：修复 _() 宏未定义
 
 #include <atomic>
 #include <functional>
