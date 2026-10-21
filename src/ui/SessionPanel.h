@@ -39,6 +39,9 @@ public:
     void OnRequestConfigure(RequestCallback cb) { m_onRequestConfigure = std::move(cb); }
     void RefreshFromSession();
 
+    // ★ 新增：从全局设置读取并应用
+    void ApplyGlobalSettings();
+
     using StateCallback = std::function<void(SessionState)>;
     void OnStateUpdated(StateCallback cb) { m_onStateUpdated = std::move(cb); }
 
@@ -108,6 +111,11 @@ private:
     size_t m_txBytes = 0;
     int m_clientCount = 0;
 
+    // ★ 需在构建时从全局设置读取
+    wxCheckBox* m_hexDisplay = nullptr;
+    wxCheckBox* m_showTimestamp = nullptr;
+    wxCheckBox* m_autoScroll = nullptr;
+
     RequestCallback m_onRequestOpen;
     RequestCallback m_onRequestConfigure;
     StateCallback m_onStateUpdated;
@@ -115,8 +123,6 @@ private:
     void BuildUi();
     void BuildCommonUi(wxBoxSizer* mainSizer);
     void BuildTestFlowUi(wxPanel* parent, bool isAutoMode);
-
-    // ★ 确保这两行存在
     void BuildStreamUi(wxBoxSizer* mainSizer, wxWindow* parentWindow);
     void BuildTransactionUi(wxBoxSizer* mainSizer, wxWindow* parentWindow);
 

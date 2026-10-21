@@ -22,12 +22,14 @@ constexpr const char* kLogWindowW = "/Window/Log/Width";
 constexpr const char* kLogWindowH = "/Window/Log/Height";
 
 // =========================================================================
-// UI 外观（预留）
+// UI 外观与行为
 // =========================================================================
 constexpr const char* kUiFontSize = "/UI/FontSize";
 constexpr const char* kUiHexDisplay = "/UI/HexDisplay";
 constexpr const char* kUiAutoScroll = "/UI/AutoScroll";
+constexpr const char* kUiShowTimestamp = "/UI/ShowTimestamp";
 constexpr const char* kUiTheme = "/UI/Theme";
+constexpr const char* kMinimizeToTrayOnClose = "/Settings/MinimizeToTrayOnClose";
 
 // =========================================================================
 // 字体（预留）
@@ -48,10 +50,5 @@ constexpr const char* kIconProtocolPrefix = "/Icons/Protocol/";
 // 最近连接
 // =========================================================================
 constexpr const char* kRecentConnections = "/RecentConnections";
-
-// =========================================================================
-// 托盘行为（预留）
-// =========================================================================
-constexpr const char* kMinimizeToTrayOnClose = "/Settings/MinimizeToTrayOnClose";
 
 }  // namespace icu::settings

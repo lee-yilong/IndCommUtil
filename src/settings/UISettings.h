@@ -27,12 +27,17 @@ public:
     int GetFontSize() const;
     void SetFontSize(int pt);
 
+    // ★ 新增：日志与显示相关偏好
     bool GetHexDisplay() const;
     void SetHexDisplay(bool on);
 
     bool GetAutoScroll() const;
     void SetAutoScroll(bool on);
 
+    bool GetShowTimestamp() const;
+    void SetShowTimestamp(bool on);
+
+    // ★ 新增：关闭行为
     bool GetMinimizeToTrayOnClose() const;
     void SetMinimizeToTrayOnClose(bool v);
 

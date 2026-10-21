@@ -5,6 +5,9 @@
 #include <wx/filedlg.h>
 #include <wx/filename.h>
 #include <wx/generic/filedlgg.h>
+#include <wx/icon.h>
+#include <wx/msw/wrapwin.h>  // ★ 必须包含 windows.h
+#include <wx/msw/wrapwin.h>
 #include <wx/simplebook.h>
 #include <wx/stdpaths.h>
 #include <wx/tokenzr.h>
@@ -27,15 +30,17 @@
 #include "ui/GenericProtocolDialog.h"
 #include "ui/LogFrame.h"
 #include "ui/SessionPanel.h"
+#include "ui/SettingsDialog.h"
 
 namespace icu {
 
 // clang-format off
-// wxWidgets 事件表宏展开后是一条语句，clang-format 会把后续行的缩进逐级累积
-wxBEGIN_EVENT_TABLE(MainFrame, wxFrame) EVT_CLOSE(MainFrame::OnClose)
+wxBEGIN_EVENT_TABLE(MainFrame, wxFrame)
+    EVT_CLOSE(MainFrame::OnClose)
     EVT_MENU(idMenuQuit, MainFrame::OnQuit)
     EVT_MENU(idMenuAbout, MainFrame::OnAbout)
     EVT_MENU(idMenuLog, MainFrame::OnShowLog)
+    EVT_MENU(idMenuSettingsOptions, MainFrame::OnShowSettings)
     EVT_MENU(idMenuOpenConnection, MainFrame::OnOpenConnection)
     EVT_MENU(idMenuSaveConnection, MainFrame::OnSaveConnection)
     EVT_MENU(idMenuSaveConnectionAs, MainFrame::OnSaveConnectionAs)
@@ -47,6 +52,18 @@ wxBEGIN_EVENT_TABLE(MainFrame, wxFrame) EVT_CLOSE(MainFrame::OnClose)
 wxEND_EVENT_TABLE();  // clang-format on
 
 MainFrame::MainFrame(wxFrame* parent, const wxString& title) : wxFrame(parent, wxID_ANY, title) {
+#ifdef _WIN32
+    HICON hIcon = static_cast<HICON>(::LoadImageW(::GetModuleHandleW(nullptr), MAKEINTRESOURCEW(1),
+                                                  IMAGE_ICON, 0, 0,  // 0,0 表示加载默认尺寸
+                                                  LR_DEFAULTCOLOR | LR_SHARED  // 使用共享资源
+                                                  ));
+    if (hIcon) {
+        wxIcon icon;
+        icon.CreateFromHICON(hIcon);
+        SetIcon(icon);
+        // 注意：使用 LR_SHARED 时不要调用 DestroyIcon
+    }
+#endif
     BuildMenuBar();
     BuildLayout();
 
@@ -144,6 +161,11 @@ void MainFrame::BuildMenuBar() {
     else
         langMenu->Check(idMenuLangZhCN, true);
     settingsMenu->AppendSubMenu(langMenu, _("Language"));
+
+    settingsMenu->AppendSeparator();
+    settingsMenu->Append(idMenuSettingsOptions, _("&Options..."),
+                         _("Configure application settings"));
+
     menuBar->Append(settingsMenu, _("&Settings"));
 
     auto* helpMenu = new wxMenu(_T(""));
@@ -199,7 +221,6 @@ void MainFrame::ShowSessionPage(IProtocol* proto, int modeIndex, ISession* sessi
         configPtr = &(m_activeProfile->session);
     }
 
-    // ★ 传入 m_currentProfilePath
     m_sessionPanel =
         new SessionPanel(m_contentBook, proto, modeIndex, session, configPtr, m_currentProfilePath);
     m_contentBook->AddPage(m_sessionPanel, _("Session"));
@@ -252,10 +273,7 @@ void MainFrame::OnClose(wxCloseEvent& evt) {
         }
     }
 
-    const int ret = wxMessageBox(_("Minimize to system tray instead of exiting?"), _("Close"),
-                                 wxYES_NO | wxICON_QUESTION, this);
-
-    if (ret == wxYES) {
+    if (settings::UISettings::Instance().GetMinimizeToTrayOnClose()) {
         evt.Veto();
         MinimizeToTray();
         return;
@@ -300,6 +318,16 @@ void MainFrame::OnShowLog(wxCommandEvent&) {
     }
     m_logFrame->Show();
     m_logFrame->Raise();
+}
+
+void MainFrame::OnShowSettings(wxCommandEvent&) {
+    SettingsDialog dlg(this);
+    dlg.SetApplyCallback([this]() {
+        if (m_sessionPanel) {
+            m_sessionPanel->ApplyGlobalSettings();
+        }
+    });
+    dlg.ShowModal();
 }
 
 void MainFrame::OnOpenConnection(wxCommandEvent&) {
@@ -700,7 +728,7 @@ void MainFrame::CreateAndOpenSession(const ActiveProfile& profile) {
             newP.protocolId = p->Id();
             newP.modeIndex = dlg.GetModeIndex();
             newP.fields = dlg.GetValues();
-            newP.session = m_activeProfile->session;  // 保留会话配置
+            newP.session = m_activeProfile->session;
 
             m_activeProfile = newP;
             m_lastDialogProfile = newP;

@@ -131,6 +131,8 @@ file(GLOB_RECURSE GUI_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/settings/*.cpp"
 )
 
+set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/resources/app.rc" PROPERTIES COMPILE_FLAGS "-I\"${CMAKE_CURRENT_SOURCE_DIR}/resources\"")
+
 add_executable(IndComm WIN32
     src/main.cpp
     ${GUI_SOURCES}

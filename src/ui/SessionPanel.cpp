@@ -14,6 +14,7 @@
 #include "core/BytesParser.h"
 #include "core/DelayStep.h"
 #include "log/Log.h"
+#include "settings/UISettings.h"  // ★ 引入全局设置
 #include "spdlog/spdlog.h"
 
 namespace icu {
@@ -157,6 +158,13 @@ SessionPanel::~SessionPanel() {
         m_db.UpdateTestRunStatus(m_currentRunId, "CLOSED");
     }
     m_db.Close();
+}
+
+void SessionPanel::ApplyGlobalSettings() {
+    auto& ui = settings::UISettings::Instance();
+    if (m_hexDisplay) m_hexDisplay->SetValue(ui.GetHexDisplay());
+    if (m_showTimestamp) m_showTimestamp->SetValue(ui.GetShowTimestamp());
+    if (m_autoScroll) m_autoScroll->SetValue(ui.GetAutoScroll());
 }
 
 void SessionPanel::RecordData(const std::string& varName, double value) {
@@ -363,8 +371,32 @@ void SessionPanel::BuildStreamUi(wxBoxSizer* mainSizer, wxWindow* parentWindow) 
 
     auto* logBox = new wxStaticBoxSizer(wxVERTICAL, parentWindow, _("Data Log"));
     auto* logToolbar = new wxBoxSizer(wxHORIZONTAL);
+
+    m_hexDisplay = new wxCheckBox(logBox->GetStaticBox(), wxID_ANY, _("HEX Display"));
+    m_showTimestamp = new wxCheckBox(logBox->GetStaticBox(), wxID_ANY, _("Timestamp"));
+    m_autoScroll = new wxCheckBox(logBox->GetStaticBox(), wxID_ANY, _("Auto Scroll"));
+
+    auto& ui = settings::UISettings::Instance();
+    m_hexDisplay->SetValue(ui.GetHexDisplay());
+    m_showTimestamp->SetValue(ui.GetShowTimestamp());
+    m_autoScroll->SetValue(ui.GetAutoScroll());
+
+    m_hexDisplay->Bind(wxEVT_CHECKBOX, [](wxCommandEvent& evt) {
+        settings::UISettings::Instance().SetHexDisplay(evt.IsChecked());
+    });
+    m_showTimestamp->Bind(wxEVT_CHECKBOX, [](wxCommandEvent& evt) {
+        settings::UISettings::Instance().SetShowTimestamp(evt.IsChecked());
+    });
+    m_autoScroll->Bind(wxEVT_CHECKBOX, [](wxCommandEvent& evt) {
+        settings::UISettings::Instance().SetAutoScroll(evt.IsChecked());
+    });
+
     m_clearBtn = new wxButton(logBox->GetStaticBox(), wxID_ANY, _("Clear"));
     m_clearBtn->Bind(wxEVT_BUTTON, &SessionPanel::OnClear, this);
+
+    logToolbar->Add(m_hexDisplay, 0, wxALIGN_CENTER_VERTICAL | wxALL, 4);
+    logToolbar->Add(m_showTimestamp, 0, wxALIGN_CENTER_VERTICAL | wxALL, 4);
+    logToolbar->Add(m_autoScroll, 0, wxALIGN_CENTER_VERTICAL | wxALL, 4);
     logToolbar->AddStretchSpacer();
     logToolbar->Add(m_clearBtn, 0, wxALIGN_CENTER_VERTICAL | wxALL, 4);
     logBox->Add(logToolbar, 0, wxEXPAND);
@@ -1062,7 +1094,7 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
 
         m_testRunner->OnStepUpdated(
             [this, stepList](int index, bool success, const std::string& msg) {
-                wxTheApp->CallAfter([this, stepList, index, success]() {
+                wxTheApp->CallAfter([this, stepList, index, success, msg]() {
                     if (index < 0 || index >= stepList->GetItemCount()) return;
                     stepList->SetItem(index, 1, success ? _("Passed") : _("Failed"));
                     stepList->SetItemTextColour(index, success ? *wxGREEN : *wxRED);

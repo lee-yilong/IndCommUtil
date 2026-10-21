@@ -85,6 +85,7 @@ bool UISettings::GetHexDisplay() const {
 
 void UISettings::SetHexDisplay(bool on) {
     Settings::Instance().SetBool(kUiHexDisplay, on);
+    Settings::Instance().Flush();
 }
 
 bool UISettings::GetAutoScroll() const {
@@ -93,14 +94,25 @@ bool UISettings::GetAutoScroll() const {
 
 void UISettings::SetAutoScroll(bool on) {
     Settings::Instance().SetBool(kUiAutoScroll, on);
+    Settings::Instance().Flush();
+}
+
+bool UISettings::GetShowTimestamp() const {
+    return Settings::Instance().GetBool(kUiShowTimestamp, true);
+}
+
+void UISettings::SetShowTimestamp(bool on) {
+    Settings::Instance().SetBool(kUiShowTimestamp, on);
+    Settings::Instance().Flush();
 }
 
 bool UISettings::GetMinimizeToTrayOnClose() const {
-    return Settings::Instance().GetBool(kMinimizeToTrayOnClose, true);
+    return Settings::Instance().GetBool(kMinimizeToTrayOnClose, false);
 }
 
 void UISettings::SetMinimizeToTrayOnClose(bool v) {
     Settings::Instance().SetBool(kMinimizeToTrayOnClose, v);
+    Settings::Instance().Flush();
 }
 
 }  // namespace icu::settings

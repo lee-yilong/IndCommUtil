@@ -40,9 +40,9 @@ AppTaskBarIcon::AppTaskBarIcon() {
 #ifdef _WIN32
     HINSTANCE hInst = ::GetModuleHandleW(nullptr);
 
-    // 优先从 exe 资源段加载自定义图标，明确指定尺寸
+    // ★ 加载 ID 为 1 的主图标，使用系统小图标尺寸 (SM_CXSMICON)
     HICON hIcon = static_cast<HICON>(
-        ::LoadImageW(hInst, L"aaaa_app_icon", IMAGE_ICON, ::GetSystemMetrics(SM_CXSMICON),
+        ::LoadImageW(hInst, MAKEINTRESOURCEW(1), IMAGE_ICON, ::GetSystemMetrics(SM_CXSMICON),
                      ::GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR));
 
     if (hIcon == nullptr) {
@@ -66,7 +66,7 @@ AppTaskBarIcon::AppTaskBarIcon() {
     }
 
     SetIcon(icon, _("Industrial Communication Utility"));
-    SPDLOG_INFO(_("Taskbar icon set successfully"));  // 确认到达
+    SPDLOG_INFO(_("Taskbar icon set successfully"));
 #else
     wxIcon icon = wxArtProvider::GetIcon(wxART_INFORMATION, wxART_OTHER, wxSize(16, 16));
     if (!icon.IsOk()) {

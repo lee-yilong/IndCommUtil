@@ -21,6 +21,7 @@ enum MenuId {
     idMenuQuit = 1000,
     idMenuAbout,
     idMenuLog,
+    idMenuSettingsOptions,  // ★ 新增：设置选项菜单
 
     idMenuOpenConnection,
     idMenuSaveConnection,
@@ -71,6 +72,7 @@ private:
     void OnQuit(wxCommandEvent& evt);
     void OnAbout(wxCommandEvent& evt);
     void OnShowLog(wxCommandEvent& evt);
+    void OnShowSettings(wxCommandEvent& evt);  // ★ 新增：显示设置窗口
 
     void OnOpenConnection(wxCommandEvent& evt);
     void OnSaveConnection(wxCommandEvent& evt);

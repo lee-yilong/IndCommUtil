@@ -2,7 +2,7 @@
 
 > **文档定位**：本文档既是项目开发文档，也是 AI 辅助开发的 Skill 定义。所有开发按本文档推进，AI 在协助编码时必须遵循本文档的架构、约定和任务清单。
 >
-> **本版重点**：阶段 12（MQTT 协议接入）已完成。**当前准备进入阶段 13（应用设置完善与发布准备）。**
+> **本版重点**：阶段 13（应用设置完善）已完成。**当前准备进入阶段 14（发布准备）。**
 
 ---
 
@@ -68,10 +68,11 @@
 | i18n | GNU gettext（.po / .mo） |
 | 网络/串口 | wxSocket（内置） / 自实现（`SerialPort`） |
 | Modbus | serhmarch/ModbusLib（submodule） |
-| MQTT | Eclipse Paho MQTT C++（submodule） |
+| MQTT | Eclipse Paho MQTT C++（静态编译） |
 | 图表 | wxGraphicsContext 自绘 |
 | CI | GitHub Actions |
 | 覆盖率 | gcovr + GCC `--coverage` |
+| 调试器 | LLDB-DAP（GDB 17.2 与 cpptools MI 握手失败）；CLI 用 gdb |
 
 ---
 
@@ -243,6 +244,8 @@ struct FieldDescriptor {
     int minValue = 0;
     int maxValue = 100;
     std::vector<std::pair<std::string, std::string>> choices;
+
+    // 支持 UI 分组，为空则平铺
     std::string group;
 };
 ```
@@ -251,11 +254,12 @@ struct FieldDescriptor {
 ```cpp
 class SessionManager {
 public:
-    void SetActive(ISessionPtr s);
-    void Close();
+    void SetActive(ISessionPtr s);   // 先 DetachAndClose 旧会话
+    void Close();                    // 走 DetachAndClose
     bool IsConnected() const;
     ISession* Active() const;
     SessionState ActiveState() const;
+
 private:
     void DetachAndClose();
     ISessionPtr m_active;
@@ -266,47 +270,46 @@ private:
 
 ## 5. 目录结构
 
+### 5.1 当前目录
+
 ```text
 IndComm/
 ├── src/
 │   ├── main.cpp
 │   ├── app/
-│   ├── cli/
+│   ├── cli/                             ← 独立 CLI 入口
 │   │   └── main.cpp
 │   ├── core/
 │   │   ├── ICodec.h
 │   │   ├── ITransport.h
 │   │   ├── IProtocol.h
-│   │   ├── ISession.h
-│   │   ├── ITransactionSession.h
-│   │   ├── ReconnectConfig.h
-│   │   ├── SessionStateMachine.h
-│   │   ├── ITestStep.h
-│   │   ├── TestRunner.h/.cpp
+│   │   ├── ISession.h                   ← 所有会话的统一基类
+│   │   ├── ITransactionSession.h        ← 事务型会话扩展接口
+│   │   ├── ReconnectConfig.h            ← 统一重连配置与 UI 字段
+│   │   ├── SessionStateMachine.h        ← 统一状态流转与重连计数
+│   │   ├── ITestStep.h                  ← 测试步骤接口
+│   │   ├── TestRunner.h/.cpp            ← 测试调度器
 │   │   ├── ProtocolRegistry.h/.cpp
 │   │   ├── ProtocolTypes.h/.cpp
-│   │   ├── StreamSession.h/.cpp
+│   │   ├── StreamSession.h/.cpp         ← 字节流会话实现
 │   │   ├── SessionManager.h/.cpp
-│   │   ├── Database.h/.cpp
-│   │   ├── BytesParser.h
-│   │   └── DelayStep.h
+│   │   ├── Database.h/.cpp              ← SQLite 封装
+│   │   ├── BytesParser.h                ← 二进制数据解析
+│   │   └── DelayStep.h                  ← 通用的延时步骤
 │   ├── protocols/
 │   │   ├── tcp/
 │   │   ├── serial/
 │   │   ├── modbus/
-│   │   ├── mqtt/                        ← 新增
-│   │   │   ├── MqttProtocol.h/.cpp
-│   │   │   ├── MqttSession.h/.cpp
-│   │   │   ├── MqttPublishStep.h/.cpp
-│   │   │   └── MqttSubscribeStep.h/.cpp
+│   │   ├── mqtt/
 │   │   └── codec/
 │   ├── ui/
 │   │   ├── GenericProtocolDialog.h/.cpp
-│   │   ├── SessionPanel.h/.cpp
-│   │   ├── TestStepEditDialog.h/.cpp
-│   │   ├── VariableEditDialog.h/.cpp
-│   │   ├── HistoryDialog.h/.cpp
-│   │   ├── ChartPanel.h/.cpp
+│   │   ├── SessionPanel.h/.cpp          ← 唯一的动态生成会话面板
+│   │   ├── TestStepEditDialog.h/.cpp    ← 步骤可视化编辑器
+│   │   ├── VariableEditDialog.h/.cpp    ← 变量可视化编辑器
+│   │   ├── HistoryDialog.h/.cpp         ← 历史查询窗口
+│   │   ├── ChartPanel.h/.cpp            ← 实时折线图组件
+│   │   ├── SettingsDialog.h/.cpp        ← 统一应用设置对话框
 │   │   ├── LogFrame.h/.cpp
 │   │   ├── LogSink.h/.cpp
 │   │   └── AppTaskBarIcon.h/.cpp
@@ -316,13 +319,6 @@ IndComm/
 ├── tests/
 ├── resources/
 ├── third_party/
-│   ├── wxWidgets/
-│   ├── spdlog/
-│   ├── json/
-│   ├── sqlite/
-│   ├── ModbusLib/
-│   ├── paho.mqtt.c/                     ← 新增
-│   └── paho.mqtt.cpp/                   ← 新增
 └── CMakeLists.txt
 ```
 
@@ -373,13 +369,13 @@ settings/
 |---|---|---|
 | **语言** | 界面语言 | ✅ 已实现 |
 | **窗口** | 主窗口几何 | ✅ 已实现 |
-| **窗口** | 日志窗口几何 | 🟡 待迁移 |
-| **窗口** | 关闭时最小化到托盘 | 🟡 待迁移 |
-| **UI** | 字体（UI / 日志 / 数据） | ⬜ 预留 |
-| **UI** | 主题（浅色 / 深色） | ⬜ 预留 |
-| **UI** | 十六进制显示 | 🟡 会话面板内存（阶段 13 持久化） |
-| **UI** | 自动滚动 | 🟡 会话面板内存（阶段 13 持久化） |
-| **UI** | 时间戳显示 | 🟡 会话面板内存（阶段 13 持久化） |
+| **窗口** | 日志窗口几何 | ✅ 已实现 |
+| **窗口** | 关闭时最小化到托盘 | ✅ 已实现 |
+| **UI** | 字体（UI / 日志 / 数据） | ✅ 已实现 |
+| **UI** | 主题（浅色 / 深色 / 系统） | ✅ 已实现 |
+| **UI** | 十六进制显示 | ✅ 已实现 |
+| **UI** | 自动滚动 | ✅ 已实现 |
+| **UI** | 时间戳显示 | ✅ 已实现 |
 | **图标** | 协议图标 | ⬜ 预留 |
 | **图标** | UI 图标 | ⬜ 预留 |
 | **最近连接** | 最近打开的 `.json` 列表 | ✅ 已实现 |
@@ -391,7 +387,7 @@ settings/
 1. **加 key** —— `SettingsKeys.h`
 2. **加接口** —— `UISettings.h`
 3. **加实现** —— `UISettings.cpp`
-4. **加 UI** —— `ui/SettingsDialog`（阶段 13 待建）
+4. **加 UI** —— `ui/SettingsDialog` 中添加控件并处理应用逻辑
 5. **加使用** —— 使用点调用
 
 ---
@@ -543,17 +539,16 @@ scripts/test.sh
 - [x] **阶段 10：UI/UX 深度重构**
 - [x] **阶段 11：SQLite 数据持久化与实时曲线**
 - [x] **阶段 12：MQTT 协议接入**
-  - [x] 引入 Paho MQTT C++ submodule。
-  - [x] 新增 `MqttProtocol` 与 `MqttSession`。
-  - [x] 支持 publish / subscribe 动作与 QoS 设置。
-  - [x] 自动重连与订阅恢复。
+- [x] **阶段 13：应用设置完善**
+  - [x] 建立统一的 `SettingsDialog` 窗口，分类管理设置。
+  - [x] 将 HEX 显示、时间戳、自动滚动等偏好持久化到 `UISettings`。
+  - [x] 实现设置修改后的事件广播，令所有会话面板即改即生效。
+  - [x] 落地字体、主题、关闭最小化到托盘的配置逻辑。
+  - [x] 引入多尺寸应用图标。
 
-### 阶段 13：应用设置完善与发布准备 ⬜ 进行中
-- [ ] 实现 `ui/SettingsDialog`。
-- [ ] 完善字体、主题、托盘持久化。
+### 阶段 14：发布准备 ⬜ 进行中
 - [ ] 编译打包脚本。
-
-### 阶段 14：发布准备 ⬜ 未开始
+- [ ] 安装程序与发布文档。
 
 ---
 
@@ -562,18 +557,9 @@ scripts/test.sh
 ### 13.1 上下文理解
 
 **当前状态**：
-- 阶段 1~12 已完成（统一底层 `ISession` + Modbus 接入 + 自动化引擎 + CLI 工具 + UX 重构 + 数据持久化及图表 + MQTT 接入）。
+- 阶段 1~13 已完成（全协议栈接入 + 自动化引擎 + 数据持久化 + 全局设置中心）。
 
 ### 13.2 代码生成规范
-
-**新增协议模板**：
-```
-src/protocols/<protocol_id>/
-├── <Name>Protocol.h/.cpp
-├── <Name>Config.h
-├── <Name>Transport.h/.cpp
-└── <Name>Codec.h/.cpp
-```
 
 **AI 严禁**：
 - 为客户端 / 服务器分别创建协议类
@@ -592,6 +578,7 @@ src/protocols/<protocol_id>/
 | **测试动作统一** | 全部抽象为 read/write/delay，降低用户心智负担 |
 | **SQLite 数据记录与图表** | 以 `.json` 路径为关联键，实现历史与实时数据可视化 |
 | **引入 Paho MQTT (ADR 0012)** | 工业级稳定性，CMake 原生支持，不引入 Boost 依赖 |
+| **统一应用设置中心 (ADR 0013)** | 解决配置割裂，全局偏好持久化与即改即生效 |
 
 ---
 
@@ -599,7 +586,7 @@ src/protocols/<protocol_id>/
 
 | 日期 | 变更 |
 |---|---|
-| 2026-10-22 | 阶段 12 完成：MQTT 协议接入，发布订阅与自动化测试支持 |
+| 2026-10-23 | 阶段 13 完成：统一 SettingsDialog、偏好持久化、多尺寸图标接入与即改即生效 |
 
 ---
 
@@ -676,7 +663,7 @@ taskkill //F //IM icu_tests.exe 2>/dev/null || true
 - [ ] Key 定义在 `SettingsKeys.h`
 - [ ] 类型化接口加在对应的 `XxxSettings.h`
 - [ ] 实现走 `Settings::Instance()`
-- [ ] 在 `SettingsDialog` 里加 UI（阶段 13 之后）
+- [ ] 在 `SettingsDialog` 里加 UI
 - [ ] 在使用点调用
 - [ ] 未在 `core/` 或 `protocols/` 里直接访问 settings
 - [ ] 已在本 README 第 6.5 节设置项清单里更新状态
@@ -774,7 +761,17 @@ list
 | 6 | 使用另一个客户端向 `test/topic` 发送 `world` | 程序接收区显示 `< world` |
 | 7 | 关闭 Broker | 状态变为"重连中…"（自动重连生效） |
 
-### E.7 异常场景
+### E.7 全局设置测试
+
+| 序 | 操作 | 期望 |
+|---|---|---|
+| 1 | `设置 → 选项...` | 打开设置对话框 |
+| 2 | 勾选“HEX 显示”，点“应用” | 所有已打开的会话面板立刻变为 HEX 显示状态 |
+| 3 | 取消勾选“自动滚动”，点“确定” | 日志滚动停止 |
+| 4 | 重启程序 | 上述开关状态保持之前设置的值 |
+| 5 | 勾选“关闭时最小化到托盘”，点“确定” | 点击关闭按钮时直接最小化，不再弹询问框 |
+
+### E.8 异常场景
 
 | 场景 | 操作 | 期望 |
 |---|---|---|
@@ -784,7 +781,7 @@ list
 | 串口拔掉 | 运行中拔 USB 转串口 | 状态"已断开" |
 | MQTT Broker 不可达 | 连 `127.0.0.1:9999` | 提示超时，并尝试重连 |
 
-### E.8 退出路径测试
+### E.9 退出路径测试
 
 | 序 | 操作 | 期望 |
 |---|---|---|
@@ -806,3 +803,4 @@ tasklist | grep IndComm
 **文档结束。**
 
 > 本文档随项目演进持续更新。任何架构级改动必须先更新本文档，再动代码。
+
