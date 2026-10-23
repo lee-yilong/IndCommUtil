@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 10:38+0800\n"
+"POT-Creation-Date: 2026-10-23 23:46+0800\n"
 "PO-Revision-Date: 2026-10-19 20:00+0800\n"
 "Last-Translator: AI Assistant\n"
 "Language-Team: none\n"
@@ -252,9 +252,9 @@ msgstr "Please close the current connection first."
 
 #: src/app/MainFrame.cpp:334 src/app/MainFrame.cpp:409
 #: src/app/MainFrame.cpp:667 src/ui/HistoryDialog.cpp:80
-#: src/ui/HistoryDialog.cpp:124 src/ui/SessionPanel.cpp:745
-#: src/ui/SessionPanel.cpp:947 src/ui/SessionPanel.cpp:1439
-#: src/ui/SessionPanel.cpp:1464
+#: src/ui/HistoryDialog.cpp:124 src/ui/SessionPanel.cpp:743
+#: src/ui/SessionPanel.cpp:783 src/ui/SessionPanel.cpp:977
+#: src/ui/SessionPanel.cpp:1469 src/ui/SessionPanel.cpp:1494
 msgid "Notice"
 msgstr "Notice"
 
@@ -277,8 +277,8 @@ msgstr ""
 
 #: src/app/MainFrame.cpp:353 src/app/MainFrame.cpp:417
 #: src/app/MainFrame.cpp:428 src/app/MainFrame.cpp:581
-#: src/app/MainFrame.cpp:628 src/ui/SessionPanel.cpp:784
-#: src/ui/SessionPanel.cpp:1082
+#: src/app/MainFrame.cpp:628 src/ui/SessionPanel.cpp:814
+#: src/ui/SessionPanel.cpp:1112
 msgid "Error"
 msgstr "Error"
 
@@ -293,7 +293,7 @@ msgid "Closing connection: %s"
 msgstr "Closing connection: %s"
 
 #: src/app/MainFrame.cpp:401 src/app/MainFrame.cpp:768
-#: src/ui/SessionPanel.cpp:1218
+#: src/ui/SessionPanel.cpp:1248
 msgid "Disconnected"
 msgstr "Disconnected"
 
@@ -609,48 +609,92 @@ msgstr "&Modbus"
 msgid "Reconnect attempts exhausted."
 msgstr "Reconnect attempts exhausted."
 
-#: src/protocols/mqtt/MqttProtocol.cpp:28
+#: src/protocols/mqtt/MqttBrokerSession.cpp:28
+msgid ""
+"MQTT Broker mode is currently a placeholder. No actual server is listening."
+msgstr ""
+
+#: src/protocols/mqtt/MqttProtocol.cpp:29
+msgid "Publisher"
+msgstr ""
+
+#: src/protocols/mqtt/MqttProtocol.cpp:29
+msgid "Subscriber"
+msgstr ""
+
+#: src/protocols/mqtt/MqttProtocol.cpp:29
+#, fuzzy
+msgid "Broker"
+msgstr "Remote Host:"
+
+#: src/protocols/mqtt/MqttProtocol.cpp:33
 #, fuzzy
 msgid "Broker Host:"
 msgstr "Remote Host:"
 
-#: src/protocols/mqtt/MqttProtocol.cpp:30
+#: src/protocols/mqtt/MqttProtocol.cpp:35
 #, fuzzy
 msgid "Broker Port:"
 msgstr "Remote Port:"
 
-#: src/protocols/mqtt/MqttProtocol.cpp:32
+#: src/protocols/mqtt/MqttProtocol.cpp:37
 #, fuzzy
 msgid "Client ID:"
 msgstr "Client"
 
-#: src/protocols/mqtt/MqttProtocol.cpp:34
+#: src/protocols/mqtt/MqttProtocol.cpp:39
 msgid "Keep Alive (s):"
 msgstr ""
 
-#: src/protocols/mqtt/MqttProtocol.cpp:39
-msgid "Topic:"
+#: src/protocols/mqtt/MqttProtocol.cpp:48
+msgid "Subscribe Topic:"
 msgstr ""
 
-#: src/protocols/mqtt/MqttProtocol.cpp:42
-msgid "QoS:"
+#: src/protocols/mqtt/MqttProtocol.cpp:51
+msgid "Subscribe QoS:"
 msgstr ""
 
-#: src/protocols/mqtt/MqttProtocol.h:12
+#: src/protocols/mqtt/MqttProtocol.cpp:61 src/protocols/tcp/TcpProtocol.cpp:58
+msgid "Listen Port:"
+msgstr "Listen Port:"
+
+#: src/protocols/mqtt/MqttProtocol.cpp:77
+msgid "Publish Topic:"
+msgstr ""
+
+#: src/protocols/mqtt/MqttProtocol.cpp:80
+msgid "Publish QoS:"
+msgstr ""
+
+#: src/protocols/mqtt/MqttProtocol.h:14
 msgid "&MQTT"
 msgstr ""
 
-#: src/protocols/mqtt/MqttSession.cpp:38
+#: src/protocols/mqtt/MqttSession.cpp:37
 #, fuzzy, c-format
 msgid "MQTT Connection failed: %s"
 msgstr "Connection failed."
 
-#: src/protocols/mqtt/MqttSession.cpp:61
+#: src/protocols/mqtt/MqttSession.cpp:56
+msgid "Cannot publish in Subscriber mode."
+msgstr ""
+
+#: src/protocols/mqtt/MqttSession.cpp:64
 #, c-format
 msgid "MQTT Publish failed: %s"
 msgstr ""
 
 #: src/protocols/mqtt/MqttSession.cpp:74
+#, c-format
+msgid "MQTT Subscribed to: %s"
+msgstr ""
+
+#: src/protocols/mqtt/MqttSession.cpp:76
+#, fuzzy, c-format
+msgid "MQTT Subscribe failed: %s"
+msgstr "Connection failed."
+
+#: src/protocols/mqtt/MqttSession.cpp:84
 #, fuzzy, c-format
 msgid "MQTT Connection lost: %s"
 msgstr "Connection lost."
@@ -749,10 +793,6 @@ msgstr "Connect Timeout (ms):"
 #: src/protocols/tcp/TcpProtocol.cpp:56
 msgid "Listen Host:"
 msgstr "Listen Host:"
-
-#: src/protocols/tcp/TcpProtocol.cpp:58
-msgid "Listen Port:"
-msgstr "Listen Port:"
 
 #: src/protocols/tcp/TcpProtocol.cpp:60
 msgid "Max Clients:"
@@ -955,13 +995,22 @@ msgstr ""
 msgid "Time (Window: %.1fs)"
 msgstr ""
 
-#: src/ui/GenericProtocolDialog.cpp:16
+#: src/ui/GenericProtocolDialog.cpp:17
 msgid "New Connection"
 msgstr "New Connection"
 
-#: src/ui/GenericProtocolDialog.cpp:32
+#: src/ui/GenericProtocolDialog.cpp:39
 msgid "Mode"
 msgstr "Mode"
+
+#: src/ui/GenericProtocolDialog.cpp:57 src/ui/SettingsDialog.cpp:68
+msgid "OK"
+msgstr ""
+
+#: src/ui/GenericProtocolDialog.cpp:58 src/ui/SessionPanel.cpp:1262
+#: src/ui/SettingsDialog.cpp:69
+msgid "Cancel"
+msgstr "Cancel"
 
 #: src/ui/HistoryDialog.cpp:14 src/ui/SessionPanel.cpp:359
 msgid "History Query"
@@ -1038,19 +1087,19 @@ msgstr "Access"
 msgid "Value"
 msgstr "Value"
 
-#: src/ui/SessionPanel.cpp:239 src/ui/SessionPanel.cpp:875
+#: src/ui/SessionPanel.cpp:239 src/ui/SessionPanel.cpp:905
 msgid "Add"
 msgstr "Add"
 
-#: src/ui/SessionPanel.cpp:240 src/ui/SessionPanel.cpp:876
+#: src/ui/SessionPanel.cpp:240 src/ui/SessionPanel.cpp:906
 msgid "Copy"
 msgstr ""
 
-#: src/ui/SessionPanel.cpp:241 src/ui/SessionPanel.cpp:878
+#: src/ui/SessionPanel.cpp:241 src/ui/SessionPanel.cpp:908
 msgid "Edit"
 msgstr "Edit"
 
-#: src/ui/SessionPanel.cpp:242 src/ui/SessionPanel.cpp:879
+#: src/ui/SessionPanel.cpp:242 src/ui/SessionPanel.cpp:909
 msgid "Delete"
 msgstr "Delete"
 
@@ -1058,7 +1107,7 @@ msgstr "Delete"
 msgid "Manual Mode"
 msgstr "Manual Mode"
 
-#: src/ui/SessionPanel.cpp:268 src/ui/SessionPanel.cpp:1144
+#: src/ui/SessionPanel.cpp:268 src/ui/SessionPanel.cpp:1174
 msgid "Interactive Mode"
 msgstr "Interactive Mode"
 
@@ -1099,7 +1148,7 @@ msgstr "Sent: 0 bytes"
 msgid "Clients: 0"
 msgstr "Clients: 0"
 
-#: src/ui/SessionPanel.cpp:348 src/ui/SessionPanel.cpp:1229
+#: src/ui/SessionPanel.cpp:348 src/ui/SessionPanel.cpp:1259
 msgid "Open Connection"
 msgstr "Open Connection"
 
@@ -1107,8 +1156,8 @@ msgstr "Open Connection"
 msgid "Configure Connection..."
 msgstr "Configure Connection..."
 
-#: src/ui/SessionPanel.cpp:355 src/ui/SessionPanel.cpp:1430
-#: src/ui/SessionPanel.cpp:1443
+#: src/ui/SessionPanel.cpp:355 src/ui/SessionPanel.cpp:1460
+#: src/ui/SessionPanel.cpp:1473
 #, fuzzy
 msgid "Record Settings"
 msgstr "Reconnect Settings"
@@ -1149,109 +1198,109 @@ msgstr "Read"
 msgid "Write"
 msgstr "Write"
 
-#: src/ui/SessionPanel.cpp:745
+#: src/ui/SessionPanel.cpp:743 src/ui/SessionPanel.cpp:783
 msgid "Payload is empty. Please fill in the 'Value' field."
 msgstr ""
 
-#: src/ui/SessionPanel.cpp:766
+#: src/ui/SessionPanel.cpp:756 src/ui/SessionPanel.cpp:796
 #, c-format
 msgid "Sent: %llu bytes"
 msgstr "Sent: %llu bytes"
 
-#: src/ui/SessionPanel.cpp:784
+#: src/ui/SessionPanel.cpp:814
 msgid "Send failed"
 msgstr "Send failed"
 
-#: src/ui/SessionPanel.cpp:867
+#: src/ui/SessionPanel.cpp:897
 msgid "Step Name"
 msgstr "Step Name"
 
-#: src/ui/SessionPanel.cpp:868
+#: src/ui/SessionPanel.cpp:898
 msgid "Status"
 msgstr "Status"
 
-#: src/ui/SessionPanel.cpp:873
+#: src/ui/SessionPanel.cpp:903
 msgid "Run All"
 msgstr "Run All"
 
-#: src/ui/SessionPanel.cpp:873
+#: src/ui/SessionPanel.cpp:903
 msgid "Run (Step-by-Step)"
 msgstr "Run (Step-by-Step)"
 
-#: src/ui/SessionPanel.cpp:874
+#: src/ui/SessionPanel.cpp:904
 msgid "Stop"
 msgstr "Stop"
 
-#: src/ui/SessionPanel.cpp:877
+#: src/ui/SessionPanel.cpp:907
 msgid "Batch Create"
 msgstr ""
 
-#: src/ui/SessionPanel.cpp:880
+#: src/ui/SessionPanel.cpp:910
 msgid "Up"
 msgstr "Up"
 
-#: src/ui/SessionPanel.cpp:881
+#: src/ui/SessionPanel.cpp:911
 msgid "Down"
 msgstr "Down"
 
-#: src/ui/SessionPanel.cpp:891 src/ui/SessionPanel.cpp:1087
+#: src/ui/SessionPanel.cpp:921 src/ui/SessionPanel.cpp:1117
 msgid "Pending"
 msgstr "Pending"
 
-#: src/ui/SessionPanel.cpp:947
+#: src/ui/SessionPanel.cpp:977
 #, fuzzy
 msgid "Please select a base step first."
 msgstr "Please select a variable from the left list."
 
-#: src/ui/SessionPanel.cpp:954
+#: src/ui/SessionPanel.cpp:984
 msgid "Batch Generate Steps"
 msgstr ""
 
-#: src/ui/SessionPanel.cpp:958
+#: src/ui/SessionPanel.cpp:988
 #, fuzzy
 msgid "Repeat Count:"
 msgstr "Count:"
 
-#: src/ui/SessionPanel.cpp:962
+#: src/ui/SessionPanel.cpp:992
 msgid "Interval (ms):"
 msgstr ""
 
-#: src/ui/SessionPanel.cpp:967
+#: src/ui/SessionPanel.cpp:997
 msgid "Auto Increment/Decrement:"
 msgstr ""
 
-#: src/ui/SessionPanel.cpp:1074
+#: src/ui/SessionPanel.cpp:1104
 #, c-format
 msgid "Protocol '%s' does not support action '%s'."
 msgstr ""
 
-#: src/ui/SessionPanel.cpp:1077
+#: src/ui/SessionPanel.cpp:1107
 msgid "Unsupported Action"
 msgstr ""
 
-#: src/ui/SessionPanel.cpp:1082
+#: src/ui/SessionPanel.cpp:1112
 msgid "No valid steps."
 msgstr "No valid steps."
 
-#: src/ui/SessionPanel.cpp:1099
+#: src/ui/SessionPanel.cpp:1129
 msgid "Passed"
 msgstr "Passed"
 
-#: src/ui/SessionPanel.cpp:1099
+#: src/ui/SessionPanel.cpp:1129
 msgid "Failed"
 msgstr "Failed"
 
-#: src/ui/SessionPanel.cpp:1125
+#: src/ui/SessionPanel.cpp:1155
 #, fuzzy
 msgid "Test Finished Successfully\n"
 msgstr "Test Finished Successfully"
 
-#: src/ui/SessionPanel.cpp:1125
+#: src/ui/SessionPanel.cpp:1155
 #, fuzzy
 msgid "Test Failed\n"
 msgstr "Test Failed"
 
-#: src/ui/SessionPanel.cpp:1142
+#: src/ui/SessionPanel.cpp:1172
 #, c-format
 msgid ""
 "Step %d finished.\n"
@@ -1262,91 +1311,87 @@ msgstr ""
 "\n"
 "Ready to execute Step %d. Continue?"
 
-#: src/ui/SessionPanel.cpp:1183
+#: src/ui/SessionPanel.cpp:1213
 #, c-format
 msgid "Target: %s"
 msgstr "Target: %s"
 
-#: src/ui/SessionPanel.cpp:1197
+#: src/ui/SessionPanel.cpp:1227
 msgid "Idle"
 msgstr "Idle"
 
-#: src/ui/SessionPanel.cpp:1201
+#: src/ui/SessionPanel.cpp:1231
 msgid "Connecting..."
 msgstr "Connecting..."
 
-#: src/ui/SessionPanel.cpp:1205
+#: src/ui/SessionPanel.cpp:1235
 msgid "Reconnecting..."
 msgstr "Reconnecting..."
 
-#: src/ui/SessionPanel.cpp:1211
+#: src/ui/SessionPanel.cpp:1241
 #, c-format
 msgid "Connected (%d)"
 msgstr "Connected (%d)"
 
-#: src/ui/SessionPanel.cpp:1212
+#: src/ui/SessionPanel.cpp:1242
 msgid "Listening"
 msgstr "Listening"
 
-#: src/ui/SessionPanel.cpp:1214
+#: src/ui/SessionPanel.cpp:1244
 msgid "Connected"
 msgstr "Connected"
 
-#: src/ui/SessionPanel.cpp:1232 src/ui/SettingsDialog.cpp:69
-msgid "Cancel"
-msgstr "Cancel"
-
-#: src/ui/SessionPanel.cpp:1235
+#: src/ui/SessionPanel.cpp:1265
 msgid "Cancel Reconnecting"
 msgstr "Cancel Reconnecting"
 
-#: src/ui/SessionPanel.cpp:1238
+#: src/ui/SessionPanel.cpp:1268
 msgid "Stop Listening"
 msgstr "Stop Listening"
 
-#: src/ui/SessionPanel.cpp:1238
+#: src/ui/SessionPanel.cpp:1268
 msgid "Disconnect"
 msgstr "Disconnect"
 
-#: src/ui/SessionPanel.cpp:1280 src/ui/SessionPanel.cpp:1390
+#: src/ui/SessionPanel.cpp:1310 src/ui/SessionPanel.cpp:1420
 #, c-format
 msgid "Received: %llu bytes"
 msgstr "Received: %llu bytes"
 
-#: src/ui/SessionPanel.cpp:1319
+#: src/ui/SessionPanel.cpp:1349
 #, fuzzy, c-format
 msgid "Reconnecting (attempt %d) ...\n"
 msgstr "Reconnecting (attempt %d) ..."
 
-#: src/ui/SessionPanel.cpp:1332
+#: src/ui/SessionPanel.cpp:1362
 #, fuzzy, c-format
 msgid "Client #%d connected\n"
 msgstr "Client #%d connected"
 
-#: src/ui/SessionPanel.cpp:1345
+#: src/ui/SessionPanel.cpp:1375
 #, fuzzy, c-format
 msgid "Client #%d disconnected\n"
 msgstr "Client #%d disconnected"
 
-#: src/ui/SessionPanel.cpp:1424
+#: src/ui/SessionPanel.cpp:1454
 #, c-format
 msgid "Clients: %d"
 msgstr "Clients: %d"
 
-#: src/ui/SessionPanel.cpp:1439
+#: src/ui/SessionPanel.cpp:1469
 msgid "No enabled variables to record."
 msgstr ""
 
-#: src/ui/SessionPanel.cpp:1443
+#: src/ui/SessionPanel.cpp:1473
 msgid "Select variables to record:"
 msgstr ""
 
-#: src/ui/SessionPanel.cpp:1453
+#: src/ui/SessionPanel.cpp:1483
 #, fuzzy
 msgid "Stop Recording"
 msgstr "Stop Listening"
 
-#: src/ui/SessionPanel.cpp:1464
+#: src/ui/SessionPanel.cpp:1494
 msgid "No readable variables found."
 msgstr ""
 
@@ -1401,10 +1446,6 @@ msgstr "Interactive Mode"
 
 #: src/ui/SettingsDialog.cpp:67
 msgid "Apply"
-msgstr ""
-
-#: src/ui/SettingsDialog.cpp:68
-msgid "OK"
 msgstr ""
 
 #: src/ui/TestStepEditDialog.cpp:9

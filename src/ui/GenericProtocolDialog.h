@@ -11,7 +11,6 @@
 namespace icu {
 
 // 数据驱动对话框：根据 IProtocol 的字段描述自动生成控件
-// 新增协议无需写新的对话框
 class GenericProtocolDialog : public wxDialog {
 public:
     GenericProtocolDialog(wxWindow* parent, IProtocol* protocol, int initialModeIndex,
@@ -26,17 +25,24 @@ private:
     std::map<std::string, FieldValue> m_initialValues;
 
     wxRadioBox* m_modeRadio = nullptr;
+    wxBoxSizer* m_mainSizer = nullptr;
+    wxSizer* m_dynamicSizer = nullptr;
 
-    std::vector<wxPanel*> m_modePanels;
+    int m_activeModeIndex = -1;
+    wxPanel* m_currentPanel = nullptr;
+
+    // 缓存已生成的控件，避免重复销毁重建
     std::vector<std::map<std::string, wxWindow*>> m_controlsPerMode;
 
     void BuildUi();
-    wxPanel* BuildFieldsPanel(wxWindow* parent, const std::vector<FieldDescriptor>& fields,
-                              std::map<std::string, wxWindow*>& outControls);
+    void RebuildFieldsPanel(int modeIndex);
+    wxPanel* CreateFieldsPanel(wxWindow* parent, const std::vector<FieldDescriptor>& fields,
+                               std::map<std::string, wxWindow*>& outControls);
     wxWindow* CreateControl(wxWindow* parent, const FieldDescriptor& fd);
 
-    void ApplyInitialValues(int modeIndex);
-    void CollectValues(int modeIndex, std::map<std::string, FieldValue>& out) const;
+    void ApplyInitialValues(int modeIndex, std::map<std::string, wxWindow*>& controls);
+    void CollectValues(int modeIndex, const std::map<std::string, wxWindow*>& controls,
+                       std::map<std::string, FieldValue>& out) const;
 
     void OnModeChanged(wxCommandEvent& evt);
 

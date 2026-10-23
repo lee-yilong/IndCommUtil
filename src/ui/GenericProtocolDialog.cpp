@@ -1,20 +1,21 @@
 #include "GenericProtocolDialog.h"
 
 #include <wx/spinctrl.h>
+#include <wx/statline.h>
 
 namespace icu {
 
 // clang-format off
-// wxWidgets 事件表宏展开后是一条语句，clang-format 会把后续行的缩进逐级累积
 wxBEGIN_EVENT_TABLE(GenericProtocolDialog, wxDialog)
-    EVT_RADIOBOX(wxID_ANY, GenericProtocolDialog::OnModeChanged) wxEND_EVENT_TABLE();
+    EVT_RADIOBOX(wxID_ANY, GenericProtocolDialog::OnModeChanged)
+wxEND_EVENT_TABLE();
 // clang-format on
 
 GenericProtocolDialog::GenericProtocolDialog(wxWindow* parent, IProtocol* protocol,
                                              int initialModeIndex,
                                              const std::map<std::string, FieldValue>& initialValues)
     : wxDialog(parent, wxID_ANY, _("New Connection"), wxDefaultPosition, wxDefaultSize,
-               wxDEFAULT_DIALOG_STYLE),
+               wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER),
       m_protocol(protocol),
       m_initialMode(initialModeIndex),
       m_initialValues(initialValues) {
@@ -22,7 +23,13 @@ GenericProtocolDialog::GenericProtocolDialog(wxWindow* parent, IProtocol* protoc
 }
 
 void GenericProtocolDialog::BuildUi() {
-    auto* main = new wxBoxSizer(wxVERTICAL);
+    // 开启双缓冲，防止严重闪烁和绘制卡顿
+    SetDoubleBuffered(true);
+
+    // 设置一个合适的初始最小宽度
+    SetMinSize(FromDIP(wxSize(420, -1)));
+
+    m_mainSizer = new wxBoxSizer(wxVERTICAL);
 
     if (m_protocol->HasModes()) {
         auto names = m_protocol->ModeNames();
@@ -34,43 +41,81 @@ void GenericProtocolDialog::BuildUi() {
         const int sel =
             (m_initialMode >= 0 && m_initialMode < (int)names.size()) ? m_initialMode : 0;
         m_modeRadio->SetSelection(sel);
-        main->Add(m_modeRadio, 0, wxEXPAND | wxALL, 10);
+        m_mainSizer->Add(m_modeRadio, 0, wxEXPAND | wxALL, FromDIP(10));
     }
+
+    // 动态内容区域
+    m_dynamicSizer = new wxBoxSizer(wxVERTICAL);
+    m_mainSizer->Add(m_dynamicSizer, 1, wxEXPAND | wxLEFT | wxRIGHT, FromDIP(10));
+
+    m_mainSizer->Add(new wxStaticLine(this), 0, wxEXPAND | wxALL, FromDIP(10));
+
+    // ★ 统一按钮区域：靠右对齐，且留出合适的边距
+    auto* btnSizer = new wxBoxSizer(wxHORIZONTAL);
+    btnSizer->AddStretchSpacer();
+
+    auto* btnOk = new wxButton(this, wxID_OK, _("OK"));
+    auto* btnCancel = new wxButton(this, wxID_CANCEL, _("Cancel"));
+    btnOk->SetDefault();
+
+    btnSizer->Add(btnOk, 0, wxRIGHT, FromDIP(10));
+    btnSizer->Add(btnCancel, 0);
+
+    m_mainSizer->Add(btnSizer, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(10));
+
+    SetSizer(m_mainSizer);
 
     const int modeCount = m_protocol->HasModes() ? (int)m_protocol->ModeNames().size() : 1;
-
-    m_modePanels.resize(modeCount);
     m_controlsPerMode.resize(modeCount);
 
-    for (int i = 0; i < modeCount; ++i) {
-        auto fields = m_protocol->FieldsForMode(i);
-        auto* panel = BuildFieldsPanel(this, fields, m_controlsPerMode[i]);
-        m_modePanels[i] = panel;
-        main->Add(panel, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
-    }
-
-    const int activeMode = m_protocol->HasModes() ? m_initialMode : 0;
-    for (int i = 0; i < modeCount; ++i) m_modePanels[i]->Show(i == activeMode);
-
-    ApplyInitialValues(activeMode);
-
-    if (auto* btns = CreateButtonSizer(wxOK | wxCANCEL)) main->Add(btns, 0, wxEXPAND | wxALL, 10);
-
-    SetSizerAndFit(main);
-    Centre();
+    // 初始只生成当前选中模式的面板
+    m_activeModeIndex =
+        m_protocol->HasModes() ? (m_modeRadio ? m_modeRadio->GetSelection() : 0) : 0;
+    RebuildFieldsPanel(m_activeModeIndex);
 }
 
-wxPanel* GenericProtocolDialog::BuildFieldsPanel(wxWindow* parent,
-                                                 const std::vector<FieldDescriptor>& fields,
-                                                 std::map<std::string, wxWindow*>& outControls) {
+// 动态构建/切换面板（按需加载，解决卡顿）
+void GenericProtocolDialog::RebuildFieldsPanel(int modeIndex) {
+    if (modeIndex == m_activeModeIndex && m_currentPanel != nullptr) return;
+
+    Freeze();  // 冻结绘制
+
+    if (m_currentPanel) {
+        m_dynamicSizer->Detach(m_currentPanel);
+        m_currentPanel->Destroy();
+        m_currentPanel = nullptr;
+    }
+
+    auto fields = m_protocol->FieldsForMode(modeIndex);
+    m_controlsPerMode[modeIndex].clear();
+
+    m_currentPanel = CreateFieldsPanel(this, fields, m_controlsPerMode[modeIndex]);
+    m_dynamicSizer->Add(m_currentPanel, 1, wxEXPAND);
+
+    ApplyInitialValues(modeIndex, m_controlsPerMode[modeIndex]);
+
+    m_activeModeIndex = modeIndex;
+
+    // 重新计算对话框的最佳尺寸，避免被遮挡
+    Layout();
+    Fit();
+    SetMinSize(GetSize());  // 锁死当前大小，防止用户能拖得特别小导致控件被遮挡
+
+    // 如果窗口居中了，重新居中
+    CentreOnParent();
+
+    Thaw();  // 恢复绘制
+}
+
+wxPanel* GenericProtocolDialog::CreateFieldsPanel(wxWindow* parent,
+                                                  const std::vector<FieldDescriptor>& fields,
+                                                  std::map<std::string, wxWindow*>& outControls) {
     auto* panel = new wxPanel(parent);
     auto* mainSizer = new wxBoxSizer(wxVERTICAL);
 
-    // 主网格（平铺字段）
-    auto* grid = new wxFlexGridSizer(2, 8, 8);
+    auto* grid = new wxFlexGridSizer(2, FromDIP(8), FromDIP(8));
     grid->AddGrowableCol(1, 1);
 
-    // 用于收集分组字段
     std::map<std::string, std::vector<const FieldDescriptor*>> groupedFields;
 
     for (const auto& fd : fields) {
@@ -86,16 +131,17 @@ wxPanel* GenericProtocolDialog::BuildFieldsPanel(wxWindow* parent,
         }
     }
 
-    mainSizer->Add(grid, 0, wxEXPAND | wxALL, 8);
+    if (grid->GetItemCount() > 0) {
+        mainSizer->Add(grid, 0, wxEXPAND | wxALL, FromDIP(8));
+    }
 
-    // 渲染带边框的分组
     for (const auto& pair : groupedFields) {
         const std::string& groupName = pair.first;
         const auto& groupFds = pair.second;
 
         auto* box = new wxStaticBoxSizer(wxVERTICAL, panel,
                                          wxGetTranslation(wxString::FromUTF8(groupName)));
-        auto* boxGrid = new wxFlexGridSizer(2, 8, 8);
+        auto* boxGrid = new wxFlexGridSizer(2, FromDIP(8), FromDIP(8));
         boxGrid->AddGrowableCol(1, 1);
 
         for (const auto* fd : groupFds) {
@@ -107,8 +153,8 @@ wxPanel* GenericProtocolDialog::BuildFieldsPanel(wxWindow* parent,
             outControls[fd->key] = ctrl;
         }
 
-        box->Add(boxGrid, 1, wxEXPAND | wxALL, 8);
-        mainSizer->Add(box, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 8);
+        box->Add(boxGrid, 1, wxEXPAND | wxALL, FromDIP(8));
+        mainSizer->Add(box, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(8));
     }
 
     panel->SetSizer(mainSizer);
@@ -148,19 +194,18 @@ wxWindow* GenericProtocolDialog::CreateControl(wxWindow* parent, const FieldDesc
     return new wxTextCtrl(parent, wxID_ANY);
 }
 
-void GenericProtocolDialog::ApplyInitialValues(int modeIndex) {
+void GenericProtocolDialog::ApplyInitialValues(int modeIndex,
+                                               std::map<std::string, wxWindow*>& controls) {
     if (m_initialValues.empty()) return;
-    if (modeIndex < 0 || modeIndex >= (int)m_controlsPerMode.size()) return;
 
     auto fields = m_protocol->FieldsForMode(modeIndex);
-    const auto& ctrls = m_controlsPerMode[modeIndex];
 
     for (const auto& fd : fields) {
         auto vit = m_initialValues.find(fd.key);
         if (vit == m_initialValues.end()) continue;
 
-        auto cit = ctrls.find(fd.key);
-        if (cit == ctrls.end()) continue;
+        auto cit = controls.find(fd.key);
+        if (cit == controls.end()) continue;
 
         const FieldValue& v = vit->second;
         wxWindow* w = cit->second;
@@ -192,25 +237,18 @@ void GenericProtocolDialog::ApplyInitialValues(int modeIndex) {
 
 void GenericProtocolDialog::OnModeChanged(wxCommandEvent&) {
     if (!m_protocol->HasModes()) return;
-
-    const int newMode = m_modeRadio->GetSelection();
-    for (size_t i = 0; i < m_modePanels.size(); ++i) m_modePanels[i]->Show((int)i == newMode);
-
-    GetSizer()->Layout();
-    Fit();
-    Layout();
+    int newMode = m_modeRadio->GetSelection();
+    RebuildFieldsPanel(newMode);
 }
 
 void GenericProtocolDialog::CollectValues(int modeIndex,
+                                          const std::map<std::string, wxWindow*>& controls,
                                           std::map<std::string, FieldValue>& out) const {
-    if (modeIndex < 0 || modeIndex >= (int)m_controlsPerMode.size()) return;
-
     auto fields = m_protocol->FieldsForMode(modeIndex);
-    const auto& ctrls = m_controlsPerMode[modeIndex];
 
     for (const auto& fd : fields) {
-        auto it = ctrls.find(fd.key);
-        if (it == ctrls.end()) continue;
+        auto it = controls.find(fd.key);
+        if (it == controls.end()) continue;
         wxWindow* w = it->second;
 
         switch (fd.type) {
@@ -235,12 +273,16 @@ void GenericProtocolDialog::CollectValues(int modeIndex,
 
 int GenericProtocolDialog::GetModeIndex() const {
     if (!m_protocol->HasModes()) return 0;
-    return m_modeRadio->GetSelection();
+    return m_modeRadio ? m_modeRadio->GetSelection() : 0;
 }
 
 std::map<std::string, FieldValue> GenericProtocolDialog::GetValues() const {
     std::map<std::string, FieldValue> out;
-    CollectValues(GetModeIndex(), out);
+    int modeIdx = GetModeIndex();
+
+    if (modeIdx >= 0 && modeIdx < (int)m_controlsPerMode.size()) {
+        CollectValues(modeIdx, m_controlsPerMode[modeIdx], out);
+    }
     return out;
 }
 

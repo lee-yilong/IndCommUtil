@@ -10,13 +10,29 @@
 
 ## [未发布]
 
+### 已完成（阶段 17 多会话并发架构）
+
+- **多标签页架构**：将主窗口升级为 `wxNotebook` 多标签页模式，支持同时打开、管理和调试多个独立连接。
+- **上下文隔离**：每个 Tab 包含独立的 `SessionPanel`、`ISessionPtr` 和 `SessionConfig`，互不干扰。
+- **焦点联动**：全局菜单和标题栏自动跟随当前激活的 Tab 切换。
+
+### 已完成（阶段 16 MQTT 模式细化）
+
+- **MQTT 模式拆分**：将原有单一 MQTT 模式细化为 `Publisher`（发布者）、`Subscriber`（订阅者）和 `Broker`（代理者）三种模式。
+- **字段与 UI 隔离**：
+  - Publisher 模式：仅提供连接与发布所需字段。
+  - Subscriber 模式：提供连接、订阅主题与 QoS 字段，界面隐藏发送按钮。
+  - Broker 模式：提供监听端口，UI 自动调整为服务端形态。
+- **底层会话解耦**：新增 `MqttBrokerSession` 占位；重构 `MqttSession`，根据模式标志位严格控制发布和订阅行为。
+- **翻译更新**：补充新增模式及相关 UI 控件的 `.po` 翻译。
+
 ### 已完成（阶段 15 TCP/IP 协议统一）
 
 - **重构 TCP 协议**：将原有的 `TcpProtocol` 升级为 `TcpIpProtocol`，内部 ID 保持 `tcp`，显示名称保持 `TCP/IP`。
 - **支持 UDP 协议**：在 `TCP/IP` 协议内部增加 `UDP` 模式，底层新增 `UdpTransport`（基于 `wxDatagramSocket`）支持无连接的数据报收发。
 - **模式与角色统一**：参照 Modbus 的设计，采用 `Mode` 区分 `TCP` 和 `UDP`，采用 `role` 字段（Client / Server）区分角色。
-- **UI 自动适配**：移除多余的独立菜单项，统一通过 `TCP/IP` 入口进入，界面字段根据 Mode 动态生成（UDP 模式下隐藏自动重连等无关选项）。
-- **向后兼容**：旧的 `.json` 配置文件（无 `role` 字段）在加载时会自动推断角色，无需手动修改。
+- **UI 自动适配**：移除多余的独立菜单项，统一通过 `TCP/IP` 入口进入，界面字段根据 Mode 动态生成。
+- **向后兼容**：旧的 `.json` 配置文件在加载时会自动推断角色，无需手动修改。
 
 ### 已完成（阶段 14 发布准备）
 
@@ -31,7 +47,7 @@
 - **偏好持久化**：
   - 将界面设置（字体大小、默认 HEX 显示、自动滚动、显示时间戳）提取到 `settings::UISettings`。
   - 将“关闭窗口时最小化到系统托盘”行为纳入配置持久化。
-- **即改即生效**：引入全局设置变更回调，用户在 `SettingsDialog` 中点击“应用”后，已打开的 `SessionPanel` 会实时同步新的显示偏好（如立刻切换 HEX 显示）。
+- **即改即生效**：引入全局设置变更回调，用户在 `SettingsDialog` 中点击“应用”后，已打开的 `SessionPanel` 会实时同步新的显示偏好。
 - **应用图标统一**：引入多尺寸 `.ico` 文件合并方案，配置 Windows 资源脚本（`app.rc`），使 `IndComm.exe` 文件图标、任务栏图标与托盘图标完全统一且高清。
 
 ### 已完成（阶段 12 MQTT 协议接入）
@@ -93,13 +109,13 @@
 - **会话面板通用化（阶段 3）**：`ui/ProtocolSessionPanel.h/.cpp`
 - **数据驱动 UI**：`ui/GenericProtocolDialog.h/.cpp`，从 `FieldDescriptor` 列表自动生成控件；
   新增协议不需要改动任何 UI 代码
-- **配置文件**：`config/ConnectionProfile.h/.cpp`（`.conn` INI 格式，协议无关，含 Mode 名回退）
+- **配置文件**：`config/ConnectionProfile.h/.cpp`（`.json` INI 格式，协议无关，含 Mode 名回退）
 - **设置模块（阶段 4.1~4.2）**：`settings/`
   - `Settings` 是唯一直接访问 `wxConfigBase` 的类
   - `LanguageSettings`（中文 / 英文，GNU gettext）、`UISettings`（窗口几何、最近连接、UI 开关）
   - `FontSettings` / `ThemeSettings` / `IconSettings` 预留接口
 - **日志**：`log/Log.h/.cpp`，spdlog + GUI sink；`ICU_SPDLOG_*` / `SPDLOG_*` 宏，日志文本全部可翻译
-- **主窗口**：`app/MainFrame.h/.cpp`，菜单、`wxSimplebook` 页面切换、`.conn` 打开/保存/另存/关闭、
+- **主窗口**：`app/MainFrame.h/.cpp`，菜单、`wxSimplebook` 页面切换、`.json` 打开/保存/另存/关闭、
   最近连接（上限 5）、修改标记、关闭最小化到托盘（`ui/AppTaskBarIcon`）
 - **i18n**：`resources/i18n/`（zh_CN / en_US），构建时自动 `xgettext` → `msgmerge` → `msgfmt`
 - **测试（阶段 4.5）**：doctest 2.4.11

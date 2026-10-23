@@ -28,11 +28,10 @@ bool MqttSession::Open() {
     mqtt::connect_options connOpts;
     connOpts.set_keep_alive_interval(m_cfg.keepAlive);
     connOpts.set_clean_session(true);
-    connOpts.set_automatic_reconnect(true);  // Paho 内置重连
+    connOpts.set_automatic_reconnect(true);
 
     try {
         m_client.connect(connOpts)->wait();
-        // 连接成功会在 connected 回调中处理状态
         return true;
     } catch (const mqtt::exception& exc) {
         ICU_SPDLOG_ERROR(_("MQTT Connection failed: %s"), wxString::FromUTF8(exc.what()));
@@ -53,6 +52,10 @@ void MqttSession::Close() {
 
 void MqttSession::Publish(const std::string& topic, const std::string& payload, int qos) {
     if (!IsConnected()) return;
+    if (m_cfg.isSubscriber) {
+        ICU_SPDLOG_WARN(_("Cannot publish in Subscriber mode."));
+        return;
+    }
     try {
         auto msg = mqtt::make_message(topic, payload);
         msg->set_qos(qos);
@@ -64,8 +67,15 @@ void MqttSession::Publish(const std::string& topic, const std::string& payload, 
 
 void MqttSession::connected(const std::string& /*cause*/) {
     m_stateMachine.TransitionTo(SessionState::Connected);
-    // 默认订阅所有主题以便接收
-    m_client.subscribe("#", 0);
+
+    if (m_cfg.isSubscriber) {
+        try {
+            m_client.subscribe(m_cfg.subscribeTopic, m_cfg.subscribeQos);
+            ICU_SPDLOG_INFO(_("MQTT Subscribed to: %s"), wxString::FromUTF8(m_cfg.subscribeTopic));
+        } catch (const mqtt::exception& exc) {
+            ICU_SPDLOG_ERROR(_("MQTT Subscribe failed: %s"), wxString::FromUTF8(exc.what()));
+        }
+    }
 }
 
 void MqttSession::connection_lost(const std::string& cause) {
@@ -76,8 +86,7 @@ void MqttSession::connection_lost(const std::string& cause) {
 }
 
 void MqttSession::message_arrived(mqtt::const_message_ptr msg) {
-    if (m_mqttMsgCb) {
-        // 必须在主线程更新 UI
+    if (m_cfg.isSubscriber && m_mqttMsgCb) {
         auto topic = msg->get_topic();
         auto payload = msg->to_string();
         auto cb = m_mqttMsgCb;

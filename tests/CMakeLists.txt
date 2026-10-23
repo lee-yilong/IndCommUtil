@@ -25,6 +25,7 @@ add_library(icu_core_test STATIC
     "${CMAKE_SOURCE_DIR}/src/protocols/modbus/ModbusSession.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/mqtt/MqttProtocol.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/mqtt/MqttSession.cpp"
+    "${CMAKE_SOURCE_DIR}/src/protocols/mqtt/MqttBrokerSession.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/mqtt/MqttPublishStep.cpp"
 )
 
@@ -82,7 +83,6 @@ target_include_directories(icu_tests PRIVATE
 
 set_target_properties(icu_tests PROPERTIES WIN32_EXECUTABLE FALSE)
 
-# 显式链接 modbus 和 Paho，确保链接器能找到符号
 target_link_libraries(icu_tests PRIVATE
     icu_core_test
     doctest

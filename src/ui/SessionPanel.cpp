@@ -14,7 +14,7 @@
 #include "core/BytesParser.h"
 #include "core/DelayStep.h"
 #include "log/Log.h"
-#include "settings/UISettings.h"  // ★ 引入全局设置
+#include "settings/UISettings.h"
 #include "spdlog/spdlog.h"
 
 namespace icu {
@@ -733,9 +733,47 @@ void SessionPanel::OnExecuteWrite(wxCommandEvent&) {
 }
 
 void SessionPanel::OnExecuteSend(wxCommandEvent&) {
-    if ((!m_streamSession || !m_streamSession->IsConnected()) &&
-        (!m_mqttSession || !m_mqttSession->IsConnected()))
+    if (m_mqttSession && m_mqttSession->State() == SessionState::Connected) {
+        if (!m_sessionConfig || !m_sessionConfig->variables.count(m_selectedVarName)) return;
+
+        auto& var = m_sessionConfig->variables[m_selectedVarName];
+        std::string payload = var.currentValue;
+
+        if (payload.empty()) {
+            wxMessageBox(_("Payload is empty. Please fill in the 'Value' field."), _("Notice"),
+                         wxOK | wxICON_WARNING, this);
+            return;
+        }
+
+        std::string topic = var.params.value("topic", "test/topic");
+        int qos = var.params.value("qos", 0);
+        m_mqttSession->Publish(topic, payload, qos);
+
+        std::vector<uint8_t> bytes(payload.begin(), payload.end());
+        m_txBytes += bytes.size();
+        if (m_txLabel)
+            m_txLabel->SetLabel(
+                wxString::Format(_("Sent: %llu bytes"), (unsigned long long)m_txBytes));
+
+        wxString rawStr;
+        for (uint8_t b : bytes) rawStr += wxString::Format("%02X ", b);
+        var.rawBytes = std::string(rawStr.Trim().utf8_str());
+
+        if (m_varOpControls.count("__raw_bytes")) {
+            if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__raw_bytes"]))
+                txt->ChangeValue(rawStr.Trim());
+        }
+
+        AppendUnifiedLog(false, m_selectedVarName, var.type, payload, bytes);
+
+        double chartVal;
+        if (TryParseNumeric(var.type, payload, chartVal)) {
+            RecordData(m_selectedVarName, chartVal);
+        }
         return;
+    }
+
+    if ((!m_streamSession || !m_streamSession->IsConnected())) return;
     if (!m_sessionConfig || !m_sessionConfig->variables.count(m_selectedVarName)) return;
 
     auto& var = m_sessionConfig->variables[m_selectedVarName];
@@ -749,15 +787,7 @@ void SessionPanel::OnExecuteSend(wxCommandEvent&) {
 
     std::vector<uint8_t> bytes = EncodePayload(var.type, payload);
 
-    bool success = false;
-    if (m_mqttSession) {
-        std::string topic = var.params.value("topic", "test/topic");
-        int qos = var.params.value("qos", 0);
-        m_mqttSession->Publish(topic, payload, qos);
-        success = true;
-    } else if (m_streamSession) {
-        success = m_streamSession->Send(bytes);
-    }
+    bool success = m_streamSession->Send(bytes);
 
     if (success) {
         m_txBytes += bytes.size();

@@ -15,6 +15,10 @@ struct MqttConfig {
     int brokerPort = 1883;
     std::string clientId;
     int keepAlive = 60;
+
+    bool isSubscriber = false;
+    std::string subscribeTopic = "#";
+    int subscribeQos = 0;
 };
 
 class MqttSession : public ISession, public virtual mqtt::callback {
