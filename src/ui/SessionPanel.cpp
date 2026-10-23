@@ -233,6 +233,28 @@ void SessionPanel::BuildUi() {
     m_varList->Bind(wxEVT_LIST_ITEM_SELECTED, &SessionPanel::OnVarSelected, this);
     m_varList->Bind(wxEVT_LIST_ITEM_CHECKED, &SessionPanel::OnItemChecked, this);
     m_varList->Bind(wxEVT_LIST_ITEM_UNCHECKED, &SessionPanel::OnItemChecked, this);
+
+    // ★ 新增：变量列表快捷键
+    m_varList->Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& evt) {
+        wxCommandEvent dummy(wxEVT_BUTTON);
+        if (evt.ControlDown()) {
+            if (evt.GetKeyCode() == 'N')
+                m_addVarBtn->Command(dummy);
+            else if (evt.GetKeyCode() == 'C')
+                m_copyVarBtn->Command(dummy);
+            else if (evt.GetKeyCode() == 'V')
+                m_copyVarBtn->Command(dummy);  // 粘贴复用复制逻辑
+            else if (evt.GetKeyCode() == 'E')
+                m_editVarBtn->Command(dummy);
+            else
+                evt.Skip();
+        } else if (evt.GetKeyCode() == WXK_DELETE) {
+            m_delVarBtn->Command(dummy);
+        } else {
+            evt.Skip();
+        }
+    });
+
     varBox->Add(m_varList, 1, wxEXPAND | wxALL, 4);
 
     auto* btnSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -909,6 +931,27 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     auto* delBtn = new wxButton(parent, wxID_ANY, _("Delete"));
     auto* upBtn = new wxButton(parent, wxID_ANY, _("Up"));
     auto* downBtn = new wxButton(parent, wxID_ANY, _("Down"));
+
+    // ★ 新增：测试步骤列表快捷键
+    stepList->Bind(wxEVT_KEY_DOWN, [addBtn, copyBtn, editBtn, delBtn](wxKeyEvent& evt) {
+        wxCommandEvent dummy(wxEVT_BUTTON);
+        if (evt.ControlDown()) {
+            if (evt.GetKeyCode() == 'N')
+                addBtn->Command(dummy);
+            else if (evt.GetKeyCode() == 'C')
+                copyBtn->Command(dummy);
+            else if (evt.GetKeyCode() == 'V')
+                copyBtn->Command(dummy);
+            else if (evt.GetKeyCode() == 'E')
+                editBtn->Command(dummy);
+            else
+                evt.Skip();
+        } else if (evt.GetKeyCode() == WXK_DELETE) {
+            delBtn->Command(dummy);
+        } else {
+            evt.Skip();
+        }
+    });
 
     auto refreshList = [this, isAutoMode, stepList]() {
         stepList->DeleteAllItems();

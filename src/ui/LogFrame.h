@@ -18,6 +18,7 @@ private:
     wxTextCtrl* m_textCtrl = nullptr;
     wxCheckBox* m_autoScroll = nullptr;
     wxButton* m_clearBtn = nullptr;
+    wxButton* m_loadBtn = nullptr;  // ★ 新增：加载日志按钮
 
     bool m_forceDestroy = false;
 
@@ -25,6 +26,7 @@ private:
 
     void OnClose(wxCloseEvent& evt);
     void OnClear(wxCommandEvent& evt);
+    void OnLoad(wxCommandEvent& evt);  // ★ 新增：处理加载逻辑
 
     wxDECLARE_EVENT_TABLE();
 };

@@ -39,7 +39,7 @@ public:
     void OnRequestConfigure(RequestCallback cb) { m_onRequestConfigure = std::move(cb); }
     void RefreshFromSession();
 
-    // ★ 新增：从全局设置读取并应用
+    // 从全局设置读取并应用
     void ApplyGlobalSettings();
 
     using StateCallback = std::function<void(SessionState)>;
@@ -111,7 +111,6 @@ private:
     size_t m_txBytes = 0;
     int m_clientCount = 0;
 
-    // ★ 需在构建时从全局设置读取
     wxCheckBox* m_hexDisplay = nullptr;
     wxCheckBox* m_showTimestamp = nullptr;
     wxCheckBox* m_autoScroll = nullptr;
