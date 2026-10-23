@@ -22,16 +22,14 @@ configure_file(
 )
 
 # =========================================================================
-# 1. 资源文件配置（使用你自定义编写的 rc 和 manifest）
+# 1. 资源文件配置
 # =========================================================================
 set(APP_ICO "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/app.ico")
 if(NOT EXISTS "${APP_ICO}")
     message(FATAL_ERROR "错误：找不到 ${APP_ICO}，请把图标放到该目录下！")
 endif()
 
-# 设置资源编译器的包含路径，让你的 rc 内部能顺利找到同目录下的图标或 manifest
 set(CMAKE_RC_FLAGS "${CMAKE_RC_FLAGS} -I\"${CMAKE_CURRENT_SOURCE_DIR}/resources\"")
-
 
 # =========================================================================
 # 2. 依赖与源文件配置
@@ -141,6 +139,7 @@ target_compile_definitions(IndComm PRIVATE wxDEBUG_LEVEL=0)
 target_link_libraries(IndComm PRIVATE
     icu_core_lib
     "${WX_LIB_DIR}/libwx_mswu_core-3.3.dll.a"
+    "${WX_LIB_DIR}/libwx_mswu_aui-3.3.dll.a"      # ★ 新增：链接 wxAui 库
     "${WX_LIB_DIR}/libwx_baseu-3.3.dll.a"
     "${WX_LIB_DIR}/libwx_baseu_net-3.3.dll.a"
     kernel32 user32 gdi32 comdlg32 winspool winmm
@@ -161,6 +160,7 @@ set(WX_DLLS
     "${WX_LIB_DIR}/wxbase335u_gcc_custom.dll"
     "${WX_LIB_DIR}/wxbase335u_net_gcc_custom.dll"
     "${WX_LIB_DIR}/wxmsw335u_core_gcc_custom.dll"
+    "${WX_LIB_DIR}/wxmsw335u_aui_gcc_custom.dll"  # ★ 新增：拷贝 wxAui DLL
 )
 
 add_custom_command(TARGET IndComm POST_BUILD
@@ -199,7 +199,6 @@ if(WIN32)
     install(FILES $<TARGET_FILE:sqlite.library> DESTINATION .)
     install(FILES ${WX_DLLS} DESTINATION .)
 
-    # ★ 把 app.ico 也安装到目标目录
     install(FILES "${APP_ICO}" DESTINATION .)
 
     install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/resources/i18n/"
@@ -243,7 +242,6 @@ if(WIN32)
         set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/app.ico")
     endif()
 
-    # ★ 核心：强制快捷方式直接指向 app.ico 文件，不再依赖 exe 本身提取
     set(CPACK_NSIS_CREATE_ICONS_EXTRA
         "CreateShortCut '$DESKTOP\\\\IndComm.lnk' '$INSTDIR\\\\IndComm.exe' '$INSTDIR\\\\app.ico'"
         "CreateShortCut '$SMPROGRAMS\\\\IndComm.lnk' '$INSTDIR\\\\IndComm.exe' '$INSTDIR\\\\app.ico'"

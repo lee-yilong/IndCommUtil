@@ -1,20 +1,16 @@
 #include "app/MainFrame.h"
 
+#include <wx/aui/auibook.h>
 #include <wx/datetime.h>
 #include <wx/display.h>
 #include <wx/filedlg.h>
 #include <wx/filename.h>
-#include <wx/generic/filedlgg.h>
 #include <wx/icon.h>
-#include <wx/msw/wrapwin.h>  // ★ 必须包含 windows.h
 #include <wx/msw/wrapwin.h>
-#include <wx/simplebook.h>
 #include <wx/stdpaths.h>
 #include <wx/tokenzr.h>
 
 #include <nlohmann/json.hpp>
-#include <optional>
-#include <vector>
 
 #include "app/App.h"
 #include "config/ConnectionProfile.h"
@@ -23,7 +19,6 @@
 #include "core/StreamSession.h"
 #include "log/Log.h"
 #include "protocols/codec/RawCodec.h"
-#include "protocols/tcp/TcpTransport.h"
 #include "settings/UISettings.h"
 #include "spdlog/spdlog.h"
 #include "ui/AppTaskBarIcon.h"
@@ -49,12 +44,16 @@ wxBEGIN_EVENT_TABLE(MainFrame, wxFrame)
     EVT_MENU(idMenuLangZhCN, MainFrame::OnLangZhCN)
     EVT_MENU(idMenuLangEnUS, MainFrame::OnLangEnUS)
     EVT_MENU_RANGE(idMenuRecentBase, idMenuRecentBase + 100, MainFrame::OnRecentConnection)
-wxEND_EVENT_TABLE();  // clang-format on
+
+    EVT_AUINOTEBOOK_PAGE_CHANGED(wxID_ANY, MainFrame::OnNotebookPageChanged)
+    EVT_AUINOTEBOOK_PAGE_CLOSE(wxID_ANY, MainFrame::OnNotebookPageClose)
+wxEND_EVENT_TABLE();
+// clang-format on
 
 MainFrame::MainFrame(wxFrame* parent, const wxString& title) : wxFrame(parent, wxID_ANY, title) {
 #ifdef _WIN32
-    HICON hIcon = (HICON)::LoadImageW(::GetModuleHandleW(nullptr), MAKEINTRESOURCEW(1), IMAGE_ICON,
-                                      0, 0, LR_DEFAULTSIZE | LR_SHARED);
+    HICON hIcon = static_cast<HICON>(::LoadImageW(::GetModuleHandleW(nullptr), MAKEINTRESOURCEW(1),
+                                                  IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_SHARED));
     if (hIcon) {
         wxIcon icon;
         icon.CreateFromHICON(hIcon);
@@ -64,7 +63,7 @@ MainFrame::MainFrame(wxFrame* parent, const wxString& title) : wxFrame(parent, w
     BuildMenuBar();
     BuildLayout();
 
-    UpdateConnectionUI();
+    UpdateUIState();
     LoadRecentConnections();
 
     const wxSize kDefaultSize = FromDIP(wxSize(1200, 800));
@@ -95,7 +94,13 @@ MainFrame::MainFrame(wxFrame* parent, const wxString& title) : wxFrame(parent, w
 }
 
 MainFrame::~MainFrame() {
-    m_sessionMgr.Close();
+    for (auto& tab : m_tabs) {
+        if (tab->session) {
+            tab->session->DetachAllCallbacks();
+            tab->session->Close();
+        }
+    }
+    m_tabs.clear();
     SPDLOG_INFO(_("MainFrame destroyed"));
 }
 
@@ -177,51 +182,221 @@ void MainFrame::BuildMenuBar() {
 void MainFrame::BuildLayout() {
     auto* root = new wxBoxSizer(wxVERTICAL);
 
-    m_contentBook = new wxSimplebook(this, wxID_ANY);
+    // ★ 核心修改：将 wxNotebook 替换为 wxAuiNotebook，并开启关闭按钮
+    m_notebook = new wxAuiNotebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                                   wxAUI_NB_TOP | wxAUI_NB_TAB_SPLIT | wxAUI_NB_TAB_MOVE |
+                                       wxAUI_NB_SCROLL_BUTTONS | wxAUI_NB_CLOSE_ON_ALL_TABS);
 
-    auto* welcome = new wxPanel(m_contentBook);
-    {
-        auto* s = new wxBoxSizer(wxVERTICAL);
-        auto* txt =
-            new wxStaticText(welcome, wxID_ANY,
-                             _("No active connection.\nUse File → New Connection to get started."));
-        txt->SetForegroundColour(wxColour(128, 128, 128));
-        s->AddStretchSpacer();
-        s->Add(txt, 0, wxALIGN_CENTER);
-        s->AddStretchSpacer();
-        welcome->SetSizer(s);
-    }
-    m_contentBook->AddPage(welcome, _("Welcome"));
-
-    m_contentBook->AddPage(new wxPanel(m_contentBook), _("Session"));
-    m_contentBook->SetSelection(0);
-
-    root->Add(m_contentBook, 1, wxEXPAND);
+    root->Add(m_notebook, 1, wxEXPAND);
 
     SetSizer(root);
     root->Layout();
 }
 
-void MainFrame::ShowWelcomePage() {
-    m_sessionPanel = nullptr;
-    while (m_contentBook->GetPageCount() > 1) m_contentBook->DeletePage(1);
-    m_contentBook->AddPage(new wxPanel(m_contentBook), _("Session"));
-    m_contentBook->SetSelection(0);
+TabContext* MainFrame::GetActiveTab() {
+    if (m_activeTabIndex >= 0 && m_activeTabIndex < (int)m_tabs.size()) {
+        return m_tabs[m_activeTabIndex].get();
+    }
+    return nullptr;
 }
 
-void MainFrame::ShowSessionPage(IProtocol* proto, int modeIndex, ISession* session) {
-    m_sessionPanel = nullptr;
-    while (m_contentBook->GetPageCount() > 1) m_contentBook->DeletePage(1);
+void MainFrame::AddTab(IProtocol* proto, int modeIndex, ISessionPtr session,
+                       const ActiveProfile& profile, const wxString& path) {
+    auto tab = std::make_unique<TabContext>();
+    tab->protocol = proto;
+    tab->modeIndex = modeIndex;
+    tab->session = std::move(session);
+    tab->activeProfile = profile;
+    tab->savedProfile = profile;
+    tab->profilePath = path;
 
-    SessionConfig* configPtr = nullptr;
-    if (m_activeProfile) {
-        configPtr = &(m_activeProfile->session);
+    ISession* rawPtr = tab->session.get();
+
+    tab->panel = new SessionPanel(m_notebook, proto, modeIndex, rawPtr,
+                                  &(tab->activeProfile->session), path);
+
+    int index = m_tabs.size();
+    m_tabs.push_back(std::move(tab));
+
+    m_notebook->AddPage(m_tabs[index]->panel, GetDisplayName(index), true);
+    m_activeTabIndex = index;
+
+    auto* panel = m_tabs[index]->panel;
+
+    panel->OnRequestConfigure([this, index]() {
+        if (index < 0 || index >= (int)m_tabs.size()) return;
+        auto* t = m_tabs[index].get();
+        if (!t->protocol || !t->activeProfile) return;
+
+        GenericProtocolDialog dlg(this, t->protocol, t->activeProfile->modeIndex,
+                                  t->activeProfile->fields);
+        if (dlg.ShowModal() != wxID_OK) return;
+
+        ActiveProfile newP;
+        newP.protocolId = t->protocol->Id();
+        newP.modeIndex = dlg.GetModeIndex();
+        newP.fields = dlg.GetValues();
+
+        ISessionPtr newSession = t->protocol->CreateSession(newP.modeIndex, newP.fields);
+        if (!newSession) return;
+
+        wxString pathCopy = t->profilePath;
+        std::optional<ActiveProfile> savedCopy = t->savedProfile;
+        IProtocol* protoCopy = t->protocol;
+
+        RemoveTab(index);
+
+        AddTab(protoCopy, newP.modeIndex, std::move(newSession), newP, pathCopy);
+
+        auto& newTab = m_tabs.back();
+        newTab->savedProfile = savedCopy;
+        UpdateTabTitle(m_tabs.size() - 1);
+    });
+
+    panel->OnStateUpdated([this, index](SessionState st) {
+        if (index == m_activeTabIndex) {
+            UpdateUIState();
+        }
+    });
+
+    UpdateUIState();
+
+    if (!rawPtr->Open()) {
+        SPDLOG_ERROR(_("Failed to open session"));
+    }
+}
+
+void MainFrame::RemoveTab(int index, bool skipNotebookDelete) {
+    if (index < 0 || index >= (int)m_tabs.size()) return;
+
+    auto& tab = m_tabs[index];
+    if (tab->session) {
+        tab->session->DetachAllCallbacks();
+        tab->session->Close();
     }
 
-    m_sessionPanel =
-        new SessionPanel(m_contentBook, proto, modeIndex, session, configPtr, m_currentProfilePath);
-    m_contentBook->AddPage(m_sessionPanel, _("Session"));
-    m_contentBook->SetSelection(1);
+    if (!skipNotebookDelete) {
+        m_notebook->DeletePage(index);
+    }
+    m_tabs.erase(m_tabs.begin() + index);
+
+    if (m_tabs.empty()) {
+        m_activeTabIndex = -1;
+    } else {
+        m_activeTabIndex = m_notebook->GetSelection();
+    }
+    UpdateUIState();
+}
+
+void MainFrame::OnNotebookPageChanged(wxAuiNotebookEvent& evt) {
+    m_activeTabIndex = evt.GetSelection();
+    UpdateUIState();
+    evt.Skip();
+}
+
+void MainFrame::OnNotebookPageClose(wxAuiNotebookEvent& evt) {
+    int index = evt.GetSelection();
+    if (index < 0 || index >= (int)m_tabs.size()) return;
+
+    auto& tab = m_tabs[index];
+    if (tab->activeProfile && IsModified(index)) {
+        const int ret = wxMessageBox(
+            wxString::Format(_("Save changes to '%s' before closing?"), GetDisplayName(index)),
+            _("Save Connection Profile"), wxYES_NO | wxCANCEL | wxICON_QUESTION, this);
+
+        if (ret == wxCANCEL) {
+            evt.Veto();
+            return;
+        }
+        if (ret == wxYES) {
+            SaveCurrentProfile(false, index);
+            if (IsModified(index)) {
+                evt.Veto();
+                return;
+            }
+        }
+    }
+
+    RemoveTab(index, true);
+}
+
+void MainFrame::UpdateUIState() {
+    bool hasTab = (m_activeTabIndex >= 0 && m_activeTabIndex < (int)m_tabs.size());
+
+    if (m_fileMenu) {
+        m_fileMenu->Enable(idMenuSaveConnection, hasTab);
+        m_fileMenu->Enable(idMenuSaveConnectionAs, hasTab);
+        m_fileMenu->Enable(idMenuCloseConnection, hasTab);
+    }
+    if (m_recentMenuItem) m_recentMenuItem->Enable(!m_recentConnections.IsEmpty());
+
+    if (!hasTab) {
+        SetTitle(_("IndComm"));
+        SetStatusText(_("Ready"));
+    } else {
+        UpdateTabTitle(m_activeTabIndex);
+        auto* tab = GetActiveTab();
+        if (tab && tab->session) {
+            const wxString targetStr = wxString::FromUTF8(tab->session->Target().c_str());
+            SessionState st = tab->session->State();
+            switch (st) {
+                case SessionState::Connected:
+                    if (tab->session->IsServerMode())
+                        SetStatusText(wxString::Format(_("Listening on %s"), targetStr));
+                    else
+                        SetStatusText(wxString::Format(
+                            _("Connected [%s]: %s"),
+                            wxString::FromUTF8(tab->session->TransportName().c_str()), targetStr));
+                    break;
+                case SessionState::Connecting:
+                    SetStatusText(wxString::Format(_("Connecting to %s ..."), targetStr));
+                    break;
+                case SessionState::Reconnecting:
+                    SetStatusText(wxString::Format(_("Reconnecting to %s ..."), targetStr));
+                    break;
+                default:
+                    SetStatusText(_("Disconnected"));
+                    break;
+            }
+        }
+    }
+}
+
+bool MainFrame::IsModified(int index) const {
+    if (index == -1) index = m_activeTabIndex;
+    if (index < 0 || index >= (int)m_tabs.size()) return false;
+    const auto& tab = m_tabs[index];
+    if (!tab->activeProfile) return false;
+    if (!tab->savedProfile) return true;
+    return *tab->activeProfile != *tab->savedProfile;
+}
+
+wxString MainFrame::GetDisplayName(int index) const {
+    if (index == -1) index = m_activeTabIndex;
+    if (index < 0 || index >= (int)m_tabs.size()) return _("Untitled");
+    const auto& tab = m_tabs[index];
+    if (tab->profilePath.IsEmpty()) {
+        if (tab->protocol) {
+            return wxString::FromUTF8(tab->protocol->DisplayName());
+        }
+        return _("Untitled");
+    }
+    return wxFileName(tab->profilePath).GetName();
+}
+
+void MainFrame::UpdateTabTitle(int index) {
+    if (index < 0 || index >= (int)m_tabs.size()) return;
+    wxString title = GetDisplayName(index);
+    if (IsModified(index)) title += " *";
+    m_notebook->SetPageText(index, title);
+
+    if (index == m_activeTabIndex) {
+        wxString frameTitle = _("IndComm");
+        if (!m_tabs[index]->profilePath.IsEmpty() || m_tabs[index]->activeProfile) {
+            frameTitle += " - " + title;
+        }
+        SetTitle(frameTitle);
+    }
 }
 
 void MainFrame::OnClose(wxCloseEvent& evt) {
@@ -230,8 +405,10 @@ void MainFrame::OnClose(wxCloseEvent& evt) {
         settings::UISettings::Instance().SaveMainWindowGeometry(GetScreenRect(), IsMaximized());
 
         SPDLOG_INFO(_("Application exiting"));
-        ShowWelcomePage();
-        m_sessionMgr.Close();
+
+        for (int i = (int)m_tabs.size() - 1; i >= 0; --i) {
+            RemoveTab(i);
+        }
 
         if (m_logFrame) {
             m_logFrame->ForceDestroy();
@@ -250,22 +427,24 @@ void MainFrame::OnClose(wxCloseEvent& evt) {
         return;
     }
 
-    if (m_activeProfile && IsModified()) {
-        const int ret = wxMessageBox(
-            wxString::Format(_("Save changes to '%s' before closing?"), GetDisplayName()),
-            _("Save Connection Profile"), wxYES_NO | wxCANCEL | wxICON_QUESTION, this);
+    if (!m_forceExit) {
+        for (size_t i = 0; i < m_tabs.size(); ++i) {
+            if (m_tabs[i]->activeProfile && IsModified(i)) {
+                const int ret = wxMessageBox(
+                    wxString::Format(_("Save changes to '%s' before closing?"), GetDisplayName(i)),
+                    _("Save Connection Profile"), wxYES_NO | wxCANCEL | wxICON_QUESTION, this);
 
-        if (ret == wxCANCEL) {
-            evt.Veto();
-            SPDLOG_INFO(_("Close cancelled by user"));
-            return;
-        }
-        if (ret == wxYES) {
-            SaveCurrentProfile();
-            if (IsModified()) {
-                evt.Veto();
-                SPDLOG_INFO(_("Save cancelled, close aborted"));
-                return;
+                if (ret == wxCANCEL) {
+                    evt.Veto();
+                    return;
+                }
+                if (ret == wxYES) {
+                    SaveCurrentProfile(false, i);
+                    if (IsModified(i)) {
+                        evt.Veto();
+                        return;
+                    }
+                }
             }
         }
     }
@@ -276,26 +455,8 @@ void MainFrame::OnClose(wxCloseEvent& evt) {
         return;
     }
 
-    SaveRecentConnections();
-    settings::UISettings::Instance().SaveMainWindowGeometry(GetScreenRect(), IsMaximized());
-
-    SPDLOG_INFO(_("Application exiting"));
-    ShowWelcomePage();
-    m_sessionMgr.Close();
-
-    if (m_logFrame) {
-        m_logFrame->ForceDestroy();
-        m_logFrame = nullptr;
-    }
-    if (m_trayIcon) {
-        m_trayIcon->RemoveIcon();
-        auto* icon = m_trayIcon;
-        m_trayIcon = nullptr;
-        wxTheApp->CallAfter([icon]() { delete icon; });
-    }
-
-    Destroy();
-    if (wxTheApp) wxTheApp->ExitMainLoop();
+    m_forceExit = true;
+    Close(true);
 }
 
 void MainFrame::OnQuit(wxCommandEvent&) {
@@ -320,30 +481,19 @@ void MainFrame::OnShowLog(wxCommandEvent&) {
 void MainFrame::OnShowSettings(wxCommandEvent&) {
     SettingsDialog dlg(this);
     dlg.SetApplyCallback([this]() {
-        if (m_sessionPanel) {
-            m_sessionPanel->ApplyGlobalSettings();
+        for (auto& tab : m_tabs) {
+            if (tab->panel) tab->panel->ApplyGlobalSettings();
         }
     });
     dlg.ShowModal();
 }
 
 void MainFrame::OnOpenConnection(wxCommandEvent&) {
-    SPDLOG_INFO(_("User invoked Open Connection"));
-
-    if (m_sessionMgr.Active()) {
-        wxMessageBox(_("Please close the current connection first."), _("Notice"),
-                     wxOK | wxICON_WARNING, this);
-        return;
-    }
-
     const wxString defaultDir = wxStandardPaths::Get().GetDocumentsDir();
     wxFileDialog dlg(this, _("Open Connection Configuration"), defaultDir, "",
                      "Connection files (*.json)|*.json|All files (*.*)|*.*",
                      wxFD_OPEN | wxFD_FILE_MUST_EXIST);
-    if (dlg.ShowModal() != wxID_OK) {
-        SPDLOG_INFO(_("Open connection cancelled by user"));
-        return;
-    }
+    if (dlg.ShowModal() != wxID_OK) return;
 
     const wxString path = dlg.GetPath();
 
@@ -354,62 +504,41 @@ void MainFrame::OnOpenConnection(wxCommandEvent&) {
         return;
     }
 
-    m_activeProfile = profile;
-    m_savedProfile = profile;
-    m_lastDialogProfile = profile;
-    m_currentProfilePath = path;
-
     AddRecentConnection(path);
-    ICU_SPDLOG_INFO(_("Opening connection from file: %s"), path);
 
-    CreateAndOpenSession(profile);
-    UpdateTitle();
+    auto* proto = ProtocolRegistry::Instance().Find(profile.protocolId);
+    if (!proto) return;
+
+    ISessionPtr session = proto->CreateSession(profile.modeIndex, profile.fields);
+    if (!session) return;
+
+    AddTab(proto, profile.modeIndex, std::move(session), profile, path);
+    m_lastDialogProfile = profile;
 }
 
 void MainFrame::OnCloseConnection(wxCommandEvent&) {
-    if (!m_sessionMgr.Active()) return;
+    int index = m_activeTabIndex;
+    if (index < 0 || index >= (int)m_tabs.size()) return;
 
-    ICU_SPDLOG_INFO(_("Closing connection: %s"),
-                    wxString::FromUTF8(m_sessionMgr.Active()->Target().c_str()));
-
-    if (m_activeProfile && IsModified()) {
+    auto& tab = m_tabs[index];
+    if (tab->activeProfile && IsModified(index)) {
         const int ret = wxMessageBox(
-            wxString::Format(_("Save changes to '%s' before closing?"), GetDisplayName()),
+            wxString::Format(_("Save changes to '%s' before closing?"), GetDisplayName(index)),
             _("Save Connection Profile"), wxYES_NO | wxCANCEL | wxICON_QUESTION, this);
 
-        if (ret == wxCANCEL) {
-            SPDLOG_INFO(_("Close cancelled by user"));
-            return;
-        }
+        if (ret == wxCANCEL) return;
         if (ret == wxYES) {
-            SaveCurrentProfile();
-            if (IsModified()) {
-                SPDLOG_INFO(_("Save cancelled, close aborted"));
-                return;
-            }
+            SaveCurrentProfile(false, index);
+            if (IsModified(index)) return;
         }
     }
 
-    ShowWelcomePage();
-    m_sessionMgr.Close();
-
-    m_activeProfile.reset();
-    m_savedProfile.reset();
-    m_currentProfilePath.Clear();
-    UpdateConnectionUI();
-    UpdateTitle();
-    SetStatusText(_("Disconnected"));
+    RemoveTab(index);
 }
 
 void MainFrame::OnRecentConnection(wxCommandEvent& evt) {
     size_t index = static_cast<size_t>(evt.GetId() - idMenuRecentBase);
     if (index >= m_recentConnections.GetCount()) return;
-
-    if (m_sessionMgr.IsConnected()) {
-        wxMessageBox(_("Please close the current connection first."), _("Notice"),
-                     wxOK | wxICON_WARNING, this);
-        return;
-    }
 
     const wxString path = m_recentConnections[index];
 
@@ -429,25 +558,16 @@ void MainFrame::OnRecentConnection(wxCommandEvent& evt) {
         return;
     }
 
-    m_activeProfile = profile;
-    m_savedProfile = profile;
-    m_lastDialogProfile = profile;
-    m_currentProfilePath = path;
-
     AddRecentConnection(path);
-    CreateAndOpenSession(profile);
-    UpdateTitle();
-}
 
-void MainFrame::UpdateConnectionUI() {
-    const bool hasSession = (m_sessionMgr.Active() != nullptr);
+    auto* proto = ProtocolRegistry::Instance().Find(profile.protocolId);
+    if (!proto) return;
 
-    if (m_fileMenu) {
-        m_fileMenu->Enable(idMenuSaveConnection, m_activeProfile.has_value());
-        m_fileMenu->Enable(idMenuSaveConnectionAs, m_activeProfile.has_value());
-        m_fileMenu->Enable(idMenuCloseConnection, hasSession);
-    }
-    if (m_recentMenuItem) m_recentMenuItem->Enable(!m_recentConnections.IsEmpty());
+    ISessionPtr session = proto->CreateSession(profile.modeIndex, profile.fields);
+    if (!session) return;
+
+    AddTab(proto, profile.modeIndex, std::move(session), profile, path);
+    m_lastDialogProfile = profile;
 }
 
 void MainFrame::AddRecentConnection(const wxString& path) {
@@ -536,92 +656,48 @@ void MainFrame::SaveRecentConnections() {
     settings::UISettings::Instance().SetRecentConnectionsPacked(packed);
 }
 
-bool MainFrame::IsModified() const {
-    if (!m_activeProfile) return false;
-    if (!m_savedProfile) return true;
-    return *m_activeProfile != *m_savedProfile;
-}
+void MainFrame::SaveCurrentProfile(bool saveAs, int index) {
+    if (index == -1) index = m_activeTabIndex;
+    if (index < 0 || index >= (int)m_tabs.size()) return;
+    auto& tab = m_tabs[index];
+    if (!tab->activeProfile) return;
 
-wxString MainFrame::GetDisplayName() const {
-    if (m_currentProfilePath.IsEmpty()) return _("Untitled");
-    return wxFileName(m_currentProfilePath).GetName();
-}
-
-void MainFrame::UpdateTitle() {
-    wxString title = _("IndComm");
-    if (m_activeProfile) {
-        title += " - " + GetDisplayName();
-        if (IsModified()) title += " *";
-    }
-    SetTitle(title);
-}
-
-void MainFrame::SaveCurrentProfile() {
-    if (!m_activeProfile) return;
-
-    if (m_currentProfilePath.IsEmpty()) {
-        SaveCurrentProfileAs();
-        return;
-    }
-
-    auto* proto = GetActiveProtocol();
+    auto* proto = ProtocolRegistry::Instance().Find(tab->activeProfile->protocolId);
     if (!proto) return;
 
-    if (ConnectionProfile::Save(m_currentProfilePath, m_activeProfile->protocolId,
-                                m_activeProfile->modeIndex, proto, m_activeProfile->fields,
-                                m_activeProfile->session)) {
-        m_savedProfile = m_activeProfile;
-        m_lastDialogProfile = m_activeProfile;
-        AddRecentConnection(m_currentProfilePath);
-        UpdateTitle();
-        ICU_SPDLOG_INFO(_("Profile saved: %s"), m_currentProfilePath);
-    } else {
-        wxMessageBox(_("Failed to save connection profile.\n\nPlease check if the target folder is "
-                       "writable, or blocked by Windows Defender."),
-                     _("Error"), wxOK | wxICON_ERROR, this);
-    }
-}
+    if (saveAs || tab->profilePath.IsEmpty()) {
+        const wxString defaultName =
+            tab->profilePath.IsEmpty()
+                ? ConnectionProfile::MakeDefaultFileName(proto, tab->activeProfile->modeIndex,
+                                                         tab->activeProfile->fields)
+                : wxFileName(tab->profilePath).GetFullName();
 
-void MainFrame::SaveCurrentProfileAs() {
-    if (!m_activeProfile) return;
+        wxString defaultDir = tab->profilePath.IsEmpty() ? wxStandardPaths::Get().GetDocumentsDir()
+                                                         : wxFileName(tab->profilePath).GetPath();
 
-    auto* proto = GetActiveProtocol();
-    if (!proto) return;
+        wxFileDialog dlg(this, _("Save Connection Profile"), defaultDir, defaultName,
+                         "Connection files (*.json)|*.json", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+        if (dlg.ShowModal() != wxID_OK) return;
 
-    const wxString defaultName =
-        m_currentProfilePath.IsEmpty()
-            ? ConnectionProfile::MakeDefaultFileName(proto, m_activeProfile->modeIndex,
-                                                     m_activeProfile->fields)
-            : wxFileName(m_currentProfilePath).GetFullName();
+        wxString path = dlg.GetPath();
+        if (path.IsEmpty()) return;
 
-    wxString defaultDir;
-    if (!m_currentProfilePath.IsEmpty()) {
-        defaultDir = wxFileName(m_currentProfilePath).GetPath();
-    } else {
-        defaultDir = wxStandardPaths::Get().GetDocumentsDir();
+        wxFileName fn(path);
+        if (fn.GetExt().Lower() != "json") {
+            fn.SetExt("json");
+            path = fn.GetFullPath();
+        }
+
+        tab->profilePath = path;
     }
 
-    wxFileDialog dlg(this, _("Save Connection Profile"), defaultDir, defaultName,
-                     "Connection files (*.json)|*.json", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
-    if (dlg.ShowModal() != wxID_OK) return;
-
-    wxString path = dlg.GetPath();
-    if (path.IsEmpty()) return;
-
-    wxFileName fn(path);
-    if (fn.GetExt().Lower() != "json") {
-        fn.SetExt("json");
-        path = fn.GetFullPath();
-    }
-
-    if (ConnectionProfile::Save(path, m_activeProfile->protocolId, m_activeProfile->modeIndex,
-                                proto, m_activeProfile->fields, m_activeProfile->session)) {
-        m_currentProfilePath = path;
-        m_savedProfile = m_activeProfile;
-        m_lastDialogProfile = m_activeProfile;
-        AddRecentConnection(path);
-        UpdateTitle();
-        ICU_SPDLOG_INFO(_("Profile saved as: %s"), path);
+    if (ConnectionProfile::Save(tab->profilePath, tab->activeProfile->protocolId,
+                                tab->activeProfile->modeIndex, proto, tab->activeProfile->fields,
+                                tab->activeProfile->session)) {
+        tab->savedProfile = tab->activeProfile;
+        AddRecentConnection(tab->profilePath);
+        UpdateTabTitle(index);
+        ICU_SPDLOG_INFO(_("Profile saved: %s"), tab->profilePath);
     } else {
         wxMessageBox(_("Failed to save connection profile.\n\nPlease check if the target folder is "
                        "writable, or blocked by Windows Defender."),
@@ -631,12 +707,12 @@ void MainFrame::SaveCurrentProfileAs() {
 
 void MainFrame::OnSaveConnection(wxCommandEvent&) {
     SPDLOG_INFO(_("User clicked Save Connection"));
-    SaveCurrentProfile();
+    SaveCurrentProfile(false);
 }
 
 void MainFrame::OnSaveConnectionAs(wxCommandEvent&) {
     SPDLOG_INFO(_("User clicked Save Connection As"));
-    SaveCurrentProfileAs();
+    SaveCurrentProfile(true);
 }
 
 void MainFrame::MinimizeToTray() {
@@ -660,14 +736,6 @@ void MainFrame::OnMenuOpenProtocol(wxCommandEvent& evt) {
     }
 
     IProtocol* proto = it->second;
-    ICU_SPDLOG_INFO(_("User invoked New Connection for protocol: %s"),
-                    wxString::FromUTF8(proto->Id().c_str()));
-
-    if (m_sessionMgr.Active()) {
-        wxMessageBox(_("Please close the current connection first."), _("Notice"),
-                     wxOK | wxICON_WARNING, this);
-        return;
-    }
 
     std::map<std::string, FieldValue> initial;
     int initialMode = 0;
@@ -685,99 +753,11 @@ void MainFrame::OnMenuOpenProtocol(wxCommandEvent& evt) {
     profile.fields = dlg.GetValues();
 
     m_lastDialogProfile = profile;
-    m_activeProfile = profile;
-    m_savedProfile.reset();
-    m_currentProfilePath.Clear();
-
-    CreateAndOpenSession(profile);
-    UpdateTitle();
-}
-
-IProtocol* MainFrame::GetActiveProtocol() const {
-    if (!m_activeProfile) return nullptr;
-    return ProtocolRegistry::Instance().Find(m_activeProfile->protocolId);
-}
-
-void MainFrame::CreateAndOpenSession(const ActiveProfile& profile) {
-    auto* proto = ProtocolRegistry::Instance().Find(profile.protocolId);
-    if (!proto) return;
 
     ISessionPtr session = proto->CreateSession(profile.modeIndex, profile.fields);
     if (!session) return;
 
-    ISession* rawPtr = session.get();
-    const std::string target = rawPtr->Target();
-
-    m_sessionMgr.SetActive(std::move(session));
-
-    ShowSessionPage(proto, profile.modeIndex, rawPtr);
-
-    if (m_sessionPanel) {
-        m_sessionPanel->OnRequestConfigure([this]() {
-            SPDLOG_INFO(_("User clicked Configure Connection"));
-            auto* p = GetActiveProtocol();
-            if (!p || !m_activeProfile) return;
-
-            GenericProtocolDialog dlg(this, p, m_activeProfile->modeIndex, m_activeProfile->fields);
-            if (dlg.ShowModal() != wxID_OK) return;
-
-            ActiveProfile newP;
-            newP.protocolId = p->Id();
-            newP.modeIndex = dlg.GetModeIndex();
-            newP.fields = dlg.GetValues();
-            newP.session = m_activeProfile->session;
-
-            m_activeProfile = newP;
-            m_lastDialogProfile = newP;
-            UpdateTitle();
-        });
-
-        m_sessionPanel->OnRequestOpen([this]() {
-            SPDLOG_INFO(_("User clicked Open Connection"));
-            if (!m_activeProfile) return;
-            CallAfter([this]() {
-                m_sessionMgr.Close();
-                ShowWelcomePage();
-                UpdateConnectionUI();
-                CreateAndOpenSession(*m_activeProfile);
-                UpdateTitle();
-            });
-        });
-
-        m_sessionPanel->OnStateUpdated([this](SessionState st) {
-            if (!m_sessionMgr.Active()) return;
-            UpdateConnectionUI();
-            if (auto* s = m_sessionMgr.Active()) {
-                const wxString targetStr = wxString::FromUTF8(s->Target().c_str());
-                switch (st) {
-                    case SessionState::Connected:
-                        if (s->IsServerMode())
-                            SetStatusText(wxString::Format(_("Listening on %s"), targetStr));
-                        else
-                            SetStatusText(wxString::Format(
-                                _("Connected [%s]: %s"),
-                                wxString::FromUTF8(s->TransportName().c_str()), targetStr));
-                        break;
-                    case SessionState::Connecting:
-                        SetStatusText(wxString::Format(_("Connecting to %s ..."), targetStr));
-                        break;
-                    case SessionState::Reconnecting:
-                        SetStatusText(wxString::Format(_("Reconnecting to %s ..."), targetStr));
-                        break;
-                    default:
-                        SetStatusText(_("Disconnected"));
-                        break;
-                }
-            }
-        });
-    }
-
-    if (!rawPtr->Open()) {
-        SPDLOG_ERROR(_("Failed to open session"));
-    }
-
-    SetStatusText(wxString::Format(_("Connecting to %s ..."), wxString::FromUTF8(target.c_str())));
-    UpdateConnectionUI();
+    AddTab(proto, profile.modeIndex, std::move(session), profile, wxEmptyString);
 }
 
 }  // namespace icu

@@ -1,27 +1,27 @@
 #pragma once
 
-#include <wx/simplebook.h>
+#include <wx/aui/auibook.h>
 #include <wx/wx.h>
 
 #include <map>
+#include <memory>
 #include <optional>
+#include <vector>
 
 #include "core/IProtocol.h"
 #include "core/ProtocolTypes.h"
-#include "core/SessionManager.h"
 
 namespace icu {
 
-class ProtocolSessionPanel;
+class SessionPanel;
 class LogFrame;
 class AppTaskBarIcon;
-class SessionPanel;
 
 enum MenuId {
     idMenuQuit = 1000,
     idMenuAbout,
     idMenuLog,
-    idMenuSettingsOptions,  // ★ 新增：设置选项菜单
+    idMenuSettingsOptions,
 
     idMenuOpenConnection,
     idMenuSaveConnection,
@@ -37,26 +37,33 @@ enum MenuId {
     idMenuRecentBase = 2000,
 };
 
+struct TabContext {
+    IProtocol* protocol = nullptr;
+    int modeIndex = 0;
+    ISessionPtr session;
+    SessionPanel* panel = nullptr;
+    std::optional<ActiveProfile> activeProfile;
+    std::optional<ActiveProfile> savedProfile;
+    wxString profilePath;
+};
+
 class MainFrame : public wxFrame {
 public:
     MainFrame(wxFrame* parent, const wxString& title);
     ~MainFrame() override;
 
 private:
-    wxTextCtrl* m_logTextCtrl = nullptr;
-
     wxMenu* m_fileMenu = nullptr;
     wxMenu* m_recentMenu = nullptr;
     wxMenuItem* m_recentMenuItem = nullptr;
 
-    wxSimplebook* m_contentBook = nullptr;
-    SessionPanel* m_sessionPanel = nullptr;
+    wxAuiNotebook* m_notebook = nullptr;
+    std::vector<std::unique_ptr<TabContext>> m_tabs;
+    int m_activeTabIndex = -1;
 
     LogFrame* m_logFrame = nullptr;
     AppTaskBarIcon* m_trayIcon = nullptr;
     bool m_forceExit = false;
-
-    SessionManager m_sessionMgr;
 
     std::map<int, IProtocol*> m_protocolMenuMap;
 
@@ -64,15 +71,12 @@ private:
     static constexpr size_t MAX_RECENT = 5;
 
     std::optional<ActiveProfile> m_lastDialogProfile;
-    std::optional<ActiveProfile> m_activeProfile;
-    std::optional<ActiveProfile> m_savedProfile;
-    wxString m_currentProfilePath;
 
     void OnClose(wxCloseEvent& evt);
     void OnQuit(wxCommandEvent& evt);
     void OnAbout(wxCommandEvent& evt);
     void OnShowLog(wxCommandEvent& evt);
-    void OnShowSettings(wxCommandEvent& evt);  // ★ 新增：显示设置窗口
+    void OnShowSettings(wxCommandEvent& evt);
 
     void OnOpenConnection(wxCommandEvent& evt);
     void OnSaveConnection(wxCommandEvent& evt);
@@ -87,26 +91,27 @@ private:
 
     void BuildMenuBar();
     void BuildLayout();
-    void UpdateConnectionUI();
+    void UpdateUIState();
     void AddRecentConnection(const wxString& path);
     void RebuildRecentMenu();
     void LoadRecentConnections();
     void SaveRecentConnections();
 
-    void ShowWelcomePage();
-    void ShowSessionPage(IProtocol* proto, int modeIndex, ISession* session);
+    void AddTab(IProtocol* proto, int modeIndex, ISessionPtr session, const ActiveProfile& profile,
+                const wxString& path);
+    void RemoveTab(int index, bool skipNotebookDelete = false);
+    TabContext* GetActiveTab();
 
-    IProtocol* GetActiveProtocol() const;
-    void CreateAndOpenSession(const ActiveProfile& profile);
-
-    bool IsModified() const;
-    wxString GetDisplayName() const;
-    void UpdateTitle();
-    void SaveCurrentProfile();
-    void SaveCurrentProfileAs();
+    bool IsModified(int index = -1) const;
+    wxString GetDisplayName(int index = -1) const;
+    void UpdateTabTitle(int index);
+    void SaveCurrentProfile(bool saveAs = false, int index = -1);
 
     void MinimizeToTray();
     void RestoreFromTray();
+
+    void OnNotebookPageChanged(wxAuiNotebookEvent& evt);
+    void OnNotebookPageClose(wxAuiNotebookEvent& evt);
 
     wxDECLARE_EVENT_TABLE();
 };
