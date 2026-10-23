@@ -1,12 +1,3 @@
-// =========================================================================
-// 必须在所有 wx 头文件之前 include windows.h 并 #undef GetClassInfo
-//
-// 原因：windows.h 会定义
-//     #define GetClassInfo GetClassInfoW
-// 这会污染 wxWidgets 里的 virtual 方法名，导致 override 检查失败。
-// 提前 include + undef，避免冲突。
-// =========================================================================
-
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -17,7 +8,9 @@
 #endif
 
 #include <wx/artprov.h>
+#include <wx/filename.h>
 #include <wx/icon.h>
+#include <wx/stdpaths.h>
 
 #include "AppTaskBarIcon.h"
 #include "log/Log.h"
@@ -30,7 +23,6 @@ enum {
 };
 
 // clang-format off
-// wxWidgets 事件表宏展开后是一条语句，clang-format 会把后续行的缩进逐级累积
 wxBEGIN_EVENT_TABLE(AppTaskBarIcon, wxTaskBarIcon) EVT_MENU(idTrayShow, AppTaskBarIcon::OnMenuShow)
     EVT_MENU(idTrayExit, AppTaskBarIcon::OnMenuExit)
     EVT_TASKBAR_LEFT_DCLICK(AppTaskBarIcon::OnDoubleClick) wxEND_EVENT_TABLE();
@@ -39,41 +31,20 @@ wxBEGIN_EVENT_TABLE(AppTaskBarIcon, wxTaskBarIcon) EVT_MENU(idTrayShow, AppTaskB
 AppTaskBarIcon::AppTaskBarIcon() {
 #ifdef _WIN32
     HINSTANCE hInst = ::GetModuleHandleW(nullptr);
-
-    // ★ 加载 ID 为 1 的主图标，使用系统小图标尺寸 (SM_CXSMICON)
-    HICON hIcon = static_cast<HICON>(
-        ::LoadImageW(hInst, MAKEINTRESOURCEW(1), IMAGE_ICON, ::GetSystemMetrics(SM_CXSMICON),
-                     ::GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR));
-
-    if (hIcon == nullptr) {
-        // 降级：系统默认应用图标
-        hIcon = static_cast<HICON>(::LoadImageW(nullptr, MAKEINTRESOURCEW(32512), IMAGE_ICON,
-                                                ::GetSystemMetrics(SM_CXSMICON),
-                                                ::GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR));
+    HICON hIcon =
+        (HICON)::LoadImageW(hInst, MAKEINTRESOURCEW(1), IMAGE_ICON, ::GetSystemMetrics(SM_CXSMICON),
+                            ::GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
+    if (hIcon) {
+        wxIcon icon;
+        icon.CreateFromHICON(hIcon);
+        SetIcon(icon, _("Industrial Communication Utility"));
+    } else {
+        wxIcon fallback = wxArtProvider::GetIcon(wxART_INFORMATION, wxART_OTHER, wxSize(16, 16));
+        SetIcon(fallback, _("Industrial Communication Utility"));
     }
-
-    if (hIcon == nullptr) {
-        SPDLOG_WARN(_("No valid icon for taskbar; tray icon unavailable"));
-        return;
-    }
-
-    wxIcon icon;
-    icon.CreateFromHICON(hIcon);
-    if (!icon.IsOk()) {
-        SPDLOG_WARN(_("Failed to create wxIcon from HICON"));
-        ::DestroyIcon(hIcon);
-        return;
-    }
-
-    SetIcon(icon, _("Industrial Communication Utility"));
-    SPDLOG_INFO(_("Taskbar icon set successfully"));
 #else
     wxIcon icon = wxArtProvider::GetIcon(wxART_INFORMATION, wxART_OTHER, wxSize(16, 16));
-    if (!icon.IsOk()) {
-        SPDLOG_WARN(_("No valid icon for taskbar; tray icon unavailable"));
-        return;
-    }
-    SetIcon(icon, _("Industrial Communication Utility"));
+    if (icon.IsOk()) SetIcon(icon, _("Industrial Communication Utility"));
 #endif
 }
 
@@ -88,11 +59,9 @@ wxMenu* AppTaskBarIcon::CreatePopupMenu() {
 void AppTaskBarIcon::OnMenuShow(wxCommandEvent&) {
     if (m_showCb) m_showCb();
 }
-
 void AppTaskBarIcon::OnMenuExit(wxCommandEvent&) {
     if (m_exitCb) m_exitCb();
 }
-
 void AppTaskBarIcon::OnDoubleClick(wxTaskBarIconEvent&) {
     if (m_showCb) m_showCb();
 }

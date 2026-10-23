@@ -13,11 +13,12 @@ add_library(icu_core_test STATIC
     "${CMAKE_SOURCE_DIR}/src/core/StreamSession.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/SessionManager.cpp"
     "${CMAKE_SOURCE_DIR}/src/config/ConnectionProfile.cpp"
-    "${CMAKE_SOURCE_DIR}/src/protocols/tcp/TcpProtocol.cpp"
-    "${CMAKE_SOURCE_DIR}/src/protocols/tcp/TcpTransport.cpp"
+    "${CMAKE_SOURCE_DIR}/src/protocols/tcpip/TcpIpProtocol.cpp"
+    "${CMAKE_SOURCE_DIR}/src/protocols/tcpip/TcpTransport.cpp"
+    "${CMAKE_SOURCE_DIR}/src/protocols/tcpip/TcpSendStep.cpp"
+    "${CMAKE_SOURCE_DIR}/src/protocols/tcpip/UdpTransport.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/serial/SerialTransport.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/serial/SerialProtocol.cpp"
-    "${CMAKE_SOURCE_DIR}/src/protocols/tcp/TcpSendStep.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/modbus/ModbusReadStep.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/modbus/ModbusWriteStep.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/modbus/ModbusProtocol.cpp"
@@ -81,7 +82,7 @@ target_include_directories(icu_tests PRIVATE
 
 set_target_properties(icu_tests PROPERTIES WIN32_EXECUTABLE FALSE)
 
-# ★ 显式链接 modbus 和 Paho，确保链接器能找到符号
+# 显式链接 modbus 和 Paho，确保链接器能找到符号
 target_link_libraries(icu_tests PRIVATE
     icu_core_test
     doctest

@@ -2,7 +2,7 @@
 
 > **文档定位**：本文档既是项目开发文档，也是 AI 辅助开发的 Skill 定义。所有开发按本文档推进，AI 在协助编码时必须遵循本文档的架构、约定和任务清单。
 >
-> **本版重点**：阶段 13（应用设置完善）已完成。**当前准备进入阶段 14（发布准备）。**
+> **本版重点**：阶段 15（统一 TCP/UDP 协议）已完成。当前支持 TCP/IP、串口、Modbus、MQTT 四大类协议。
 
 ---
 
@@ -61,6 +61,7 @@
 | 语言 | C++17 |
 | GUI | wxWidgets 3.3（MSYS2 UCRT64 GCC 16.1.0） |
 | 构建 | CMake ≥ 3.20 + MinGW Makefiles / Ninja |
+| 打包 | CPack + NSIS |
 | 日志 | spdlog（header-only） |
 | 测试 | doctest（header-only） |
 | JSON | nlohmann/json（submodule） |
@@ -72,7 +73,6 @@
 | 图表 | wxGraphicsContext 自绘 |
 | CI | GitHub Actions |
 | 覆盖率 | gcovr + GCC `--coverage` |
-| 调试器 | LLDB-DAP（GDB 17.2 与 cpptools MI 握手失败）；CLI 用 gdb |
 
 ---
 
@@ -81,7 +81,8 @@
 ### 2.1 协议是一等公民
 
 **协议是一个整体，不是「客户端」和「服务器」两个东西。**
-「客户端 / 服务器」是 TCP 或 Modbus 协议**内部的一种模式（Mode）**。一个 `.json` 文件 = 一份协议配置（含 Mode 与测试步骤），**不是两份**。
+「客户端 / 服务器」是协议**内部的一种模式（Mode）或角色（Role）**。
+一个 `.json` 文件 = 一份协议配置，**不是两份**。
 
 ### 2.2 UI 完全数据驱动且统一
 
@@ -92,21 +93,19 @@
 
 ### 2.3 状态机与重连标准化
 
-- **底层差异收敛**：所有会话继承 `ISession`。字节流继承 `StreamSession`，事务型继承 `ITransactionSession`，发布订阅型继承 `ISession`（通过 Paho 内置重连）。
-- **状态与重连抽象**：任何协议都组合 `SessionStateMachine` 管理生命周期状态，组合 `ReconnectConfig` 获得统一的重连配置与 UI 字段。
+- **底层差异收敛**：所有会话继承 `ISession`。字节流继承 `StreamSession`，事务型继承 `ITransactionSession`。
+- **状态与重连抽象**：任何协议都组合 `SessionStateMachine` 管理生命周期状态，组合 `ReconnectConfig` 获得统一的重连配置与 UI 字段（UDP 等无连接协议可忽略重连）。
 
 ### 2.4 自动化测试引擎通用化
 
-- **动作统一**：无论 TCP、串口、Modbus 还是 MQTT，测试步骤统一抽象为 `read`（读取/接收）、`write`（写入/发送）和 `delay`（延时）。
+- **动作统一**：无论 TCP、UDP、串口、Modbus 还是 MQTT，测试步骤统一抽象为 `read`、`write` 和 `delay`。
 - 所有的测试步骤抽象为 `ITestStep`。由具体协议通过 `IProtocol::CreateTestStep` 工厂生成。
-- **批量生成**：支持在 UI 上选定一个基准步骤，通过设置“重复次数”、“间隔”和“自增/自减”快速生成一系列测试步骤。
 - `TestRunner` 纯粹负责流程调度，支持自动全跑与交互单步阻断。
 
 ### 2.5 分层清晰，依赖单向
 
 - `app/` -> `ui/` -> `protocols/` -> `core/`。
 - `core/` 只依赖 C++ STL 和 wxBase（不包含任何 GUI 元素）。
-- **核心逻辑抽离为 `icu_core_lib` 静态库，同时服务 GUI (`IndComm.exe`) 与 CLI (`indcomm-cli.exe`)。**
 
 ### 2.6 单一数据源
 
@@ -115,106 +114,23 @@
 - **协议描述**：唯一来源是 `IProtocol::FieldsForMode()` 与 `VariableParamsFields()`
 - **历史数据**：唯一来源是 SQLite（`test_history.db`）
 
-### 2.7 UI 生命周期安全
-
-**任何"用户操作触发 UI 自身销毁"的场景，都必须用 `CallAfter` 延迟。**
-**任何"会被异步回调引用"的对象，销毁前必须先清空它持有的所有回调。**
-
 ---
 
 ## 3. 架构设计
 
 ### 3.1 底层会话架构
 
-所有协议最终都通过 `SessionManager` 管理唯一的 `ISessionPtr`。
-
 | 协议类型 | 会话实现 | 特点 |
 |---|---|---|
-| 字节流 (TCP, Serial) | `StreamSession` | 组合 `ITransport` 和 `ICodec`，底层做半包/粘包处理。 |
-| 事务型 (Modbus) | `ModbusSession` | 组合 `ModbusLib`，后台起心跳线程管理连接状态与重连。 |
-| 发布订阅型 (MQTT) | `MqttSession` | 封装 `paho.mqtt.cpp`，处理主题订阅与消息分发，内置重连。 |
-
-### 3.2 统一的 UI 生成逻辑
-
-`SessionPanel` 采用 `wxSplitterWindow` 左右分栏。左侧为全局变量池，右侧使用 `wxNotebook` 提供三种模式（手动、交互、自动、图表）。在手动模式下，根据 `ISession` 动态生成操作区。
-
-### 3.3 自动化测试执行流
-
-```
-UI/CLI 加载 test_flow (JSON)
-    -> 实例化 TestRunner (包含多个 ITestStep)
-    -> 在后台线程按顺序运行：
-        -> Execute() 从 variables 中读取 params，发送指令
-        -> 等待响应
-        -> Assert() 进行比对
-        -> Extract() 提取变量存入全局池
-        -> 触发 RecordData() 写入 SQLite 并推送到实时图表
-    -> 抛出回调更新 UI 或 CLI 终端
-```
-
-### 3.4 会话销毁顺序
-
-```
-SessionManager::SetActive(new) 或 Close()
-           │
-           ▼
-DetachAndClose()：
-   1. session->DetachAllCallbacks()          ← 先清所有回调
-           │
-           ▼
-   2. session->Close()                       ← transport 触发 NotifyState(Closed)
-           │
-           ▼
-   3. m_active.reset()                       ← 此时才能真正销毁
-```
+| 字节流 (TCP/IP, Serial) | `StreamSession` | 组合 `ITransport` 和 `ICodec`。 |
+| 事务型 (Modbus) | `ModbusSession` | 组合 `ModbusLib`，后台起心跳线程。 |
+| 发布订阅型 (MQTT) | `MqttSession` | 封装 `paho.mqtt.cpp`。 |
 
 ---
 
 ## 4. 关键接口
 
-### 4.1 `ISession`（统一基类）
-```cpp
-class ISession {
-public:
-    virtual bool Open() = 0;
-    virtual void Close() = 0;
-    virtual SessionState State() const = 0;
-    virtual bool IsConnected() const = 0;
-    virtual std::string Target() const = 0;
-    virtual std::string TransportName() const = 0;
-    virtual bool IsServerMode() const { return false; }
-
-    using StateCallback = std::function<void(SessionState)>;
-    virtual void OnStateChanged(StateCallback cb) = 0;
-    virtual void DetachAllCallbacks() = 0;
-};
-```
-
-### 4.2 `ITransactionSession`（事务型扩展）
-```cpp
-class ITransactionSession : public ISession {
-public:
-    virtual TransactionResponse Execute(const TransactionRequest& request) = 0;
-    virtual TransactionResponse Execute(const std::map<std::string, FieldValue>& fields) = 0;
-
-    using LogCallback = std::function<void(const std::string&)>;
-    virtual void OnLog(LogCallback cb) = 0;
-};
-```
-
-### 4.3 `ITestStep`（自动化测试步骤）
-```cpp
-class ITestStep {
-public:
-    virtual ~ITestStep() = default;
-    virtual std::string Name() const = 0;
-    virtual TestResult Execute(ISession* session, std::map<std::string, CommVariable>& vars) = 0;
-    virtual bool Assert(const TestResult& result, std::string& outErrorMsg) = 0;
-    virtual std::vector<std::string> Extract(const TestResult& result, std::map<std::string, CommVariable>& vars) = 0;
-};
-```
-
-### 4.4 `IProtocol`（协议接口）
+### 4.1 `IProtocol`（协议接口）
 ```cpp
 class IProtocol {
 public:
@@ -224,7 +140,6 @@ public:
     virtual std::vector<std::string> ModeNames() const = 0;
     virtual std::vector<FieldDescriptor> FieldsForMode(int modeIndex) const = 0;
 
-    // 返回该协议通讯变量的专属参数描述（驱动 UI 自动生成操作表单）
     virtual std::vector<FieldDescriptor> VariableParamsFields() const { return {}; }
 
     virtual ISessionPtr CreateSession(int modeIndex, const std::map<std::string, FieldValue>& fields) = 0;
@@ -234,85 +149,27 @@ public:
 };
 ```
 
-### 4.5 `FieldDescriptor`（扩展分组）
-```cpp
-struct FieldDescriptor {
-    std::string key;
-    std::string label;
-    FieldValue::Type type = FieldValue::Type::String;
-    FieldValue defaultValue;
-    int minValue = 0;
-    int maxValue = 100;
-    std::vector<std::pair<std::string, std::string>> choices;
-
-    // 支持 UI 分组，为空则平铺
-    std::string group;
-};
-```
-
-### 4.6 `SessionManager`
-```cpp
-class SessionManager {
-public:
-    void SetActive(ISessionPtr s);   // 先 DetachAndClose 旧会话
-    void Close();                    // 走 DetachAndClose
-    bool IsConnected() const;
-    ISession* Active() const;
-    SessionState ActiveState() const;
-
-private:
-    void DetachAndClose();
-    ISessionPtr m_active;
-};
-```
-
 ---
 
 ## 5. 目录结构
 
-### 5.1 当前目录
-
 ```text
 IndComm/
 ├── src/
-│   ├── main.cpp
 │   ├── app/
-│   ├── cli/                             ← 独立 CLI 入口
-│   │   └── main.cpp
+│   ├── cli/
 │   ├── core/
-│   │   ├── ICodec.h
-│   │   ├── ITransport.h
-│   │   ├── IProtocol.h
-│   │   ├── ISession.h                   ← 所有会话的统一基类
-│   │   ├── ITransactionSession.h        ← 事务型会话扩展接口
-│   │   ├── ReconnectConfig.h            ← 统一重连配置与 UI 字段
-│   │   ├── SessionStateMachine.h        ← 统一状态流转与重连计数
-│   │   ├── ITestStep.h                  ← 测试步骤接口
-│   │   ├── TestRunner.h/.cpp            ← 测试调度器
-│   │   ├── ProtocolRegistry.h/.cpp
-│   │   ├── ProtocolTypes.h/.cpp
-│   │   ├── StreamSession.h/.cpp         ← 字节流会话实现
-│   │   ├── SessionManager.h/.cpp
-│   │   ├── Database.h/.cpp              ← SQLite 封装
-│   │   ├── BytesParser.h                ← 二进制数据解析
-│   │   └── DelayStep.h                  ← 通用的延时步骤
 │   ├── protocols/
-│   │   ├── tcp/
+│   │   ├── tcpip/                       ← 统一处理 TCP 和 UDP
+│   │   │   ├── TcpIpProtocol.h/.cpp
+│   │   │   ├── TcpTransport.h/.cpp
+│   │   │   ├── UdpTransport.h/.cpp
+│   │   │   └── TcpSendStep.h/.cpp
 │   │   ├── serial/
 │   │   ├── modbus/
 │   │   ├── mqtt/
 │   │   └── codec/
 │   ├── ui/
-│   │   ├── GenericProtocolDialog.h/.cpp
-│   │   ├── SessionPanel.h/.cpp          ← 唯一的动态生成会话面板
-│   │   ├── TestStepEditDialog.h/.cpp    ← 步骤可视化编辑器
-│   │   ├── VariableEditDialog.h/.cpp    ← 变量可视化编辑器
-│   │   ├── HistoryDialog.h/.cpp         ← 历史查询窗口
-│   │   ├── ChartPanel.h/.cpp            ← 实时折线图组件
-│   │   ├── SettingsDialog.h/.cpp        ← 统一应用设置对话框
-│   │   ├── LogFrame.h/.cpp
-│   │   ├── LogSink.h/.cpp
-│   │   └── AppTaskBarIcon.h/.cpp
 │   ├── settings/
 │   ├── config/
 │   └── log/
@@ -401,32 +258,29 @@ settings/
 ```json
 {
   "connection": {
-    "protocol": "mqtt",
-    "mode": "Client",
-    "brokerHost": "127.0.0.1",
-    "brokerPort": 1883,
-    "clientId": "IndComm_Test"
+    "protocol": "tcp",
+    "mode": "TCP",
+    "role": "Client",
+    "host": "127.0.0.1",
+    "port": 5020
   },
   "session": {
     "active_mode": "auto",
     "variables": {
-      "my_topic": {
+      "my_data": {
         "type": "string",
         "access": "RW",
         "enabled": true,
-        "params": {
-          "topic": "test/topic",
-          "qos": 0
-        }
+        "params": {}
       }
     },
     "auto_mode": {
       "test_flow": [
         {
-          "name": "Publish Hello",
+          "name": "Send Hello",
           "action": "write",
-          "variable": "my_topic",
-          "value": "Hello MQTT",
+          "variable": "my_data",
+          "value": "Hello TCP",
           "wait_ms": 100
         }
       ]
@@ -461,7 +315,7 @@ settings/
 
 | 协议 | ID | 模式 | 传输 | 编解码 | 状态 |
 |---|---|---|---|---|---|
-| **TCP/IP** | `tcp` | Client / Server | TcpClient / TcpServer | Raw | ✅ 完成 |
+| **TCP/IP** | `tcp` | TCP / UDP | TcpClient / TcpServer / UdpTransport | Raw | ✅ 完成 |
 | **串口** | `serial` | — | SerialTransport | Raw | ✅ 完成 |
 | **Modbus** | `modbus` | TCP / RTU / ASCII | 内置 (ModbusLib) | 事务型 | ✅ 完成 |
 | **MQTT** | `mqtt` | Client | Paho MQTT C++ | 内置 | ✅ 完成 |
@@ -526,6 +380,7 @@ scripts/test.sh
 - 格式检查用 **pip 装固定版本的 clang-format 19.1.5**
 - 文档体系见 `docs/` 目录
 - `CHANGELOG.md` 遵循 [Keep a Changelog](https://keepachangelog.com/)。
+- 发布时通过 GitHub Actions 自动运行 `cpack` 并上传安装包与免安装压缩包至 Releases。
 
 ---
 
@@ -540,15 +395,13 @@ scripts/test.sh
 - [x] **阶段 11：SQLite 数据持久化与实时曲线**
 - [x] **阶段 12：MQTT 协议接入**
 - [x] **阶段 13：应用设置完善**
-  - [x] 建立统一的 `SettingsDialog` 窗口，分类管理设置。
-  - [x] 将 HEX 显示、时间戳、自动滚动等偏好持久化到 `UISettings`。
-  - [x] 实现设置修改后的事件广播，令所有会话面板即改即生效。
-  - [x] 落地字体、主题、关闭最小化到托盘的配置逻辑。
-  - [x] 引入多尺寸应用图标。
-
-### 阶段 14：发布准备 ⬜ 进行中
-- [ ] 编译打包脚本。
-- [ ] 安装程序与发布文档。
+- [x] **阶段 14：发布准备**
+  - [x] 引入 CPack 生成免安装 ZIP 包。
+  - [x] 集成 NSIS 生成标准 Windows 安装程序。
+  - [x] 配置 CI 自动发布到 GitHub Releases。
+- [x] **阶段 15：TCP/IP 协议栈统一**
+  - [x] 将原有的 TCP 协议升级为 `TcpIpProtocol`，支持 `TCP` 和 `UDP` 两种模式。
+  - [x] 采用 `role` 字段（Client / Server）统一角色区分，界面根据 Mode 自动生成。
 
 ---
 
@@ -557,14 +410,15 @@ scripts/test.sh
 ### 13.1 上下文理解
 
 **当前状态**：
-- 阶段 1~13 已完成（全协议栈接入 + 自动化引擎 + 数据持久化 + 全局设置中心）。
+- 阶段 1~15 已全部完成（全协议栈接入 + 自动化引擎 + 数据持久化 + 全局设置中心 + 自动打包 + UDP 支持）。
 
 ### 13.2 代码生成规范
 
 **AI 严禁**：
 - 为客户端 / 服务器分别创建协议类
-- 在 `GenericProtocolDialog` 或 `SessionPanel` 里加 `if (protocol == "tcp")`
+- 在 `GenericProtocolDialog` 或 `SessionPanel` 里加 `if (protocol == "tcp")` 或 `if (protocol == "udp")`
 - 在 `core/` 或 `protocols/` 里 include `ui/` 或 `settings/`
+- 将 UDP 的逻辑硬塞进 `TcpTransport` 或 `TcpProtocol` 中
 
 ---
 
@@ -579,6 +433,8 @@ scripts/test.sh
 | **SQLite 数据记录与图表** | 以 `.json` 路径为关联键，实现历史与实时数据可视化 |
 | **引入 Paho MQTT (ADR 0012)** | 工业级稳定性，CMake 原生支持，不引入 Boost 依赖 |
 | **统一应用设置中心 (ADR 0013)** | 解决配置割裂，全局偏好持久化与即改即生效 |
+| **使用 CPack + NSIS (ADR 0014)** | 自动化生成标准 Windows 安装包与免安装包，接入 CI 流水线 |
+| **统一 TCP/IP 协议 (ADR 0015)** | TCP 和 UDP 同属 TCP/IP 协议族，参照 Modbus 形式合并为一个协议，避免菜单泛滥。 |
 
 ---
 
@@ -586,7 +442,7 @@ scripts/test.sh
 
 | 日期 | 变更 |
 |---|---|
-| 2026-10-23 | 阶段 13 完成：统一 SettingsDialog、偏好持久化、多尺寸图标接入与即改即生效 |
+| 2026-10-25 | 阶段 15 完成：升级 TCP 协议为 TCP/IP，内部统一支持 TCP 和 UDP。 |
 
 ---
 
@@ -608,13 +464,21 @@ scripts/test.sh release       # ctest（Release）
 scripts/test.sh --list        # 列出所有用例
 ```
 
-### A.3 覆盖率
+### A.3 打包
+
+```bash
+cd build-release
+cpack -G ZIP    # 生成免安装 ZIP 压缩包
+cpack -G NSIS   # 生成 Windows 安装程序
+```
+
+### A.4 覆盖率
 
 ```bash
 scripts/coverage.sh
 ```
 
-### A.4 i18n
+### A.5 i18n
 
 ```bash
 scripts/update_i18n.sh
@@ -622,14 +486,14 @@ msgattrib --untranslated resources/i18n/zh_CN/LC_MESSAGES/*.po
 msgattrib --only-fuzzy     resources/i18n/zh_CN/LC_MESSAGES/*.po
 ```
 
-### A.5 格式化与静态分析
+### A.6 格式化与静态分析
 
 ```bash
 scripts/format.sh             # 就地格式化
 scripts/format.sh check       # 只检查（CI 用 19.1.5）
 ```
 
-### A.6 残留进程清理
+### A.7 残留进程清理
 
 ```bash
 taskkill //F //IM IndComm.exe 2>/dev/null || true
@@ -712,24 +576,24 @@ list
 | 3 | 菜单栏 | `文件 / 视图 / 设置 / 帮助` 完整 |
 | 4 | `文件 → 新建连接` | 子菜单顺序：`TCP/IP` → `Serial Port` → `Modbus` → `MQTT` |
 
-### E.3 TCP 客户端测试（nc 做服务器）
+### E.3 TCP 模式测试（nc 做服务器）
 
 **准备**：另开终端 `nc -l -p 5020`。
 
 | 序 | 操作 | 期望 |
 |---|---|---|
 | 1 | `文件 → 新建连接 → TCP/IP` | 弹配置对话框 |
-| 2 | Client 模式，`127.0.0.1:5020`，OK | 状态"连接中…"→"已连接" |
+| 2 | 模式选 `TCP`，角色选 `Client`，填写 `127.0.0.1:5020`，OK | 状态"连接中…"→"已连接" |
 | 3 | 程序发 `hello` | nc 显示 `hello` |
 | 4 | nc 输入 `world` | 程序数据日志 `< world` |
 | 5 | 点"断开连接" | 状态"已断开" |
 | 6 | 点"打开连接" | **直接重连**（不弹框）→"已连接" |
 
-### E.4 TCP 服务器测试（nc 做客户端）
+### E.4 TCP 模式测试（nc 做客户端）
 
 | 序 | 操作 | 期望 |
 |---|---|---|
-| 1 | Server 模式，`0.0.0.0:5030`，OK | 状态栏"正在监听"，状态"监听中" |
+| 1 | 模式选 `TCP`，角色选 `Server`，`0.0.0.0:5030`，OK | 状态栏"正在监听"，状态"监听中" |
 | 2 | `nc 127.0.0.1 5030` | 程序显示 `Client #1 connected`，Clients=1 |
 | 3 | 第二个 `nc` | `Client #2 connected`，Clients=2 |
 | 4 | 客户端 1 发 `hello from #1` | 程序显示 `<#1 hello from #1` |
@@ -737,7 +601,18 @@ list
 | 6 | 关闭客户端 1 | `Client #1 disconnected`，Clients=1 |
 | 7 | 点"停止监听" | 状态"已断开" |
 
-### E.5 串口测试
+### E.5 UDP 模式测试（nc 做接收端）
+
+**准备**：另开终端 `nc -u -l -p 5040`。
+
+| 序 | 操作 | 期望 |
+|---|---|---|
+| 1 | `文件 → 新建连接 → TCP/IP` | 弹配置对话框 |
+| 2 | 模式选 `UDP`，角色选 `Client`，目标 `127.0.0.1:5040`，本地端口 `0`，OK | 状态"已打开"（UDP 无连接，状态可直接就绪） |
+| 3 | 程序发 `hello udp` | nc 终端显示 `hello udp` |
+| 4 | 另开终端 `echo "world udp" \| nc -u 127.0.0.1 <程序本地端口>` | 程序数据日志显示 `< world udp` |
+
+### E.6 串口测试
 
 | 序 | 操作 | 期望 |
 |---|---|---|
@@ -747,7 +622,7 @@ list
 | 4 | 取消 Append newline，再发 `hello` | 对端收到 `hello`（无换行） |
 | 5 | 点"断开连接"再"打开连接" | 重连成功（不弹配置对话框） |
 
-### E.6 MQTT 协议测试（使用 Mosquitto 做 Broker）
+### E.7 MQTT 协议测试（使用 Mosquitto 做 Broker）
 
 **准备**：另开终端启动 `mosquitto -v`（默认监听 1883）。
 
@@ -761,7 +636,7 @@ list
 | 6 | 使用另一个客户端向 `test/topic` 发送 `world` | 程序接收区显示 `< world` |
 | 7 | 关闭 Broker | 状态变为"重连中…"（自动重连生效） |
 
-### E.7 全局设置测试
+### E.8 全局设置测试
 
 | 序 | 操作 | 期望 |
 |---|---|---|
@@ -771,7 +646,16 @@ list
 | 4 | 重启程序 | 上述开关状态保持之前设置的值 |
 | 5 | 勾选“关闭时最小化到托盘”，点“确定” | 点击关闭按钮时直接最小化，不再弹询问框 |
 
-### E.8 异常场景
+### E.9 安装包测试
+
+| 序 | 操作 | 期望 |
+|---|---|---|
+| 1 | 运行 `IndComm-Setup.exe` | 弹出安装向导，可选择安装路径 |
+| 2 | 安装完成后双击桌面快捷方式 | 程序正常启动，图标正确 |
+| 3 | 在开始菜单中寻找 | 存在 IndComm 文件夹及快捷方式 |
+| 4 | 运行卸载程序 | 所有文件被清除，快捷方式消失 |
+
+### E.10 异常场景
 
 | 场景 | 操作 | 期望 |
 |---|---|---|
@@ -781,7 +665,7 @@ list
 | 串口拔掉 | 运行中拔 USB 转串口 | 状态"已断开" |
 | MQTT Broker 不可达 | 连 `127.0.0.1:9999` | 提示超时，并尝试重连 |
 
-### E.9 退出路径测试
+### E.11 退出路径测试
 
 | 序 | 操作 | 期望 |
 |---|---|---|
@@ -803,4 +687,3 @@ tasklist | grep IndComm
 **文档结束。**
 
 > 本文档随项目演进持续更新。任何架构级改动必须先更新本文档，再动代码。
-

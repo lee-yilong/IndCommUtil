@@ -3,7 +3,7 @@
 #include "protocols/modbus/ModbusProtocol.h"
 #include "protocols/mqtt/MqttProtocol.h"
 #include "protocols/serial/SerialProtocol.h"
-#include "protocols/tcp/TcpProtocol.h"
+#include "protocols/tcpip/TcpIpProtocol.h"
 
 namespace icu {
 
@@ -41,7 +41,7 @@ ProtocolKind ProtocolRegistry::KindOf(const std::string& id) const {
 
 void RegisterBuiltinProtocols() {
     auto& reg = ProtocolRegistry::Instance();
-    reg.Register(std::make_unique<TcpProtocol>());
+    reg.Register(std::make_unique<TcpIpProtocol>());
     reg.Register(std::make_unique<SerialProtocol>());
     reg.Register(std::make_unique<ModbusProtocol>());
     reg.Register(std::make_unique<MqttProtocol>());

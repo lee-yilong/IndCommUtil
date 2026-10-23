@@ -53,15 +53,12 @@ wxEND_EVENT_TABLE();  // clang-format on
 
 MainFrame::MainFrame(wxFrame* parent, const wxString& title) : wxFrame(parent, wxID_ANY, title) {
 #ifdef _WIN32
-    HICON hIcon = static_cast<HICON>(::LoadImageW(::GetModuleHandleW(nullptr), MAKEINTRESOURCEW(1),
-                                                  IMAGE_ICON, 0, 0,  // 0,0 表示加载默认尺寸
-                                                  LR_DEFAULTCOLOR | LR_SHARED  // 使用共享资源
-                                                  ));
+    HICON hIcon = (HICON)::LoadImageW(::GetModuleHandleW(nullptr), MAKEINTRESOURCEW(1), IMAGE_ICON,
+                                      0, 0, LR_DEFAULTSIZE | LR_SHARED);
     if (hIcon) {
         wxIcon icon;
         icon.CreateFromHICON(hIcon);
         SetIcon(icon);
-        // 注意：使用 LR_SHARED 时不要调用 DestroyIcon
     }
 #endif
     BuildMenuBar();

@@ -10,9 +10,20 @@
 
 ## [未发布]
 
-### 计划中
+### 已完成（阶段 15 TCP/IP 协议统一）
 
-- 阶段 14：发布准备（打包、安装程序）
+- **重构 TCP 协议**：将原有的 `TcpProtocol` 升级为 `TcpIpProtocol`，内部 ID 保持 `tcp`，显示名称保持 `TCP/IP`。
+- **支持 UDP 协议**：在 `TCP/IP` 协议内部增加 `UDP` 模式，底层新增 `UdpTransport`（基于 `wxDatagramSocket`）支持无连接的数据报收发。
+- **模式与角色统一**：参照 Modbus 的设计，采用 `Mode` 区分 `TCP` 和 `UDP`，采用 `role` 字段（Client / Server）区分角色。
+- **UI 自动适配**：移除多余的独立菜单项，统一通过 `TCP/IP` 入口进入，界面字段根据 Mode 动态生成（UDP 模式下隐藏自动重连等无关选项）。
+- **向后兼容**：旧的 `.json` 配置文件（无 `role` 字段）在加载时会自动推断角色，无需手动修改。
+
+### 已完成（阶段 14 发布准备）
+
+- **CPack 与 NSIS 打包**：引入 CPack，支持一键生成免安装 `.zip` 包和 Windows 标准安装程序 `.exe`。
+- **打包路径与图标优化**：修复了由于工程路径含 `C++` 导致 `windres` 解析资源失败的问题；通过强制生成 `manifest` 和 `app.rc` 到构建目录并指向相对路径，确保了程序图标、快捷方式图标和系统托盘图标的一致且不弹窗。
+- **安装路径优化**：NSIS 默认将程序安装到 `%LOCALAPPDATA%\Programs\IndComm`，避免了 `C:\Program Files` 因权限不足导致无法写入日志（`logs`）的崩溃。
+- **GitHub Actions**：配置 CI 流水线，在打标签时自动构建、打包并发布到 GitHub Releases。
 
 ### 已完成（阶段 13 应用设置完善）
 

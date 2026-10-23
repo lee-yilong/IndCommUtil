@@ -21,6 +21,21 @@ configure_file(
     @ONLY
 )
 
+# =========================================================================
+# 1. 资源文件配置（使用你自定义编写的 rc 和 manifest）
+# =========================================================================
+set(APP_ICO "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/app.ico")
+if(NOT EXISTS "${APP_ICO}")
+    message(FATAL_ERROR "错误：找不到 ${APP_ICO}，请把图标放到该目录下！")
+endif()
+
+# 设置资源编译器的包含路径，让你的 rc 内部能顺利找到同目录下的图标或 manifest
+set(CMAKE_RC_FLAGS "${CMAKE_RC_FLAGS} -I\"${CMAKE_CURRENT_SOURCE_DIR}/resources\"")
+
+
+# =========================================================================
+# 2. 依赖与源文件配置
+# =========================================================================
 set(WX_ROOT     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/wxWidgets")
 set(SPDLOG_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/spdlog")
 set(JSON_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/json")
@@ -28,17 +43,11 @@ set(JSON_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/json")
 if(EXISTS "${WX_ROOT}/lib/gcc_dll/libwx_mswu_core-3.3.dll.a")
     set(WX_LIB_DIR   "${WX_ROOT}/lib/gcc_dll")
     set(WX_SETUP_DIR "${WX_ROOT}/lib/gcc_dll/mswu")
-    message(STATUS "wxWidgets layout: legacy (lib/gcc_dll)")
 elseif(EXISTS "${WX_ROOT}/lib/libwx_mswu_core-3.3.dll.a")
     set(WX_LIB_DIR   "${WX_ROOT}/lib")
     set(WX_SETUP_DIR "${WX_ROOT}/lib/wx/include/msw-unicode-3.3")
-    message(STATUS "wxWidgets layout: standard (lib/)")
 else()
-    message(FATAL_ERROR
-        "wxWidgets libraries not found. Looked in:\n"
-        "  ${WX_ROOT}/lib/gcc_dll/libwx_mswu_core-3.3.dll.a\n"
-        "  ${WX_ROOT}/lib/libwx_mswu_core-3.3.dll.a\n"
-        "See docs/developer/building.md")
+    message(FATAL_ERROR "wxWidgets libraries not found.")
 endif()
 
 set(PAHO_C_INSTALL "${CMAKE_CURRENT_SOURCE_DIR}/third_party/paho.mqtt.c/build/install")
@@ -46,17 +55,12 @@ set(PAHO_CPP_INSTALL "${CMAKE_CURRENT_SOURCE_DIR}/third_party/paho.mqtt.cpp/buil
 
 if(EXISTS "${PAHO_C_INSTALL}/lib/libpaho-mqtt3a-static.a" AND EXISTS "${PAHO_CPP_INSTALL}/lib/libpaho-mqttpp3-static.a")
     set(ICU_HAS_MQTT ON)
-    message(STATUS "Paho MQTT: found pre-compiled static libraries")
 else()
-    message(WARNING "Paho MQTT: static libraries not found! Run scripts/build_paho.sh first.")
     set(ICU_HAS_MQTT OFF)
 endif()
 
-file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
-
-file(GLOB_RECURSE APP_HEADERS CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
+file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+file(GLOB_RECURSE APP_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
 
 option(ICU_BUILD_TESTS "Build unit/integration tests" OFF)
 option(ICU_BUILD_COVERAGE "Enable code coverage instrumentation" OFF)
@@ -64,7 +68,6 @@ option(ICU_BUILD_COVERAGE "Enable code coverage instrumentation" OFF)
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_Install OFF CACHE INTERNAL "")
 add_subdirectory(third_party/json)
-
 add_subdirectory(third_party/sqlite)
 
 set(MODBUSLIB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ModbusLib")
@@ -73,7 +76,6 @@ if(EXISTS "${MODBUSLIB_ROOT}/CMakeLists.txt")
     add_subdirectory(${MODBUSLIB_ROOT} ${CMAKE_CURRENT_BINARY_DIR}/ModbusLib EXCLUDE_FROM_ALL)
     set(ICU_HAS_MODBUSLIB ON)
 else()
-    message(WARNING "ModbusLib not found; Modbus protocol disabled")
     set(ICU_HAS_MODBUSLIB OFF)
 endif()
 
@@ -97,10 +99,7 @@ target_include_directories(icu_core_lib PUBLIC
 )
 
 if(ICU_HAS_MQTT)
-    target_include_directories(icu_core_lib PUBLIC
-        "${PAHO_C_INSTALL}/include"
-        "${PAHO_CPP_INSTALL}/include"
-    )
+    target_include_directories(icu_core_lib PUBLIC "${PAHO_C_INSTALL}/include" "${PAHO_CPP_INSTALL}/include")
 endif()
 
 target_link_directories(icu_core_lib PUBLIC "${WX_LIB_DIR}")
@@ -131,13 +130,11 @@ file(GLOB_RECURSE GUI_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/settings/*.cpp"
 )
 
-set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/resources/app.rc" PROPERTIES COMPILE_FLAGS "-I\"${CMAKE_CURRENT_SOURCE_DIR}/resources\"")
-
 add_executable(IndComm WIN32
     src/main.cpp
     ${GUI_SOURCES}
     ${APP_HEADERS}
-    resources/app.rc
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/app.rc"
 )
 
 target_compile_definitions(IndComm PRIVATE wxDEBUG_LEVEL=0)
@@ -152,31 +149,109 @@ target_link_libraries(IndComm PRIVATE
 
 target_compile_definitions(IndComm PRIVATE ICU_BUILD_GUI)
 
-add_executable(indcomm-cli
-    src/cli/main.cpp
-)
-
+add_executable(indcomm-cli src/cli/main.cpp)
 target_link_libraries(indcomm-cli PRIVATE icu_core_lib)
 
-file(GLOB WX_DLLS "${WX_LIB_DIR}/*.dll")
+if(MINGW)
+    target_link_options(IndComm PRIVATE -static-libgcc -static-libstdc++ -static)
+    target_link_options(indcomm-cli PRIVATE -static-libgcc -static-libstdc++ -static)
+endif()
+
+set(WX_DLLS
+    "${WX_LIB_DIR}/wxbase335u_gcc_custom.dll"
+    "${WX_LIB_DIR}/wxbase335u_net_gcc_custom.dll"
+    "${WX_LIB_DIR}/wxmsw335u_core_gcc_custom.dll"
+)
 
 add_custom_command(TARGET IndComm POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${WX_DLLS} $<TARGET_FILE_DIR:IndComm>
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:modbus> $<TARGET_FILE_DIR:IndComm>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${WX_DLLS} "$<TARGET_FILE_DIR:IndComm>"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:modbus> "$<TARGET_FILE_DIR:IndComm>"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sqlite.library> "$<TARGET_FILE_DIR:IndComm>"
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:IndComm>/resources/i18n"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/resources/i18n" "$<TARGET_FILE_DIR:IndComm>/resources/i18n"
     COMMENT "Copying DLLs and i18n to GUI output"
 )
 
 add_custom_command(TARGET indcomm-cli POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${WX_DLLS} $<TARGET_FILE_DIR:indcomm-cli>
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:modbus> $<TARGET_FILE_DIR:indcomm-cli>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${WX_DLLS} "$<TARGET_FILE_DIR:indcomm-cli>"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:modbus> "$<TARGET_FILE_DIR:indcomm-cli>"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sqlite.library> "$<TARGET_FILE_DIR:indcomm-cli>"
     COMMENT "Copying DLLs to CLI output"
 )
 
-# ★ 修复：把测试目录放到最后，确保所有 target（如 modbus）都已生成
 if(ICU_BUILD_TESTS)
     enable_testing()
     include(CTest)
     add_subdirectory(tests)
 endif()
+
+# =========================================================================
+# 阶段 14：安装规则与 CPack 打包
+# =========================================================================
+if(WIN32)
+    install(TARGETS IndComm RUNTIME DESTINATION .)
+    install(TARGETS indcomm-cli RUNTIME DESTINATION .)
+
+    if(ICU_HAS_MODBUSLIB)
+        install(FILES $<TARGET_FILE:modbus> DESTINATION .)
+    endif()
+
+    install(FILES $<TARGET_FILE:sqlite.library> DESTINATION .)
+    install(FILES ${WX_DLLS} DESTINATION .)
+
+    # ★ 把 app.ico 也安装到目标目录
+    install(FILES "${APP_ICO}" DESTINATION .)
+
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/resources/i18n/"
+            DESTINATION "resources/i18n"
+            FILES_MATCHING PATTERN "*.mo")
+
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+        install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE" DESTINATION .)
+    endif()
+endif()
+
+set(CPACK_PACKAGE_NAME "IndComm")
+set(CPACK_PACKAGE_VENDOR "lee-yilong")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Industrial multi-protocol communication test utility")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_FILE_NAME "IndComm-${PROJECT_VERSION}-win64")
+set(CPACK_GENERATOR "ZIP")
+
+if(WIN32)
+    list(APPEND CPACK_GENERATOR "NSIS")
+
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+        set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+    endif()
+
+    set(CPACK_NSIS_INSTALL_ROOT "$LOCALAPPDATA\\\\Programs")
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "IndComm")
+
+    set(CPACK_NSIS_DISPLAY_NAME "IndComm")
+    set(CPACK_NSIS_PACKAGE_NAME "IndComm")
+    set(CPACK_NSIS_CONTACT "https://github.com/lee-yilong/IndCommUtil")
+    set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/lee-yilong/IndCommUtil")
+    set(CPACK_NSIS_INSTALLED_ICON_NAME "IndComm.exe")
+    set(CPACK_NSIS_EXECUTABLES_DIRECTORY ".")
+    set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+    set(CPACK_NSIS_MODIFY_PATH OFF)
+    set(CPACK_NSIS_MENU_LINKS "IndComm.exe" "IndComm")
+
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/app.ico")
+        set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/app.ico")
+        set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/app.ico")
+    endif()
+
+    # ★ 核心：强制快捷方式直接指向 app.ico 文件，不再依赖 exe 本身提取
+    set(CPACK_NSIS_CREATE_ICONS_EXTRA
+        "CreateShortCut '$DESKTOP\\\\IndComm.lnk' '$INSTDIR\\\\IndComm.exe' '$INSTDIR\\\\app.ico'"
+        "CreateShortCut '$SMPROGRAMS\\\\IndComm.lnk' '$INSTDIR\\\\IndComm.exe' '$INSTDIR\\\\app.ico'"
+    )
+    set(CPACK_NSIS_DELETE_ICONS_EXTRA
+        "Delete '$DESKTOP\\\\IndComm.lnk'"
+        "Delete '$SMPROGRAMS\\\\IndComm.lnk'"
+    )
+endif()
+
+include(CPack)

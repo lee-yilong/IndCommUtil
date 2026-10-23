@@ -2,6 +2,7 @@
 
 #include <wx/msgdlg.h>
 #include <wx/stdpaths.h>
+#include <wx/sysopt.h>
 
 #include "app/MainFrame.h"
 #include "core/ProtocolRegistry.h"
@@ -13,6 +14,8 @@
 namespace icu {
 
 bool App::OnInit() {
+    wxSystemOptions::SetOption("msw.no-manifest-check", 1);
+
     settings::LanguageSettings::SetupUtf8Locale();
     log::Init();
 

@@ -1,11 +1,15 @@
 // =========================================================================
 // 应用资源文件
 // =========================================================================
+#define RT_MANIFEST 24
 
-#include "wx/msw/wx.rc"
-
-// 1 是 Windows 应用程序主图标的标准 ID
+// 1. 应用程序图标
 1 ICON "icons/app.ico"
+
+    // 2. 引入你的 Manifest 文件（直接写文件名，因为资源编译器设置了 -I 路径）
+    1 RT_MANIFEST "app.manifest"
+
+    // #include \"wx/msw/wx.rc\"\n
 
     // 包含版本信息（虽然不是必需的，但这是标准做法）
     VS_VERSION_INFO VERSIONINFO FILEVERSION 0,
