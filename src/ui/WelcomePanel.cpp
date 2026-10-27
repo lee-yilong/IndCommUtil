@@ -125,7 +125,7 @@ void WelcomePanel::BuildUi() {
                 e.Skip();
             });
             link->Bind(wxEVT_LEFT_UP, [this, i](wxMouseEvent&) {
-                if (m_onRecentClick) m_onRecentClick(static_cast<int>(i));
+                if (m_onRecentClick) m_onRecentClick(m_recentFiles[i]);
             });
             rightSizer->Add(link, 0, wxBOTTOM | wxTOP, 6);
         }

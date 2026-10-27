@@ -105,10 +105,16 @@ wxString DescribeStep(const nlohmann::json& step) {
     const std::string action = step.value("action", "");
     const int waitMs = step.value("wait_ms", 0);
 
-    if (action == "delay") return wxString::Format("delay %dms", waitMs);
     if (action.empty()) return {};
+    if (action == "delay") return wxString::Format("%s %dms", _("Delay"), waitMs);
 
-    wxString text = wxString::FromUTF8(action);
+    wxString actionLabel = wxString::FromUTF8(action);
+    if (action == "write")
+        actionLabel = _("Write");
+    else if (action == "read")
+        actionLabel = _("Read");
+
+    wxString text = actionLabel;
     const std::string variable = step.value("variable", "");
     if (!variable.empty()) text += " " + wxString::FromUTF8(variable);
 
@@ -117,14 +123,14 @@ wxString DescribeStep(const nlohmann::json& step) {
         text += " = " + (value.is_string() ? wxString::FromUTF8(value.get<std::string>())
                                            : wxString::FromUTF8(value.dump()));
     }
-    if (waitMs > 0) text += wxString::Format("  · wait %dms", waitMs);
+    if (waitMs > 0) text += wxString::Format("  |  %s %dms", _("Wait"), waitMs);
 
     if (step.contains("assert") && step["assert"].is_object()) {
         const auto& a = step["assert"];
         const std::string type = a.value("type", "");
         const std::string expected = a.value("expected", "");
         if (!type.empty())
-            text += wxString::Format("  · assert %s %s", wxString::FromUTF8(type),
+            text += wxString::Format("  |  %s %s %s", _("Assert"), wxString::FromUTF8(type),
                                      wxString::FromUTF8(expected));
     }
     return text;
@@ -173,7 +179,7 @@ SessionPanel::SessionPanel(wxWindow* parent, IProtocol* protocol, int modeIndex,
 
     BuildUi();
     CallAfter([this]() {
-        if (m_mainSplitter) m_mainSplitter->SetSashPosition(300);
+        if (m_mainSplitter) m_mainSplitter->SetSashPosition(360);
     });
 
     m_runTimer = new wxTimer(this);
@@ -561,7 +567,7 @@ void SessionPanel::BuildUi() {
     m_rightSplitter->SplitHorizontally(m_modeNotebook, logPanel, 320);
     m_rightSplitter->SetMinimumPaneSize(150);
 
-    m_mainSplitter->SplitVertically(varPanel, m_rightSplitter, 300);
+    m_mainSplitter->SplitVertically(varPanel, m_rightSplitter, 360);
     m_mainSplitter->SetMinimumPaneSize(180);
 
     main->Add(m_mainSplitter, 1, wxEXPAND | wxALL, 4);
@@ -1597,7 +1603,7 @@ void SessionPanel::UpdateRunTiming(wxListCtrl* list) {
 
     if (!m_runTimingActive) {
         label->SetLabel(
-            wxString::Format(_("Est./Elapsed/Remaining: %s, %s, %s"), "--", "--", "--"));
+            wxString::Format(_("Est. %s / Elapsed %s / Remaining %s"), "--", "--", "--"));
         return;
     }
 
@@ -1606,7 +1612,7 @@ void SessionPanel::UpdateRunTiming(wxListCtrl* list) {
         std::chrono::duration_cast<std::chrono::milliseconds>(now - m_runStart).count();
     const long long estimatedMs = m_plannedWaitMs + m_extraWaitMs;
     const long long remainingMs = std::max(0LL, estimatedMs - elapsedMs);
-    label->SetLabel(wxString::Format(_("Est./Elapsed/Remaining: %s, %s, %s"),
+    label->SetLabel(wxString::Format(_("Est. %s / Elapsed %s / Remaining %s"),
                                      FormatDurationCN(estimatedMs), FormatDurationCN(elapsedMs),
                                      FormatDurationCN(remainingMs)));
 }
@@ -1742,6 +1748,7 @@ void SessionPanel::ShowStepContextMenu(wxListCtrl* stepList, const wxPoint& pos)
 
     enum {
         kPause = 1,
+        kRetry,
         kStop,
         kPrev,
         kNext,
@@ -1759,14 +1766,21 @@ void SessionPanel::ShowStepContextMenu(wxListCtrl* stepList, const wxPoint& pos)
     if (m_testRunner) {
         const int current = m_testRunner->CurrentStepIndex();
         const int total = static_cast<int>(stepList->GetItemCount()) - 1;
-        menu.Append(kPause, m_testRunner->IsPaused() ? _("Resume") : _("Pause"));
+        const bool paused = m_testRunner->IsPaused();
+        const bool failure = (m_pendingFailure != nullptr);
+
+        menu.Append(kPause, paused ? _("Resume") : _("Pause"));
+        menu.Append(kRetry, _("Retry"));
         menu.Append(kPrev, _("Previous Step"));
         menu.Append(kNext, _("Next Step"));
         menu.Append(kJump, _("Jump to Step..."));
         menu.Append(kStop, _("Stop"));
-        menu.Enable(kPrev, current > 0);
-        menu.Enable(kNext, current >= 0 && current + 1 < total);
-        menu.Enable(kJump, total > 0);
+        menu.Enable(kPause, !failure);
+        menu.Enable(kRetry, failure || paused);
+        menu.Enable(kPrev, !failure && paused && current > 0);
+        menu.Enable(kNext, !failure && paused && current >= 0 && current + 1 < total);
+        menu.Enable(kJump, !failure && paused && total > 0);
+        menu.Enable(kStop, true);
         menu.AppendSeparator();
     }
 
@@ -1794,6 +1808,14 @@ void SessionPanel::ShowStepContextMenu(wxListCtrl* stepList, const wxPoint& pos)
                     m_testRunner->Resume();
                 else
                     m_testRunner->Pause();
+            }
+            break;
+        case kRetry:
+            if (m_pendingFailure) {
+                ResolvePendingFailure(StepFailureAction::Retry);
+            } else if (m_testRunner) {
+                const int current = m_testRunner->CurrentStepIndex();
+                m_testRunner->JumpToStep(std::max(0, current));
             }
             break;
         case kStop:
@@ -1953,23 +1975,24 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     progressTitle->SetForegroundColour(kSubTextColor);
 
     auto* progressBar = new ui::ProgressBar(card);
-    progressBar->SetMinSize(wxSize(160, 22));
-    progressBar->SetMaxSize(wxSize(160, 22));
+    progressBar->SetMinSize(wxSize(120, 22));
+    progressBar->SetMaxSize(wxSize(120, 22));
 
     auto* ratioLabel = new wxStaticText(card, wxID_ANY, "0 / 0");
-    ratioLabel->SetMinSize(wxSize(80, -1));
+    ratioLabel->SetMinSize(wxSize(60, -1));
     ratioLabel->SetForegroundColour(kTextColor);
 
     auto* timeLabel =
         new wxStaticText(card, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxST_ELLIPSIZE_END);
-    timeLabel->SetFont(timeLabel->GetFont().Scaled(0.9));
+    timeLabel->SetFont(timeLabel->GetFont().Scaled(0.8));
     timeLabel->SetForegroundColour(kSubTextColor);
 
     // 固定宽度按钮区：即使按钮隐藏也保留位置，避免进度条随状态伸缩
     auto* actionPanel =
-        new wxPanel(card, wxID_ANY, wxDefaultPosition, wxSize(176, 32), wxBORDER_NONE);
+        new wxPanel(card, wxID_ANY, wxDefaultPosition, wxSize(166, 32), wxBORDER_NONE);
     actionPanel->SetBackgroundColour(kCardBgColor);
-    actionPanel->SetMinSize(wxSize(176, 32));
+    actionPanel->SetMinSize(wxSize(166, 32));
+    actionPanel->SetMaxSize(wxSize(166, 32));
     auto* actionSizer = new wxBoxSizer(wxHORIZONTAL);
     auto* retryBtn = new ui::FlatButton(actionPanel, _("Retry"), kThemeColor, *wxWHITE, [this]() {
         ResolvePendingFailure(StepFailureAction::Retry);
@@ -1984,9 +2007,9 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     actionPanel->SetSizer(actionSizer);
 
     progressRow->Add(progressTitle, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
-    progressRow->Add(progressBar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
-    progressRow->Add(ratioLabel, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 12);
-    progressRow->Add(timeLabel, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
+    progressRow->Add(progressBar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
+    progressRow->Add(ratioLabel, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
+    progressRow->Add(timeLabel, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 6);
     progressRow->Add(actionPanel, 0, wxALIGN_CENTER_VERTICAL);
     cardSizer->Add(progressRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
 

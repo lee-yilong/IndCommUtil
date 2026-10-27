@@ -13,7 +13,7 @@ public:
 
     std::function<void()> m_onNewClick;
     std::function<void()> m_onOpenClick;
-    std::function<void(int)> m_onRecentClick;
+    std::function<void(const wxString&)> m_onRecentClick;
 
 private:
     wxArrayString m_recentFiles;

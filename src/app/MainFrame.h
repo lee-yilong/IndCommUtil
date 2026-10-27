@@ -188,6 +188,7 @@ private:
     void OnSaveConnectionAs(wxCommandEvent& evt);
     void OnCloseConnection(wxCommandEvent& evt);
     void OnRecentConnection(wxCommandEvent& evt);
+    void OpenRecentProfile(const wxString& path);
 
     void OnMenuOpenProtocol(wxCommandEvent& evt);
 

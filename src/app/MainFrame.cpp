@@ -646,10 +646,7 @@ wxBEGIN_EVENT_TABLE(MainFrame, wxFrame) EVT_CLOSE(MainFrame::OnClose) EVT_SIZE(M
         wxCommandEvent e(wxEVT_MENU, idMenuOpenConnection);
         OnOpenConnection(e);
     };
-    m_welcomePage->m_onRecentClick = [this](int index) {
-        wxCommandEvent e(wxEVT_MENU, idMenuRecentBase + index);
-        OnRecentConnection(e);
-    };
+    m_welcomePage->m_onRecentClick = [this](const wxString& path) { OpenRecentProfile(path); };
 
     m_notebook->AddPage(m_welcomePage, _("Welcome"), true);
     m_activeTabIndex = -1;
@@ -1249,9 +1246,8 @@ void MainFrame::RemoveTab(int index, bool skipNotebookDelete) {
                 wxCommandEvent e(wxEVT_MENU, idMenuOpenConnection);
                 OnOpenConnection(e);
             };
-            m_welcomePage->m_onRecentClick = [this](int idx) {
-                wxCommandEvent e(wxEVT_MENU, idMenuRecentBase + idx);
-                OnRecentConnection(e);
+            m_welcomePage->m_onRecentClick = [this](const wxString& path) {
+                OpenRecentProfile(path);
             };
             m_notebook->AddPage(m_welcomePage, _("Welcome"), true);
         }
@@ -1492,13 +1488,16 @@ void MainFrame::OnCloseConnection(wxCommandEvent&) {
 void MainFrame::OnRecentConnection(wxCommandEvent& evt) {
     size_t index = static_cast<size_t>(evt.GetId() - idMenuRecentBase);
     if (index >= m_recentConnections.GetCount()) return;
-    const wxString path = m_recentConnections[index];
+    OpenRecentProfile(m_recentConnections[index]);
+}
 
+void MainFrame::OpenRecentProfile(const wxString& path) {
     if (!wxFileName::FileExists(path)) {
         ui::MessageDialog::Show(this, _("Error"),
                                 wxString::Format(_("Connection profile not found:\n%s"), path),
                                 wxOK | wxICON_ERROR);
-        m_recentConnections.RemoveAt(index);
+        int index = m_recentConnections.Index(path);
+        if (index != wxNOT_FOUND) m_recentConnections.RemoveAt(index);
         LoadRecentConnections();
         return;
     }
