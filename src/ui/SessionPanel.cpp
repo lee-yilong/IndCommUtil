@@ -1858,11 +1858,11 @@ void SessionPanel::HighlightRunningStep(wxListCtrl* list, long row) {
 
     ClearRunningHighlight();
     for (long i = 0; i < list->GetItemCount() - 1; ++i) {
-        if (i != row) list->SetItemState(i, 0, wxLIST_STATE_SELECTED);
+        list->SetItemState(i, 0, wxLIST_STATE_SELECTED | wxLIST_STATE_FOCUSED);
     }
     list->SetItemBackgroundColour(row, ui::kSelectBgColor);
-    list->SetItemState(row, wxLIST_STATE_SELECTED | wxLIST_STATE_FOCUSED,
-                       wxLIST_STATE_SELECTED | wxLIST_STATE_FOCUSED);
+    // 只设置焦点和背景高亮，避免系统选中色覆盖名称/详情/状态的分列颜色
+    list->SetItemState(row, wxLIST_STATE_FOCUSED, wxLIST_STATE_FOCUSED);
     list->EnsureVisible(row);
     m_runningStepList = list;
     m_runningStepRow = row;
