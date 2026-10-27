@@ -93,6 +93,43 @@ int ShowMsg(const wxString& message, const wxString& title, long style,
     return ui::MessageDialog::Show(parent, title, message, style);
 }
 
+wxPoint ContextMenuPos(wxWindow* window, const wxPoint& eventPosition) {
+    if (!window) return eventPosition;
+    const wxPoint mouse = wxGetMousePosition();
+    const wxRect rect(window->ClientToScreen(wxPoint(0, 0)), window->GetClientSize());
+    if (rect.Contains(mouse)) return window->ScreenToClient(mouse);
+    return eventPosition;
+}
+
+wxString DescribeStep(const nlohmann::json& step) {
+    const std::string action = step.value("action", "");
+    const int waitMs = step.value("wait_ms", 0);
+
+    if (action == "delay") return wxString::Format("delay %dms", waitMs);
+    if (action.empty()) return {};
+
+    wxString text = wxString::FromUTF8(action);
+    const std::string variable = step.value("variable", "");
+    if (!variable.empty()) text += " " + wxString::FromUTF8(variable);
+
+    if (action == "write" && step.contains("value")) {
+        const auto& value = step["value"];
+        text += " = " + (value.is_string() ? wxString::FromUTF8(value.get<std::string>())
+                                           : wxString::FromUTF8(value.dump()));
+    }
+    if (waitMs > 0) text += wxString::Format("  · wait %dms", waitMs);
+
+    if (step.contains("assert") && step["assert"].is_object()) {
+        const auto& a = step["assert"];
+        const std::string type = a.value("type", "");
+        const std::string expected = a.value("expected", "");
+        if (!type.empty())
+            text += wxString::Format("  · assert %s %s", wxString::FromUTF8(type),
+                                     wxString::FromUTF8(expected));
+    }
+    return text;
+}
+
 enum {
     idTbAction = 5000,
     idTbConfigure,
@@ -1466,6 +1503,7 @@ void SessionPanel::RefreshStepList(wxListCtrl* stepList, const nlohmann::json& f
         for (const auto& s : flow) {
             long item = stepList->InsertItem(idx++, wxString::FromUTF8(s.value("name", "Unnamed")));
             stepList->SetItem(item, 1, _("Pending"));
+            stepList->SetItem(item, 2, DescribeStep(s));
             stepList->SetItemTextColour(item, kSubTextColor);
             stepList->SetItemBackgroundColour(item, kCardBgColor);
         }
@@ -1558,7 +1596,8 @@ void SessionPanel::UpdateRunTiming(wxListCtrl* list) {
     if (!label) return;
 
     if (!m_runTimingActive) {
-        label->SetLabel(wxString::Format(_("Est./Elapsed: %s, %s"), "--", "--"));
+        label->SetLabel(
+            wxString::Format(_("Est./Elapsed/Remaining: %s, %s, %s"), "--", "--", "--"));
         return;
     }
 
@@ -1566,8 +1605,10 @@ void SessionPanel::UpdateRunTiming(wxListCtrl* list) {
     const long long elapsedMs =
         std::chrono::duration_cast<std::chrono::milliseconds>(now - m_runStart).count();
     const long long estimatedMs = m_plannedWaitMs + m_extraWaitMs;
-    label->SetLabel(wxString::Format(_("Est./Elapsed: %s, %s"), FormatDurationCN(estimatedMs),
-                                     FormatDurationCN(elapsedMs)));
+    const long long remainingMs = std::max(0LL, estimatedMs - elapsedMs);
+    label->SetLabel(wxString::Format(_("Est./Elapsed/Remaining: %s, %s, %s"),
+                                     FormatDurationCN(estimatedMs), FormatDurationCN(elapsedMs),
+                                     FormatDurationCN(remainingMs)));
 }
 
 void SessionPanel::HighlightRunningStep(wxListCtrl* list, long row) {
@@ -1632,9 +1673,10 @@ void SessionPanel::MoveStepOrder(wxListCtrl* stepList, nlohmann::json& flow, lon
 
 void SessionPanel::ShowVarContextMenu(const wxPoint& pos) {
     if (!m_sessionConfig || !m_varList) return;
+    const wxPoint menuPos = ContextMenuPos(m_varList, pos);
 
     int flags = 0;
-    const long item = m_varList->HitTest(pos, flags, nullptr);
+    const long item = m_varList->HitTest(menuPos, flags, nullptr);
     const bool onAddRow = (item != -1 && item == m_varList->GetItemCount() - 1);
     const bool hasSelection = (item != -1 && !onAddRow);
 
@@ -1658,7 +1700,7 @@ void SessionPanel::ShowVarContextMenu(const wxPoint& pos) {
     menu.Enable(kUp, hasSelection && item > 0);
     menu.Enable(kDown, hasSelection && item < m_varList->GetItemCount() - 2);
 
-    const int cmd = m_varList->GetPopupMenuSelectionFromUser(menu, pos);
+    const int cmd = m_varList->GetPopupMenuSelectionFromUser(menu, menuPos);
     switch (cmd) {
         case kAdd:
             DoAddVariable();
@@ -1686,9 +1728,10 @@ void SessionPanel::ShowVarContextMenu(const wxPoint& pos) {
 
 void SessionPanel::ShowStepContextMenu(wxListCtrl* stepList, const wxPoint& pos) {
     if (!m_sessionConfig || !stepList) return;
+    const wxPoint menuPos = ContextMenuPos(stepList, pos);
 
     int flags = 0;
-    const long item = stepList->HitTest(pos, flags, nullptr);
+    const long item = stepList->HitTest(menuPos, flags, nullptr);
     const bool onAddRow = (item != -1 && item == stepList->GetItemCount() - 1);
     const bool hasSelection = (item != -1 && !onAddRow);
 
@@ -1697,8 +1740,36 @@ void SessionPanel::ShowStepContextMenu(wxListCtrl* stepList, const wxPoint& pos)
         stepList->SetItemState(item, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
     }
 
-    enum { kAdd = 1, kCopy, kEdit, kDelete, kBatch, kUp, kDown };
+    enum {
+        kPause = 1,
+        kStop,
+        kPrev,
+        kNext,
+        kJump,
+        kAdd = 20,
+        kCopy,
+        kEdit,
+        kDelete,
+        kBatch,
+        kUp,
+        kDown
+    };
     wxMenu menu;
+
+    if (m_testRunner) {
+        const int current = m_testRunner->CurrentStepIndex();
+        const int total = static_cast<int>(stepList->GetItemCount()) - 1;
+        menu.Append(kPause, m_testRunner->IsPaused() ? _("Resume") : _("Pause"));
+        menu.Append(kPrev, _("Previous Step"));
+        menu.Append(kNext, _("Next Step"));
+        menu.Append(kJump, _("Jump to Step..."));
+        menu.Append(kStop, _("Stop"));
+        menu.Enable(kPrev, current > 0);
+        menu.Enable(kNext, current >= 0 && current + 1 < total);
+        menu.Enable(kJump, total > 0);
+        menu.AppendSeparator();
+    }
+
     menu.Append(kAdd, _("Add Step"));
     menu.Append(kCopy, _("Copy"));
     menu.Append(kEdit, _("Edit"));
@@ -1715,8 +1786,46 @@ void SessionPanel::ShowStepContextMenu(wxListCtrl* stepList, const wxPoint& pos)
     menu.Enable(kUp, hasSelection && item > 0);
     menu.Enable(kDown, hasSelection && item < stepList->GetItemCount() - 2);
 
-    const int cmd = stepList->GetPopupMenuSelectionFromUser(menu, pos);
+    const int cmd = stepList->GetPopupMenuSelectionFromUser(menu, menuPos);
     switch (cmd) {
+        case kPause:
+            if (m_testRunner) {
+                if (m_testRunner->IsPaused())
+                    m_testRunner->Resume();
+                else
+                    m_testRunner->Pause();
+            }
+            break;
+        case kStop:
+            if (m_pendingFailure) ResolvePendingFailure(StepFailureAction::Stop);
+            if (m_testRunner) m_testRunner->Stop();
+            break;
+        case kPrev:
+            if (m_testRunner) {
+                const int current = m_testRunner->CurrentStepIndex();
+                m_testRunner->JumpToStep(std::max(0, current - 1));
+            }
+            break;
+        case kNext:
+            if (m_testRunner) {
+                const int current = m_testRunner->CurrentStepIndex();
+                m_testRunner->JumpToStep(current + 1);
+            }
+            break;
+        case kJump:
+            if (m_testRunner) {
+                wxArrayString names;
+                for (long i = 0; i < stepList->GetItemCount() - 1; ++i)
+                    names.Add(stepList->GetItemText(i));
+
+                const int current = std::max(0, m_testRunner->CurrentStepIndex());
+                int selected = current;
+                if (ui::ChoiceDialog::Show(this, _("Jump to Step"), _("Select a step:"), names,
+                                           current, selected)) {
+                    m_testRunner->JumpToStep(selected);
+                }
+            }
+            break;
         case kAdd:
             DoAddStep();
             break;
@@ -1844,14 +1953,16 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     progressTitle->SetForegroundColour(kSubTextColor);
 
     auto* progressBar = new ui::ProgressBar(card);
-    progressBar->SetMinSize(wxSize(180, 22));
-    progressBar->SetMaxSize(wxSize(180, 22));
+    progressBar->SetMinSize(wxSize(160, 22));
+    progressBar->SetMaxSize(wxSize(160, 22));
 
     auto* ratioLabel = new wxStaticText(card, wxID_ANY, "0 / 0");
     ratioLabel->SetMinSize(wxSize(80, -1));
     ratioLabel->SetForegroundColour(kTextColor);
 
-    auto* timeLabel = new wxStaticText(card, wxID_ANY, "");
+    auto* timeLabel =
+        new wxStaticText(card, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxST_ELLIPSIZE_END);
+    timeLabel->SetFont(timeLabel->GetFont().Scaled(0.9));
     timeLabel->SetForegroundColour(kSubTextColor);
 
     // 固定宽度按钮区：即使按钮隐藏也保留位置，避免进度条随状态伸缩
@@ -1874,11 +1985,10 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
 
     progressRow->Add(progressTitle, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
     progressRow->Add(progressBar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
-    progressRow->Add(ratioLabel, 0, wxALIGN_CENTER_VERTICAL);
-    progressRow->AddStretchSpacer(1);
+    progressRow->Add(ratioLabel, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 12);
+    progressRow->Add(timeLabel, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
     progressRow->Add(actionPanel, 0, wxALIGN_CENTER_VERTICAL);
     cardSizer->Add(progressRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
-    cardSizer->Add(timeLabel, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
 
     auto* failLabel = new wxStaticText(card, wxID_ANY, "");
     failLabel->SetForegroundColour(wxColour(198, 40, 40));
@@ -1889,8 +1999,9 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     auto* stepList = new wxListCtrl(card, wxID_ANY, wxDefaultPosition, wxDefaultSize,
                                     wxLC_REPORT | wxBORDER_NONE);
     stepList->SetBackgroundColour(kCardBgColor);
-    stepList->InsertColumn(0, _("Step Name"), wxLIST_FORMAT_LEFT, 260);
-    stepList->InsertColumn(1, _("Status"), wxLIST_FORMAT_LEFT, 100);
+    stepList->InsertColumn(0, _("Step Name"), wxLIST_FORMAT_LEFT, 220);
+    stepList->InsertColumn(1, _("Status"), wxLIST_FORMAT_LEFT, 80);
+    stepList->InsertColumn(2, _("Details"), wxLIST_FORMAT_LEFT, 320);
     cardSizer->Add(stepList, 1, wxEXPAND | wxALL, 8);
 
     card->SetSizer(cardSizer);

@@ -5,6 +5,7 @@
 #include <wx/dcbuffer.h>
 #include <wx/filename.h>
 #include <wx/graphics.h>
+#include <wx/listbox.h>
 #include <wx/stdpaths.h>
 #include <wx/wx.h>
 
@@ -443,6 +444,66 @@ private:
     }
 
     wxCheckListBox* m_list = nullptr;
+    wxPoint m_dragStart;
+    wxPoint m_winStart;
+};
+
+// ================= 通用单选列表对话框 =================
+class ChoiceDialog : public wxDialog {
+public:
+    static bool Show(wxWindow* parent, const wxString& title, const wxString& prompt,
+                     const wxArrayString& choices, int initial, int& selected) {
+        ChoiceDialog dlg(parent, title, prompt, choices, initial);
+        if (dlg.ShowModal() != wxID_OK) return false;
+        selected = dlg.m_list->GetSelection();
+        return selected != wxNOT_FOUND;
+    }
+
+private:
+    ChoiceDialog(wxWindow* parent, const wxString& title, const wxString& prompt,
+                 const wxArrayString& choices, int initial)
+        : wxDialog(parent, wxID_ANY, title, wxDefaultPosition, wxDefaultSize,
+                   wxBORDER_NONE | wxRESIZE_BORDER) {
+        SetBackgroundColour(kBgColor);
+        auto* mainSizer = new wxBoxSizer(wxVERTICAL);
+
+        auto* header = CreateDialogHeader(this, title, m_dragStart, m_winStart,
+                                          [this]() { EndModal(wxID_CANCEL); });
+        mainSizer->Add(header, 0, wxEXPAND | wxTOP | wxBOTTOM, 12);
+
+        auto* card = new CardPanel(this);
+        auto* cardSizer = new wxBoxSizer(wxVERTICAL);
+
+        auto* promptText = new wxStaticText(card, wxID_ANY, prompt);
+        promptText->SetForegroundColour(kTextColor);
+        promptText->Wrap(FromDIP(420));
+        cardSizer->Add(promptText, 0, wxEXPAND | wxALL, 16);
+
+        m_list =
+            new wxListBox(card, wxID_ANY, wxDefaultPosition, wxSize(-1, 280), choices, wxLB_SINGLE);
+        if (initial >= 0 && initial < static_cast<int>(m_list->GetCount()))
+            m_list->SetSelection(initial);
+        cardSizer->Add(m_list, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 16);
+
+        card->SetSizer(cardSizer);
+        mainSizer->Add(card, 1, wxEXPAND | wxLEFT | wxRIGHT, 16);
+
+        auto* btnSizer = new wxBoxSizer(wxHORIZONTAL);
+        btnSizer->AddStretchSpacer();
+        auto* btnCancel = new FlatButton(this, _("Cancel"), kBtnGrayBg, kTextColor,
+                                         [this]() { EndModal(wxID_CANCEL); });
+        auto* btnOk =
+            new FlatButton(this, _("OK"), kThemeBlue, *wxWHITE, [this]() { EndModal(wxID_OK); });
+        btnSizer->Add(btnCancel, 0, wxRIGHT, 10);
+        btnSizer->Add(btnOk, 0);
+        mainSizer->Add(btnSizer, 0, wxEXPAND | wxALL, 16);
+
+        SetSizerAndFit(mainSizer);
+        SetMinSize(FromDIP(wxSize(440, 480)));
+        CentreOnParent();
+    }
+
+    wxListBox* m_list = nullptr;
     wxPoint m_dragStart;
     wxPoint m_winStart;
 };

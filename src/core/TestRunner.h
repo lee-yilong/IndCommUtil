@@ -51,11 +51,17 @@ public:
     void Start();
     void Stop();
     void Continue();
+    void Pause();
+    void Resume();
+    void JumpToStep(int index);
+    bool IsPaused() const { return m_pauseFlag.load(); }
+    int CurrentStepIndex() const { return m_currentIndex.load(); }
     void WaitForCompletion();
     bool IsRunning() const { return m_thread.joinable(); }
 
 private:
     void RunLoop();
+    void WaitIfPaused();
     // 分段等待，保证 Stop() 能及时退出
     void WaitWithStop(int ms);
 
@@ -66,10 +72,14 @@ private:
 
     std::thread m_thread;
     std::atomic<bool> m_stopFlag{false};
+    std::atomic<bool> m_pauseFlag{false};
+    std::atomic<int> m_jumpRequest{-1};
+    std::atomic<int> m_currentIndex{-1};
     TestRunMode m_runMode = TestRunMode::Auto;
 
     std::mutex m_mutex;
     std::condition_variable m_cv;
+    std::condition_variable m_pauseCv;
     bool m_waitingForContinue = false;
 
     StepUpdateCallback m_stepCb;

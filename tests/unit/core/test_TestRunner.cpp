@@ -2,6 +2,7 @@
 #include <chrono>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "core/ITestStep.h"
@@ -189,4 +190,51 @@ TEST_CASE("TestRunner: WaitMs 会真正等待") {
                              .count();
 
     CHECK(elapsed >= 100);
+}
+
+TEST_CASE("TestRunner: 暂停后继续执行后续步骤") {
+    std::map<std::string, CommVariable> vars;
+    std::vector<ITestStepPtr> steps;
+    auto* first = new FakeStep("first", 0, 300);
+    auto* second = new FakeStep("second");
+    steps.emplace_back(first);
+    steps.emplace_back(second);
+
+    TestRunner runner(nullptr, nullptr, std::move(steps), vars);
+    runner.OnStepFailed([&](int, const std::string&) { return StepFailureAction::Stop; });
+
+    runner.Start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    runner.Pause();
+    std::this_thread::sleep_for(std::chrono::milliseconds(400));
+
+    CHECK(runner.IsPaused());
+    CHECK(second->executes == 0);
+
+    runner.Resume();
+    runner.WaitForCompletion();
+
+    CHECK(second->executes == 1);
+}
+
+TEST_CASE("TestRunner: 跳转到指定步骤") {
+    std::map<std::string, CommVariable> vars;
+    std::vector<ITestStepPtr> steps;
+    auto* first = new FakeStep("first", 0, 100);
+    auto* second = new FakeStep("second", 0, 100);
+    auto* third = new FakeStep("third", 0, 100);
+    steps.emplace_back(first);
+    steps.emplace_back(second);
+    steps.emplace_back(third);
+
+    TestRunner runner(nullptr, nullptr, std::move(steps), vars);
+    runner.OnStepFailed([&](int, const std::string&) { return StepFailureAction::Stop; });
+
+    runner.Start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    runner.JumpToStep(2);
+    runner.WaitForCompletion();
+
+    CHECK(second->executes == 0);
+    CHECK(third->executes == 1);
 }

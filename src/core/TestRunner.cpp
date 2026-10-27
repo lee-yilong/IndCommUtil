@@ -19,17 +19,46 @@ TestRunner::~TestRunner() {
 void TestRunner::Start() {
     if (m_thread.joinable()) return;
     m_stopFlag = false;
+    m_pauseFlag = false;
+    m_jumpRequest = -1;
+    m_currentIndex = -1;
     m_thread = std::thread(&TestRunner::RunLoop, this);
 }
 
 void TestRunner::Stop() {
     m_stopFlag = true;
+    m_pauseFlag = false;
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_waitingForContinue = false;
     }
     m_cv.notify_all();
+    m_pauseCv.notify_all();
     if (m_thread.joinable()) m_thread.join();
+}
+
+void TestRunner::Pause() {
+    m_pauseFlag = true;
+    m_pauseCv.notify_all();
+}
+
+void TestRunner::Resume() {
+    m_pauseFlag = false;
+    m_pauseCv.notify_all();
+}
+
+void TestRunner::JumpToStep(int index) {
+    if (index < 0) index = 0;
+    if (index >= static_cast<int>(m_steps.size())) index = static_cast<int>(m_steps.size()) - 1;
+    if (index < 0) return;
+    m_jumpRequest = index;
+    m_pauseFlag = false;
+    m_pauseCv.notify_all();
+}
+
+void TestRunner::WaitIfPaused() {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    m_pauseCv.wait(lock, [this]() { return !m_pauseFlag || m_stopFlag; });
 }
 
 void TestRunner::Continue() {
@@ -54,10 +83,15 @@ void TestRunner::RunLoop() {
     bool aborted = false;
 
     for (size_t i = 0; i < m_steps.size() && !aborted; ++i) {
+        WaitIfPaused();
         if (m_stopFlag) {
             aborted = true;
             break;
         }
+
+        const int jump = m_jumpRequest.exchange(-1);
+        if (jump >= 0 && jump < static_cast<int>(m_steps.size())) i = static_cast<size_t>(jump);
+        m_currentIndex = static_cast<int>(i);
 
         auto& step = m_steps[i];
         const std::string stepName = step->Name();
@@ -169,6 +203,7 @@ void TestRunner::RunLoop() {
     }
 
     if (m_finishCb) {
+        m_currentIndex = -1;
         m_finishCb(overallSuccess && !m_stopFlag && !aborted);
     }
 }
