@@ -3,6 +3,7 @@
 #include <wx/checklst.h>
 #include <wx/datectrl.h>
 #include <wx/dateevt.h>
+#include <wx/spinctrl.h>
 #include <wx/timectrl.h>
 #include <wx/wx.h>
 
@@ -19,13 +20,14 @@ public:
 
 private:
     void OnQuery(wxCommandEvent& evt);
-    void OnPresetChanged(wxCommandEvent& evt);
+    void OnRangeChanged(wxCommandEvent& evt);
 
     Database* m_db;
     std::string m_projectPath;
 
     wxCheckListBox* m_varList;
-    wxChoice* m_presetChoice;
+    wxSpinCtrl* m_rangeValue;
+    wxChoice* m_rangeUnit;
     wxDatePickerCtrl* m_startDate;
     wxTimePickerCtrl* m_startTime;
     wxDatePickerCtrl* m_endDate;

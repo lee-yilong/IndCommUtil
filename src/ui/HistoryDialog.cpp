@@ -12,10 +12,8 @@
 namespace icu {
 
 namespace {
-const int kQuickRangeSeconds[] = {1, 5, 10, 30, 60, 300, 600, 3600, 86400};
-const char* const kQuickRangeLabels[] = {"1s",   "5s",    "10s", "30s", "1min",
-                                         "5min", "10min", "1h",  "24h"};
-constexpr int kQuickRangeCount = 9;
+const int kTimeUnitMultipliers[] = {1, 60, 3600, 86400};
+constexpr int kTimeUnitCount = 4;
 }  // namespace
 
 HistoryDialog::HistoryDialog(wxWindow* parent, Database* db, const std::string& projectPath,
@@ -54,11 +52,27 @@ HistoryDialog::HistoryDialog(wxWindow* parent, Database* db, const std::string& 
     quickTitle->SetForegroundColour(ui::kThemeDark);
     leftSizer->Add(quickTitle, 0, wxLEFT | wxRIGHT | wxTOP, 12);
 
-    m_presetChoice = new wxChoice(leftCard, wxID_ANY);
-    for (int i = 0; i < kQuickRangeCount; ++i) m_presetChoice->Append(kQuickRangeLabels[i]);
-    m_presetChoice->SetSelection(8);  // 24h
-    m_presetChoice->Bind(wxEVT_CHOICE, &HistoryDialog::OnPresetChanged, this);
-    leftSizer->Add(m_presetChoice, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
+    m_rangeValue = new wxSpinCtrl(leftCard, wxID_ANY, "24", wxDefaultPosition, wxSize(-1, -1),
+                                  wxSP_ARROW_KEYS | wxTE_PROCESS_ENTER, 1, 100000, 24);
+    m_rangeUnit = new wxChoice(leftCard, wxID_ANY);
+    m_rangeUnit->Append(_("Seconds"));
+    m_rangeUnit->Append(_("Minutes"));
+    m_rangeUnit->Append(_("Hours"));
+    m_rangeUnit->Append(_("Days"));
+    m_rangeUnit->SetSelection(2);  // 24 小时
+    m_rangeValue->Bind(wxEVT_SPINCTRL, &HistoryDialog::OnRangeChanged, this);
+    m_rangeValue->Bind(wxEVT_TEXT_ENTER, &HistoryDialog::OnRangeChanged, this);
+    m_rangeValue->Bind(wxEVT_KILL_FOCUS, [this](wxFocusEvent& evt) {
+        wxCommandEvent dummy;
+        OnRangeChanged(dummy);
+        evt.Skip();
+    });
+    m_rangeUnit->Bind(wxEVT_CHOICE, &HistoryDialog::OnRangeChanged, this);
+
+    auto* quickRow = new wxBoxSizer(wxHORIZONTAL);
+    quickRow->Add(m_rangeValue, 1, wxEXPAND | wxRIGHT, 6);
+    quickRow->Add(m_rangeUnit, 0, wxEXPAND);
+    leftSizer->Add(quickRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
 
     auto* timeTitle = new wxStaticText(leftCard, wxID_ANY, _("Time Range"));
     timeTitle->SetFont(timeTitle->GetFont().Bold());
@@ -118,13 +132,16 @@ HistoryDialog::HistoryDialog(wxWindow* parent, Database* db, const std::string& 
     CentreOnParent();
 }
 
-void HistoryDialog::OnPresetChanged(wxCommandEvent&) {
-    const int index = m_presetChoice->GetSelection();
-    if (index < 0 || index >= kQuickRangeCount) return;
+void HistoryDialog::OnRangeChanged(wxCommandEvent&) {
+    const int unit = m_rangeUnit->GetSelection();
+    const int value = m_rangeValue->GetValue();
+    if (unit < 0 || unit >= kTimeUnitCount || value <= 0) return;
 
+    const double totalSeconds = static_cast<double>(value) * kTimeUnitMultipliers[unit];
     const wxDateTime end = wxDateTime::Now();
     wxDateTime start = end;
-    start.Subtract(wxTimeSpan::Seconds(kQuickRangeSeconds[index]));
+    start.Subtract(wxTimeSpan::Milliseconds(
+        static_cast<wxLongLong>(static_cast<long long>(totalSeconds * 1000.0))));
 
     m_startDate->SetValue(start);
     m_startTime->SetValue(start);
@@ -141,8 +158,8 @@ void HistoryDialog::OnQuery(wxCommandEvent&) {
     }
 
     if (selectedVars.empty()) {
-        wxMessageBox(_("Please select at least one variable."), _("Notice"),
-                     wxOK | wxICON_INFORMATION, this);
+        ui::MessageDialog::Show(this, _("Notice"), _("Please select at least one variable."),
+                                wxOK | wxICON_INFORMATION);
         return;
     }
 
@@ -167,8 +184,8 @@ void HistoryDialog::OnQuery(wxCommandEvent&) {
     double endSec = static_cast<double>(endMs) / 1000.0;
 
     if (endSec <= startSec) {
-        wxMessageBox(_("End time must be later than start time."), _("Notice"),
-                     wxOK | wxICON_INFORMATION, this);
+        ui::MessageDialog::Show(this, _("Notice"), _("End time must be later than start time."),
+                                wxOK | wxICON_INFORMATION);
         return;
     }
 
@@ -188,8 +205,8 @@ void HistoryDialog::OnQuery(wxCommandEvent&) {
     }
 
     if (loadedCount == 0) {
-        wxMessageBox(_("No data found in this time range."), _("Notice"), wxOK | wxICON_INFORMATION,
-                     this);
+        ui::MessageDialog::Show(this, _("Notice"), _("No data found in this time range."),
+                                wxOK | wxICON_INFORMATION);
     }
 }
 

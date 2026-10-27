@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-27 21:44+0800\n"
+"POT-Creation-Date: 2026-10-27 22:33+0800\n"
 "PO-Revision-Date: 2026-10-19 20:00+0800\n"
 "Last-Translator: AI Assistant\n"
 "Language-Team: none\n"
@@ -17,29 +17,33 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: src/app/App.cpp:22
+#: src/app/App.cpp:23
 msgid "Application initializing..."
 msgstr "Application initializing..."
 
-#: src/app/App.cpp:31 src/app/MainFrame.cpp:1291 src/app/MainFrame.cpp:1372
+#: src/app/App.cpp:32 src/app/MainFrame.cpp:1291 src/app/MainFrame.cpp:1372
 #: src/ui/WelcomePanel.cpp:44
 msgid "IndComm"
 msgstr "IndComm"
 
-#: src/app/App.cpp:34
+#: src/app/App.cpp:35
 msgid "Application initialized"
 msgstr "Application initialized"
 
-#: src/app/App.cpp:39
+#: src/app/App.cpp:40
 msgid "Application shutting down..."
 msgstr "Application shutting down..."
 
-#: src/app/App.cpp:49
+#: src/app/App.cpp:50
 #, c-format
 msgid "Language already '%s', ignoring"
 msgstr "Language already '%s', ignoring"
 
-#: src/app/App.cpp:55
+#: src/app/App.cpp:57
+msgid "Language Changed"
+msgstr "Language Changed"
+
+#: src/app/App.cpp:58
 msgid ""
 "Language will be applied after restart.\n"
 "\n"
@@ -49,16 +53,12 @@ msgstr ""
 "\n"
 "Restart now?"
 
-#: src/app/App.cpp:56
-msgid "Language Changed"
-msgstr "Language Changed"
-
-#: src/app/App.cpp:60
+#: src/app/App.cpp:62
 #, c-format
 msgid "Restarting application: %s"
 msgstr "Restarting application: %s"
 
-#: src/app/App.cpp:64
+#: src/app/App.cpp:66
 msgid "Language will be applied on next start"
 msgstr "Language will be applied on next start"
 
@@ -79,20 +79,22 @@ msgid "English"
 msgstr "English"
 
 #: src/app/MainFrame.cpp:202 src/ui/GenericProtocolDialog.cpp:330
-#: src/ui/SessionPanel.cpp:505 src/ui/SessionPanel.cpp:1978
+#: src/ui/SessionPanel.cpp:529 src/ui/SessionPanel.cpp:2047
 #: src/ui/SettingsDialog.cpp:117 src/ui/TestStepEditDialog.cpp:133
-#: src/ui/UIUtils.h:313 src/ui/UIUtils.h:317 src/ui/VariableEditDialog.cpp:122
+#: src/ui/UIUtils.h:372 src/ui/UIUtils.h:376 src/ui/UIUtils.h:433
+#: src/ui/VariableEditDialog.cpp:122
 msgid "Cancel"
 msgstr "Cancel"
 
-#: src/app/MainFrame.cpp:204 src/ui/SessionPanel.cpp:1980
+#: src/app/MainFrame.cpp:204 src/ui/SessionPanel.cpp:2049
 #: src/ui/SettingsDialog.cpp:113 src/ui/TestStepEditDialog.cpp:135
-#: src/ui/UIUtils.h:318 src/ui/UIUtils.h:376 src/ui/VariableEditDialog.cpp:124
+#: src/ui/UIUtils.h:377 src/ui/UIUtils.h:436 src/ui/UIUtils.h:500
+#: src/ui/VariableEditDialog.cpp:124
 msgid "OK"
 msgstr "OK"
 
 #: src/app/MainFrame.cpp:368 src/app/MainFrame.cpp:779
-#: src/app/MainFrame.cpp:910 src/ui/HistoryDialog.cpp:111
+#: src/app/MainFrame.cpp:910 src/ui/HistoryDialog.cpp:120
 msgid "Close"
 msgstr "Close"
 
@@ -136,18 +138,18 @@ msgstr "Quit"
 msgid "Add"
 msgstr "Add"
 
-#: src/app/MainFrame.cpp:809 src/ui/SessionPanel.cpp:1553
-#: src/ui/SessionPanel.cpp:1607
+#: src/app/MainFrame.cpp:809 src/ui/SessionPanel.cpp:1577
+#: src/ui/SessionPanel.cpp:1631
 msgid "Copy"
 msgstr "Copy"
 
 #: src/app/MainFrame.cpp:813 src/app/MainFrame.cpp:941
-#: src/ui/SessionPanel.cpp:1554 src/ui/SessionPanel.cpp:1608
+#: src/ui/SessionPanel.cpp:1578 src/ui/SessionPanel.cpp:1632
 msgid "Edit"
 msgstr "Edit"
 
-#: src/app/MainFrame.cpp:817 src/ui/SessionPanel.cpp:1555
-#: src/ui/SessionPanel.cpp:1609
+#: src/app/MainFrame.cpp:817 src/ui/SessionPanel.cpp:1579
+#: src/ui/SessionPanel.cpp:1633
 msgid "Delete"
 msgstr "Delete"
 
@@ -175,7 +177,7 @@ msgstr "Language"
 msgid "Settings"
 msgstr "Settings"
 
-#: src/app/MainFrame.cpp:994 src/ui/UIUtils.h:342 src/ui/UIUtils.h:347
+#: src/app/MainFrame.cpp:994 src/ui/UIUtils.h:466 src/ui/UIUtils.h:471
 msgid "About"
 msgstr "About"
 
@@ -191,19 +193,19 @@ msgstr "Restore Down"
 msgid "Failed to open session"
 msgstr "Failed to open session"
 
-#: src/app/MainFrame.cpp:1308 src/ui/SessionPanel.cpp:2398
+#: src/app/MainFrame.cpp:1308 src/ui/SessionPanel.cpp:2477
 msgid "Connected"
 msgstr "Connected"
 
-#: src/app/MainFrame.cpp:1312 src/ui/SessionPanel.cpp:2385
+#: src/app/MainFrame.cpp:1312 src/ui/SessionPanel.cpp:2464
 msgid "Connecting..."
 msgstr "Connecting..."
 
-#: src/app/MainFrame.cpp:1316 src/ui/SessionPanel.cpp:2389
+#: src/app/MainFrame.cpp:1316 src/ui/SessionPanel.cpp:2468
 msgid "Reconnecting..."
 msgstr "Reconnecting..."
 
-#: src/app/MainFrame.cpp:1320 src/ui/SessionPanel.cpp:2402
+#: src/app/MainFrame.cpp:1320 src/ui/SessionPanel.cpp:2481
 msgid "Disconnected"
 msgstr "Disconnected"
 
@@ -231,8 +233,8 @@ msgstr "Open Connection Configuration"
 
 #: src/app/MainFrame.cpp:1459 src/app/MainFrame.cpp:1498
 #: src/app/MainFrame.cpp:1507 src/app/MainFrame.cpp:1615
-#: src/ui/LogFrame.cpp:173 src/ui/SessionPanel.cpp:1219
-#: src/ui/SessionPanel.cpp:1305 src/ui/SessionPanel.cpp:2188
+#: src/ui/LogFrame.cpp:173 src/ui/SessionPanel.cpp:1243
+#: src/ui/SessionPanel.cpp:1329 src/ui/SessionPanel.cpp:2262
 msgid "Error"
 msgstr "Error"
 
@@ -944,50 +946,66 @@ msgstr "Setup Complete"
 msgid "Click Finish to create the connection."
 msgstr "Click Finish to create the connection."
 
-#: src/ui/HistoryDialog.cpp:23 src/ui/HistoryDialog.cpp:32
+#: src/ui/HistoryDialog.cpp:21 src/ui/HistoryDialog.cpp:30
 msgid "History Query"
 msgstr "History Query"
 
-#: src/ui/HistoryDialog.cpp:42
+#: src/ui/HistoryDialog.cpp:40
 msgid "Select Variables"
 msgstr "Select Variables"
 
-#: src/ui/HistoryDialog.cpp:52
+#: src/ui/HistoryDialog.cpp:50
 msgid "Quick Range"
 msgstr "Quick Range"
 
-#: src/ui/HistoryDialog.cpp:63
+#: src/ui/HistoryDialog.cpp:58 src/ui/SessionPanel.cpp:349
+msgid "Seconds"
+msgstr "Seconds"
+
+#: src/ui/HistoryDialog.cpp:59 src/ui/SessionPanel.cpp:350
+msgid "Minutes"
+msgstr "Minutes"
+
+#: src/ui/HistoryDialog.cpp:60 src/ui/SessionPanel.cpp:351
+msgid "Hours"
+msgstr "Hours"
+
+#: src/ui/HistoryDialog.cpp:61 src/ui/SessionPanel.cpp:352
+msgid "Days"
+msgstr "Days"
+
+#: src/ui/HistoryDialog.cpp:72
 msgid "Time Range"
 msgstr "Time Range"
 
-#: src/ui/HistoryDialog.cpp:72
+#: src/ui/HistoryDialog.cpp:81
 msgid "Start: "
 msgstr "Start: "
 
-#: src/ui/HistoryDialog.cpp:80
+#: src/ui/HistoryDialog.cpp:89
 msgid "End:   "
 msgstr "End:   "
 
-#: src/ui/HistoryDialog.cpp:87
+#: src/ui/HistoryDialog.cpp:96
 msgid "Query"
 msgstr "Query"
 
-#: src/ui/HistoryDialog.cpp:144
-msgid "Please select at least one variable."
-msgstr "Please select at least one variable."
-
-#: src/ui/HistoryDialog.cpp:144 src/ui/HistoryDialog.cpp:170
-#: src/ui/HistoryDialog.cpp:191 src/ui/SessionPanel.cpp:1130
-#: src/ui/SessionPanel.cpp:1933 src/ui/SessionPanel.cpp:2094
-#: src/ui/SessionPanel.cpp:2119
+#: src/ui/HistoryDialog.cpp:156 src/ui/HistoryDialog.cpp:182
+#: src/ui/HistoryDialog.cpp:203 src/ui/SessionPanel.cpp:1154
+#: src/ui/SessionPanel.cpp:2002 src/ui/SessionPanel.cpp:2163
+#: src/ui/SessionPanel.cpp:2190
 msgid "Notice"
 msgstr "Notice"
 
-#: src/ui/HistoryDialog.cpp:170
+#: src/ui/HistoryDialog.cpp:156
+msgid "Please select at least one variable."
+msgstr "Please select at least one variable."
+
+#: src/ui/HistoryDialog.cpp:182
 msgid "End time must be later than start time."
 msgstr "End time must be later than start time."
 
-#: src/ui/HistoryDialog.cpp:191
+#: src/ui/HistoryDialog.cpp:203
 msgid "No data found in this time range."
 msgstr "No data found in this time range."
 
@@ -1003,11 +1021,11 @@ msgstr "Log window opened"
 msgid "Load File..."
 msgstr "Load File..."
 
-#: src/ui/LogFrame.cpp:106 src/ui/SessionPanel.cpp:406
+#: src/ui/LogFrame.cpp:106 src/ui/SessionPanel.cpp:430
 msgid "Clear"
 msgstr "Clear"
 
-#: src/ui/LogFrame.cpp:111 src/ui/SessionPanel.cpp:663
+#: src/ui/LogFrame.cpp:111 src/ui/SessionPanel.cpp:687
 msgid "Auto Scroll"
 msgstr "Auto Scroll"
 
@@ -1024,202 +1042,202 @@ msgstr "Loaded log file: %s"
 msgid "Failed to open log file."
 msgstr "Failed to open log file."
 
-#: src/ui/SessionPanel.cpp:222
+#: src/ui/SessionPanel.cpp:234
 msgid "Communication Variables"
 msgstr "Communication Variables"
 
-#: src/ui/SessionPanel.cpp:228
+#: src/ui/SessionPanel.cpp:240
 msgid "Name"
 msgstr "Name"
 
-#: src/ui/SessionPanel.cpp:229
+#: src/ui/SessionPanel.cpp:241
 msgid "Type"
 msgstr "Type"
 
-#: src/ui/SessionPanel.cpp:230
+#: src/ui/SessionPanel.cpp:242
 msgid "Access"
 msgstr "Access"
 
-#: src/ui/SessionPanel.cpp:231
+#: src/ui/SessionPanel.cpp:243
 msgid "Value"
 msgstr "Value"
 
-#: src/ui/SessionPanel.cpp:331
+#: src/ui/SessionPanel.cpp:343
 msgid "Time Window:"
 msgstr "Time Window:"
 
-#: src/ui/SessionPanel.cpp:343
+#: src/ui/SessionPanel.cpp:366
 msgid "Scroll to zoom · Drag to pan · Double-click to follow"
 msgstr "Scroll to zoom · Drag to pan · Double-click to follow"
 
-#: src/ui/SessionPanel.cpp:355
+#: src/ui/SessionPanel.cpp:379
 msgid "Manual Mode"
 msgstr "Manual Mode"
 
-#: src/ui/SessionPanel.cpp:356 src/ui/SessionPanel.cpp:2330
+#: src/ui/SessionPanel.cpp:380 src/ui/SessionPanel.cpp:2409
 msgid "Interactive Mode"
 msgstr "Interactive Mode"
 
-#: src/ui/SessionPanel.cpp:357
+#: src/ui/SessionPanel.cpp:381
 msgid "Auto Mode"
 msgstr "Auto Mode"
 
-#: src/ui/SessionPanel.cpp:358
+#: src/ui/SessionPanel.cpp:382
 msgid "Chart"
 msgstr "Chart"
 
-#: src/ui/SessionPanel.cpp:365
+#: src/ui/SessionPanel.cpp:389
 msgid "Operation Request"
 msgstr "Operation Request"
 
-#: src/ui/SessionPanel.cpp:374 src/ui/SessionPanel.cpp:1371
+#: src/ui/SessionPanel.cpp:398 src/ui/SessionPanel.cpp:1395
 msgid "Please select a variable from the left list."
 msgstr "Please select a variable from the left list."
 
-#: src/ui/SessionPanel.cpp:399
+#: src/ui/SessionPanel.cpp:423
 msgid "Communication Log"
 msgstr "Communication Log"
 
-#: src/ui/SessionPanel.cpp:497 src/ui/SessionPanel.cpp:561
+#: src/ui/SessionPanel.cpp:521 src/ui/SessionPanel.cpp:585
 msgid "Open Connection (Ctrl+O)"
 msgstr "Open Connection (Ctrl+O)"
 
-#: src/ui/SessionPanel.cpp:500
+#: src/ui/SessionPanel.cpp:524
 msgid "Stop Listening"
 msgstr "Stop Listening"
 
-#: src/ui/SessionPanel.cpp:501
+#: src/ui/SessionPanel.cpp:525
 msgid "Disconnect"
 msgstr "Disconnect"
 
-#: src/ui/SessionPanel.cpp:509 src/ui/SessionPanel.cpp:562
+#: src/ui/SessionPanel.cpp:533 src/ui/SessionPanel.cpp:586
 msgid "Configure Connection"
 msgstr "Configure Connection"
 
-#: src/ui/SessionPanel.cpp:514
+#: src/ui/SessionPanel.cpp:538
 msgid "Stop Recording"
 msgstr "Stop Recording"
 
-#: src/ui/SessionPanel.cpp:514 src/ui/SessionPanel.cpp:563
+#: src/ui/SessionPanel.cpp:538 src/ui/SessionPanel.cpp:587
 msgid "Record Data"
 msgstr "Record Data"
 
-#: src/ui/SessionPanel.cpp:516 src/ui/SessionPanel.cpp:564
+#: src/ui/SessionPanel.cpp:540 src/ui/SessionPanel.cpp:588
 msgid "History"
 msgstr "History"
 
-#: src/ui/SessionPanel.cpp:519
+#: src/ui/SessionPanel.cpp:543
 msgid "Add Variable (Ctrl+N)"
 msgstr "Add Variable (Ctrl+N)"
 
-#: src/ui/SessionPanel.cpp:519
+#: src/ui/SessionPanel.cpp:543
 msgid "Add Step (Ctrl+N)"
 msgstr "Add Step (Ctrl+N)"
 
-#: src/ui/SessionPanel.cpp:520 src/ui/SessionPanel.cpp:569
+#: src/ui/SessionPanel.cpp:544 src/ui/SessionPanel.cpp:593
 msgid "Copy (Ctrl+C)"
 msgstr "Copy (Ctrl+C)"
 
-#: src/ui/SessionPanel.cpp:521 src/ui/SessionPanel.cpp:570
+#: src/ui/SessionPanel.cpp:545 src/ui/SessionPanel.cpp:594
 msgid "Edit (Ctrl+E)"
 msgstr "Edit (Ctrl+E)"
 
-#: src/ui/SessionPanel.cpp:522 src/ui/SessionPanel.cpp:571
+#: src/ui/SessionPanel.cpp:546 src/ui/SessionPanel.cpp:595
 msgid "Delete (Del)"
 msgstr "Delete (Del)"
 
-#: src/ui/SessionPanel.cpp:525
+#: src/ui/SessionPanel.cpp:549
 msgid "Stop Flow"
 msgstr "Stop Flow"
 
-#: src/ui/SessionPanel.cpp:525 src/ui/SessionPanel.cpp:575
+#: src/ui/SessionPanel.cpp:549 src/ui/SessionPanel.cpp:599
 msgid "Run Flow"
 msgstr "Run Flow"
 
-#: src/ui/SessionPanel.cpp:528 src/ui/SessionPanel.cpp:576
-#: src/ui/SessionPanel.cpp:1611
+#: src/ui/SessionPanel.cpp:552 src/ui/SessionPanel.cpp:600
+#: src/ui/SessionPanel.cpp:1635
 msgid "Batch Create Steps"
 msgstr "Batch Create Steps"
 
-#: src/ui/SessionPanel.cpp:529 src/ui/SessionPanel.cpp:580
-#: src/ui/SessionPanel.cpp:1557 src/ui/SessionPanel.cpp:1613
+#: src/ui/SessionPanel.cpp:553 src/ui/SessionPanel.cpp:604
+#: src/ui/SessionPanel.cpp:1581 src/ui/SessionPanel.cpp:1637
 msgid "Move Up"
 msgstr "Move Up"
 
-#: src/ui/SessionPanel.cpp:530 src/ui/SessionPanel.cpp:581
-#: src/ui/SessionPanel.cpp:1558 src/ui/SessionPanel.cpp:1614
+#: src/ui/SessionPanel.cpp:554 src/ui/SessionPanel.cpp:605
+#: src/ui/SessionPanel.cpp:1582 src/ui/SessionPanel.cpp:1638
 msgid "Move Down"
 msgstr "Move Down"
 
-#: src/ui/SessionPanel.cpp:568
+#: src/ui/SessionPanel.cpp:592
 msgid "Add (Ctrl+N)"
 msgstr "Add (Ctrl+N)"
 
-#: src/ui/SessionPanel.cpp:605
+#: src/ui/SessionPanel.cpp:629
 msgid "Received: 0 bytes"
 msgstr "Received: 0 bytes"
 
-#: src/ui/SessionPanel.cpp:606
+#: src/ui/SessionPanel.cpp:630
 msgid "Sent: 0 bytes"
 msgstr "Sent: 0 bytes"
 
-#: src/ui/SessionPanel.cpp:607
+#: src/ui/SessionPanel.cpp:631
 msgid "Clients: 0"
 msgstr "Clients: 0"
 
-#: src/ui/SessionPanel.cpp:661
+#: src/ui/SessionPanel.cpp:685
 msgid "HEX Display"
 msgstr "HEX Display"
 
-#: src/ui/SessionPanel.cpp:662
+#: src/ui/SessionPanel.cpp:686
 msgid "Timestamp"
 msgstr "Timestamp"
 
-#: src/ui/SessionPanel.cpp:780
+#: src/ui/SessionPanel.cpp:804
 #, c-format
 msgid "Value (%s):"
 msgstr "Value (%s):"
 
-#: src/ui/SessionPanel.cpp:834
+#: src/ui/SessionPanel.cpp:858
 msgid "Raw Bytes:"
 msgstr "Raw Bytes:"
 
-#: src/ui/SessionPanel.cpp:855 src/ui/SessionPanel.cpp:1163
-#: src/ui/SessionPanel.cpp:1189
+#: src/ui/SessionPanel.cpp:879 src/ui/SessionPanel.cpp:1187
+#: src/ui/SessionPanel.cpp:1213
 msgid "Send"
 msgstr "Send"
 
-#: src/ui/SessionPanel.cpp:863
+#: src/ui/SessionPanel.cpp:887
 msgid "Read"
 msgstr "Read"
 
-#: src/ui/SessionPanel.cpp:868
+#: src/ui/SessionPanel.cpp:892
 msgid "Write"
 msgstr "Write"
 
-#: src/ui/SessionPanel.cpp:908 src/ui/SessionPanel.cpp:1059
-#: src/ui/SessionPanel.cpp:1142
+#: src/ui/SessionPanel.cpp:932 src/ui/SessionPanel.cpp:1083
+#: src/ui/SessionPanel.cpp:1166
 msgid "Modbus register value must be 0..65535."
 msgstr "Modbus register value must be 0..65535."
 
-#: src/ui/SessionPanel.cpp:912 src/ui/SessionPanel.cpp:1063
-#: src/ui/SessionPanel.cpp:1146
+#: src/ui/SessionPanel.cpp:936 src/ui/SessionPanel.cpp:1087
+#: src/ui/SessionPanel.cpp:1170
 msgid "Modbus register value must be an integer."
 msgstr "Modbus register value must be an integer."
 
-#: src/ui/SessionPanel.cpp:919
+#: src/ui/SessionPanel.cpp:943
 msgid "Please enter a value."
 msgstr "Please enter a value."
 
-#: src/ui/SessionPanel.cpp:923
+#: src/ui/SessionPanel.cpp:947
 msgid "Invalid value: "
 msgstr "Invalid value: "
 
-#: src/ui/SessionPanel.cpp:964
+#: src/ui/SessionPanel.cpp:988
 msgid "+ New Variable"
 msgstr "+ New Variable"
 
-#: src/ui/SessionPanel.cpp:1068
+#: src/ui/SessionPanel.cpp:1092
 #, c-format
 msgid ""
 "Write failed: invalid value for type %s.\n"
@@ -1230,17 +1248,17 @@ msgstr ""
 "\n"
 "%s"
 
-#: src/ui/SessionPanel.cpp:1070 src/ui/SessionPanel.cpp:1154
-#: src/ui/SessionPanel.cpp:1200 src/ui/TestStepEditDialog.cpp:189
-#: src/ui/TestStepEditDialog.cpp:203
+#: src/ui/SessionPanel.cpp:1094 src/ui/SessionPanel.cpp:1178
+#: src/ui/SessionPanel.cpp:1224 src/ui/TestStepEditDialog.cpp:189
+#: src/ui/TestStepEditDialog.cpp:200
 msgid "Invalid Value"
 msgstr "Invalid Value"
 
-#: src/ui/SessionPanel.cpp:1130
+#: src/ui/SessionPanel.cpp:1154
 msgid "Payload is empty. Please fill in the 'Value' field."
 msgstr "Payload is empty. Please fill in the 'Value' field."
 
-#: src/ui/SessionPanel.cpp:1152
+#: src/ui/SessionPanel.cpp:1176
 #, c-format
 msgid ""
 "%s failed: invalid value for type %s.\n"
@@ -1251,12 +1269,12 @@ msgstr ""
 "\n"
 "%s"
 
-#: src/ui/SessionPanel.cpp:1174 src/ui/SessionPanel.cpp:1208
+#: src/ui/SessionPanel.cpp:1198 src/ui/SessionPanel.cpp:1232
 #, c-format
 msgid "Sent: %llu bytes"
 msgstr "Sent: %llu bytes"
 
-#: src/ui/SessionPanel.cpp:1198
+#: src/ui/SessionPanel.cpp:1222
 #, c-format
 msgid ""
 "Send failed: invalid value for type %s.\n"
@@ -1267,172 +1285,158 @@ msgstr ""
 "\n"
 "%s"
 
-#: src/ui/SessionPanel.cpp:1219
+#: src/ui/SessionPanel.cpp:1243
 msgid "Send failed"
 msgstr "Send failed"
 
-#: src/ui/SessionPanel.cpp:1305
+#: src/ui/SessionPanel.cpp:1329
 msgid "Variable name already exists."
 msgstr "Variable name already exists."
 
-#: src/ui/SessionPanel.cpp:1398 src/ui/SessionPanel.cpp:2193
+#: src/ui/SessionPanel.cpp:1422 src/ui/SessionPanel.cpp:2267
 msgid "Pending"
 msgstr "Pending"
 
-#: src/ui/SessionPanel.cpp:1401
+#: src/ui/SessionPanel.cpp:1425
 msgid "+ New Step"
 msgstr "+ New Step"
 
-#: src/ui/SessionPanel.cpp:1552 src/ui/VariableEditDialog.cpp:13
+#: src/ui/SessionPanel.cpp:1576 src/ui/VariableEditDialog.cpp:13
 #: src/ui/VariableEditDialog.cpp:22
 msgid "Add Variable"
 msgstr "Add Variable"
 
-#: src/ui/SessionPanel.cpp:1606
+#: src/ui/SessionPanel.cpp:1630
 msgid "Add Step"
 msgstr "Add Step"
 
-#: src/ui/SessionPanel.cpp:1663
+#: src/ui/SessionPanel.cpp:1709
 #, c-format
-msgid ""
-"Step %d failed:\n"
-"\n"
-"%s\n"
-"\n"
-"Yes = Retry this step\n"
-"No = Skip this step\n"
-"Cancel = Stop the flow"
-msgstr ""
-"Step %d failed:\n"
-"\n"
-"%s\n"
-"\n"
-"Yes = Retry this step\n"
-"No = Skip this step\n"
-"Cancel = Stop the flow"
+msgid "Step %d failed: %s"
+msgstr "Step %d failed: %s"
 
-#: src/ui/SessionPanel.cpp:1667
-msgid "Step Failed"
-msgstr "Step Failed"
+#: src/ui/SessionPanel.cpp:1752
+msgid "Test Progress"
+msgstr "Test Progress"
 
-#: src/ui/SessionPanel.cpp:1697
-msgid "Auto Mode Test Flow"
-msgstr "Auto Mode Test Flow"
+#: src/ui/SessionPanel.cpp:1762
+msgid "Retry"
+msgstr "Retry"
 
-#: src/ui/SessionPanel.cpp:1697
-msgid "Interactive Mode Test Flow"
-msgstr "Interactive Mode Test Flow"
+#: src/ui/SessionPanel.cpp:1764
+msgid "Stop"
+msgstr "Stop"
 
-#: src/ui/SessionPanel.cpp:1717
+#: src/ui/SessionPanel.cpp:1782
 msgid "Step Name"
 msgstr "Step Name"
 
-#: src/ui/SessionPanel.cpp:1718
+#: src/ui/SessionPanel.cpp:1783
 msgid "Status"
 msgstr "Status"
 
-#: src/ui/SessionPanel.cpp:1933
+#: src/ui/SessionPanel.cpp:2002
 msgid "Please select a base step first."
 msgstr "Please select a base step first."
 
-#: src/ui/SessionPanel.cpp:1940 src/ui/SessionPanel.cpp:1945
+#: src/ui/SessionPanel.cpp:2009 src/ui/SessionPanel.cpp:2014
 msgid "Batch Generate Steps"
 msgstr "Batch Generate Steps"
 
-#: src/ui/SessionPanel.cpp:1963
+#: src/ui/SessionPanel.cpp:2032
 msgid "Repeat Count:"
 msgstr "Repeat Count:"
 
-#: src/ui/SessionPanel.cpp:1967
+#: src/ui/SessionPanel.cpp:2036
 msgid "Interval (ms):"
 msgstr "Interval (ms):"
 
-#: src/ui/SessionPanel.cpp:1971
+#: src/ui/SessionPanel.cpp:2040
 msgid "Auto Increment/Decrement:"
 msgstr "Auto Increment/Decrement:"
 
-#: src/ui/SessionPanel.cpp:2094
+#: src/ui/SessionPanel.cpp:2163
 msgid "No enabled variables to record."
 msgstr "No enabled variables to record."
 
-#: src/ui/SessionPanel.cpp:2098
-msgid "Select variables to record:"
-msgstr "Select variables to record:"
-
-#: src/ui/SessionPanel.cpp:2098
+#: src/ui/SessionPanel.cpp:2171
 msgid "Record Settings"
 msgstr "Record Settings"
 
-#: src/ui/SessionPanel.cpp:2119
+#: src/ui/SessionPanel.cpp:2172
+msgid "Select variables to record:"
+msgstr "Select variables to record:"
+
+#: src/ui/SessionPanel.cpp:2190
 msgid "No readable variables found."
 msgstr "No readable variables found."
 
-#: src/ui/SessionPanel.cpp:2181
+#: src/ui/SessionPanel.cpp:2255
 #, c-format
 msgid "Protocol '%s' does not support action '%s'."
 msgstr "Protocol '%s' does not support action '%s'."
 
-#: src/ui/SessionPanel.cpp:2183
+#: src/ui/SessionPanel.cpp:2257
 msgid "Unsupported Action"
 msgstr "Unsupported Action"
 
-#: src/ui/SessionPanel.cpp:2188
+#: src/ui/SessionPanel.cpp:2262
 msgid "No valid steps."
 msgstr "No valid steps."
 
-#: src/ui/SessionPanel.cpp:2211
+#: src/ui/SessionPanel.cpp:2286
 msgid "Running"
 msgstr "Running"
 
-#: src/ui/SessionPanel.cpp:2215
+#: src/ui/SessionPanel.cpp:2290
 msgid "Passed"
 msgstr "Passed"
 
-#: src/ui/SessionPanel.cpp:2219
+#: src/ui/SessionPanel.cpp:2294
 msgid "Failed"
 msgstr "Failed"
 
-#: src/ui/SessionPanel.cpp:2223
+#: src/ui/SessionPanel.cpp:2298
 msgid "Skipped"
 msgstr "Skipped"
 
-#: src/ui/SessionPanel.cpp:2236
+#: src/ui/SessionPanel.cpp:2312
 #, c-format
 msgid "Running %d / %d"
 msgstr "Running %d / %d"
 
-#: src/ui/SessionPanel.cpp:2241
+#: src/ui/SessionPanel.cpp:2317
 #, c-format
 msgid "Completed %d / %d"
 msgstr "Completed %d / %d"
 
-#: src/ui/SessionPanel.cpp:2246
+#: src/ui/SessionPanel.cpp:2322
 #, c-format
 msgid "Step %d failed"
 msgstr "Step %d failed"
 
-#: src/ui/SessionPanel.cpp:2251
+#: src/ui/SessionPanel.cpp:2327
 #, c-format
 msgid "Skipped %d / %d"
 msgstr "Skipped %d / %d"
 
-#: src/ui/SessionPanel.cpp:2304
+#: src/ui/SessionPanel.cpp:2381
 msgid "Finished"
 msgstr "Finished"
 
-#: src/ui/SessionPanel.cpp:2304
+#: src/ui/SessionPanel.cpp:2381
 msgid "Stopped"
 msgstr "Stopped"
 
-#: src/ui/SessionPanel.cpp:2308
+#: src/ui/SessionPanel.cpp:2385
 msgid "Test Finished Successfully\n"
 msgstr "Test Finished Successfully\n"
 
-#: src/ui/SessionPanel.cpp:2308
+#: src/ui/SessionPanel.cpp:2385
 msgid "Test Failed\n"
 msgstr "Test Failed\n"
 
-#: src/ui/SessionPanel.cpp:2328
+#: src/ui/SessionPanel.cpp:2407
 #, c-format
 msgid ""
 "Step %d finished.\n"
@@ -1443,45 +1447,45 @@ msgstr ""
 "\n"
 "Ready to execute Step %d. Continue?"
 
-#: src/ui/SessionPanel.cpp:2363
+#: src/ui/SessionPanel.cpp:2442
 #, c-format
 msgid "Target: %s"
 msgstr "Target: %s"
 
-#: src/ui/SessionPanel.cpp:2381
+#: src/ui/SessionPanel.cpp:2460
 msgid "Idle"
 msgstr "Idle"
 
-#: src/ui/SessionPanel.cpp:2395
+#: src/ui/SessionPanel.cpp:2474
 #, c-format
 msgid "Connected (%d)"
 msgstr "Connected (%d)"
 
-#: src/ui/SessionPanel.cpp:2396
+#: src/ui/SessionPanel.cpp:2475
 msgid "Listening"
 msgstr "Listening"
 
-#: src/ui/SessionPanel.cpp:2415
+#: src/ui/SessionPanel.cpp:2494
 #, c-format
 msgid "Clients: %d"
 msgstr "Clients: %d"
 
-#: src/ui/SessionPanel.cpp:2425 src/ui/SessionPanel.cpp:2539
+#: src/ui/SessionPanel.cpp:2504 src/ui/SessionPanel.cpp:2617
 #, c-format
 msgid "Received: %llu bytes"
 msgstr "Received: %llu bytes"
 
-#: src/ui/SessionPanel.cpp:2468
+#: src/ui/SessionPanel.cpp:2547
 #, c-format
 msgid "Reconnecting (attempt %d) ...\n"
 msgstr "Reconnecting (attempt %d) ...\n"
 
-#: src/ui/SessionPanel.cpp:2481
+#: src/ui/SessionPanel.cpp:2560
 #, c-format
 msgid "Client #%d connected\n"
 msgstr "Client #%d connected\n"
 
-#: src/ui/SessionPanel.cpp:2494
+#: src/ui/SessionPanel.cpp:2573
 #, c-format
 msgid "Client #%d disconnected\n"
 msgstr "Client #%d disconnected\n"
@@ -1570,7 +1574,7 @@ msgstr "Assert Expected:"
 msgid "Please enter a value to write."
 msgstr "Please enter a value to write."
 
-#: src/ui/TestStepEditDialog.cpp:200
+#: src/ui/TestStepEditDialog.cpp:201
 #, c-format
 msgid ""
 "Invalid value for variable '%s' (type %s):\n"
@@ -1581,11 +1585,11 @@ msgstr ""
 "\n"
 "%s"
 
-#: src/ui/UIUtils.h:314
+#: src/ui/UIUtils.h:373
 msgid "No"
 msgstr "No"
 
-#: src/ui/UIUtils.h:315
+#: src/ui/UIUtils.h:374
 msgid "Yes"
 msgstr "Yes"
 
@@ -1628,6 +1632,33 @@ msgstr "Recent"
 #: src/ui/WelcomePanel.cpp:108
 msgid "No recent connections."
 msgstr "No recent connections."
+
+#, c-format
+#~ msgid ""
+#~ "Step %d failed:\n"
+#~ "\n"
+#~ "%s\n"
+#~ "\n"
+#~ "Yes = Retry this step\n"
+#~ "No = Skip this step\n"
+#~ "Cancel = Stop the flow"
+#~ msgstr ""
+#~ "Step %d failed:\n"
+#~ "\n"
+#~ "%s\n"
+#~ "\n"
+#~ "Yes = Retry this step\n"
+#~ "No = Skip this step\n"
+#~ "Cancel = Stop the flow"
+
+#~ msgid "Step Failed"
+#~ msgstr "Step Failed"
+
+#~ msgid "Auto Mode Test Flow"
+#~ msgstr "Auto Mode Test Flow"
+
+#~ msgid "Interactive Mode Test Flow"
+#~ msgstr "Interactive Mode Test Flow"
 
 #~ msgid "Too many protocols, menu ID overflow"
 #~ msgstr "Too many protocols, menu ID overflow"

@@ -1,13 +1,17 @@
 #pragma once
 
 #include <wx/artprov.h>
+#include <wx/checklst.h>
 #include <wx/dcbuffer.h>
 #include <wx/filename.h>
 #include <wx/graphics.h>
 #include <wx/stdpaths.h>
 #include <wx/wx.h>
 
+#include <algorithm>
 #include <functional>
+#include <memory>
+#include <vector>
 
 namespace icu {
 namespace ui {
@@ -236,6 +240,60 @@ inline wxPanel* CreateDialogHeader(wxDialog* dialog, const wxString& title, wxPo
     return titlePanel;
 }
 
+// ================= 主题化进度条 =================
+class ProgressBar : public wxPanel {
+public:
+    explicit ProgressBar(wxWindow* parent)
+        : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxSize(-1, 22), wxBORDER_NONE) {
+        SetBackgroundStyle(wxBG_STYLE_PAINT);
+        SetMinSize(wxSize(160, 22));
+        Bind(wxEVT_PAINT, &ProgressBar::OnPaint, this);
+    }
+
+    void SetProgress(int value, int total) {
+        m_total = std::max(0, total);
+        m_value = std::max(0, std::min(value, m_total));
+        Refresh();
+    }
+
+    int GetValue() const { return m_value; }
+    int GetTotal() const { return m_total; }
+
+private:
+    void OnPaint(wxPaintEvent&) {
+        wxAutoBufferedPaintDC dc(this);
+        dc.SetBackground(wxBrush(GetParent()->GetBackgroundColour()));
+        dc.Clear();
+
+        std::unique_ptr<wxGraphicsContext> gc(wxGraphicsContext::Create(dc));
+        if (!gc) return;
+
+        const wxSize size = GetClientSize();
+        const double ratio = m_total > 0 ? static_cast<double>(m_value) / m_total : 0.0;
+
+        gc->SetAntialiasMode(wxANTIALIAS_DEFAULT);
+        gc->SetBrush(wxBrush(kBorderColor));
+        gc->SetPen(*wxTRANSPARENT_PEN);
+        gc->DrawRoundedRectangle(0, 0, size.x, size.y, 5);
+
+        if (ratio > 0.0) {
+            const double fillWidth = std::max(6.0, size.x * ratio);
+            gc->SetBrush(wxBrush(kThemeBlue));
+            gc->DrawRoundedRectangle(0, 0, fillWidth, size.y, 5);
+        }
+
+        const wxString text =
+            wxString::Format("%d/%d  %d%%", m_value, m_total, static_cast<int>(ratio * 100));
+        gc->SetFont(GetFont().Scaled(0.95), ratio >= 0.5 ? *wxWHITE : kTextColor);
+        double tw = 0, th = 0;
+        gc->GetTextExtent(text, &tw, &th);
+        gc->DrawText(text, (size.x - tw) / 2, (size.y - th) / 2);
+    }
+
+    int m_value = 0;
+    int m_total = 1;
+};
+
 // ================= 通用消息提示对话框 =================
 class MessageDialog : public wxDialog {
 public:
@@ -296,6 +354,7 @@ inline MessageDialog::MessageDialog(wxWindow* parent, const wxString& title, con
     auto* text = new wxStaticText(card, wxID_ANY, msg);
     text->SetForegroundColour(kTextColor);
     text->SetFont(text->GetFont().Scaled(1.1));
+    text->Wrap(FromDIP(460));
     cardSizer->Add(text, 1, wxALIGN_CENTER_VERTICAL | wxTOP | wxBOTTOM | wxRIGHT, 16);
 
     card->SetSizer(cardSizer);
@@ -323,6 +382,71 @@ inline MessageDialog::MessageDialog(wxWindow* parent, const wxString& title, con
     SetMinSize(FromDIP(wxSize(380, 220)));
     CentreOnParent();
 }
+
+// ================= 通用多选列表对话框 =================
+class CheckListDialog : public wxDialog {
+public:
+    static bool Show(wxWindow* parent, const wxString& title, const wxString& prompt,
+                     const wxArrayString& choices, const std::vector<int>& initial,
+                     std::vector<int>& selected) {
+        CheckListDialog dlg(parent, title, prompt, choices, initial);
+        if (dlg.ShowModal() != wxID_OK) return false;
+        selected.clear();
+        for (unsigned int i = 0; i < dlg.m_list->GetCount(); ++i) {
+            if (dlg.m_list->IsChecked(i)) selected.push_back(static_cast<int>(i));
+        }
+        return true;
+    }
+
+private:
+    CheckListDialog(wxWindow* parent, const wxString& title, const wxString& prompt,
+                    const wxArrayString& choices, const std::vector<int>& initial)
+        : wxDialog(parent, wxID_ANY, title, wxDefaultPosition, wxDefaultSize,
+                   wxBORDER_NONE | wxRESIZE_BORDER) {
+        SetBackgroundColour(kBgColor);
+        auto* mainSizer = new wxBoxSizer(wxVERTICAL);
+
+        auto* header = CreateDialogHeader(this, title, m_dragStart, m_winStart,
+                                          [this]() { EndModal(wxID_CANCEL); });
+        mainSizer->Add(header, 0, wxEXPAND | wxTOP | wxBOTTOM, 12);
+
+        auto* card = new CardPanel(this);
+        auto* cardSizer = new wxBoxSizer(wxVERTICAL);
+
+        auto* promptText = new wxStaticText(card, wxID_ANY, prompt);
+        promptText->SetForegroundColour(kTextColor);
+        promptText->Wrap(FromDIP(420));
+        cardSizer->Add(promptText, 0, wxEXPAND | wxALL, 16);
+
+        m_list = new wxCheckListBox(card, wxID_ANY, wxDefaultPosition, wxSize(-1, 260), choices);
+        for (int index : initial) {
+            if (index >= 0 && index < static_cast<int>(m_list->GetCount()))
+                m_list->Check(index, true);
+        }
+        cardSizer->Add(m_list, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 16);
+
+        card->SetSizer(cardSizer);
+        mainSizer->Add(card, 1, wxEXPAND | wxLEFT | wxRIGHT, 16);
+
+        auto* btnSizer = new wxBoxSizer(wxHORIZONTAL);
+        btnSizer->AddStretchSpacer();
+        auto* btnCancel = new FlatButton(this, _("Cancel"), kBtnGrayBg, kTextColor,
+                                         [this]() { EndModal(wxID_CANCEL); });
+        auto* btnOk =
+            new FlatButton(this, _("OK"), kThemeBlue, *wxWHITE, [this]() { EndModal(wxID_OK); });
+        btnSizer->Add(btnCancel, 0, wxRIGHT, 10);
+        btnSizer->Add(btnOk, 0);
+        mainSizer->Add(btnSizer, 0, wxEXPAND | wxALL, 16);
+
+        SetSizerAndFit(mainSizer);
+        SetMinSize(FromDIP(wxSize(420, 460)));
+        CentreOnParent();
+    }
+
+    wxCheckListBox* m_list = nullptr;
+    wxPoint m_dragStart;
+    wxPoint m_winStart;
+};
 
 // ================= 通用关于对话框 =================
 class AboutDialog : public wxDialog {

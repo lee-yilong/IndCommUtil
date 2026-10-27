@@ -81,6 +81,12 @@ wxString LogTimestamp() {
     return wxDateTime::Now().Format("[%Y-%m-%d %H:%M:%S] ");
 }
 
+int ShowMsg(const wxString& message, const wxString& title, long style,
+            wxWindow* parent = nullptr) {
+    if (!parent && wxTheApp) parent = wxTheApp->GetTopWindow();
+    return ui::MessageDialog::Show(parent, title, message, style);
+}
+
 enum {
     idTbAction = 5000,
     idTbConfigure,
@@ -96,10 +102,8 @@ enum {
     idTbDown
 };
 
-const int kChartWindowSeconds[] = {1, 5, 10, 30, 60, 300, 600, 3600, 86400};
-const char* const kChartWindowLabels[] = {"1s",   "5s",    "10s", "30s", "1min",
-                                          "5min", "10min", "1h",  "24h"};
-constexpr int kChartWindowCount = 9;
+const int kTimeUnitMultipliers[] = {1, 60, 3600, 86400};
+constexpr int kTimeUnitCount = 4;
 }  // namespace
 
 SessionPanel::SessionPanel(wxWindow* parent, IProtocol* protocol, int modeIndex, ISession* session,
@@ -149,6 +153,15 @@ SessionPanel::SessionPanel(wxWindow* parent, IProtocol* protocol, int modeIndex,
 }
 
 SessionPanel::~SessionPanel() {
+    if (m_pendingFailure) {
+        {
+            std::lock_guard<std::mutex> lock(m_pendingFailure->mutex);
+            m_pendingFailure->action = StepFailureAction::Stop;
+            m_pendingFailure->done = true;
+        }
+        m_pendingFailure->cv.notify_all();
+        m_pendingFailure.reset();
+    }
     if (m_testRunner) {
         m_testRunner->Stop();
         delete m_testRunner;
@@ -330,21 +343,34 @@ void SessionPanel::BuildUi() {
 
     auto* windowTitle = new wxStaticText(chartPage, wxID_ANY, _("Time Window:"));
     windowTitle->SetForegroundColour(kSubTextColor);
-    m_chartWindowChoice = new wxChoice(chartPage, wxID_ANY);
-    for (int i = 0; i < kChartWindowCount; ++i) m_chartWindowChoice->Append(kChartWindowLabels[i]);
-    m_chartWindowChoice->SetSelection(2);  // 10s
-    m_chartWindowChoice->Bind(wxEVT_CHOICE, [this](wxCommandEvent&) {
-        const int index = m_chartWindowChoice->GetSelection();
-        if (index >= 0 && index < kChartWindowCount && m_chartPanel)
-            m_chartPanel->SetTimeWindow(kChartWindowSeconds[index]);
-    });
+    m_chartWindowValue =
+        new wxSpinCtrl(chartPage, wxID_ANY, "10", wxDefaultPosition, wxSize(84, -1),
+                       wxSP_ARROW_KEYS | wxTE_PROCESS_ENTER, 1, 100000, 10);
+    m_chartWindowUnit = new wxChoice(chartPage, wxID_ANY);
+    m_chartWindowUnit->Append(_("Seconds"));
+    m_chartWindowUnit->Append(_("Minutes"));
+    m_chartWindowUnit->Append(_("Hours"));
+    m_chartWindowUnit->Append(_("Days"));
+    m_chartWindowUnit->SetSelection(0);
+
+    auto applyChartWindow = [this](wxEvent&) {
+        const int value = m_chartWindowValue->GetValue();
+        const int unit = m_chartWindowUnit->GetSelection();
+        if (unit < 0 || unit >= kTimeUnitCount || !m_chartPanel) return;
+        m_chartPanel->SetTimeWindow(static_cast<double>(value) * kTimeUnitMultipliers[unit]);
+    };
+    m_chartWindowValue->Bind(wxEVT_SPINCTRL, applyChartWindow);
+    m_chartWindowValue->Bind(wxEVT_TEXT_ENTER, applyChartWindow);
+    m_chartWindowValue->Bind(wxEVT_KILL_FOCUS, applyChartWindow);
+    m_chartWindowUnit->Bind(wxEVT_CHOICE, applyChartWindow);
 
     auto* chartHint = new wxStaticText(chartPage, wxID_ANY,
                                        _("Scroll to zoom · Drag to pan · Double-click to follow"));
     chartHint->SetForegroundColour(kSubTextColor);
 
     chartBar->Add(windowTitle, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
-    chartBar->Add(m_chartWindowChoice, 0, wxALIGN_CENTER_VERTICAL);
+    chartBar->Add(m_chartWindowValue, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 6);
+    chartBar->Add(m_chartWindowUnit, 0, wxALIGN_CENTER_VERTICAL);
     chartBar->AddStretchSpacer();
     chartBar->Add(chartHint, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
 
@@ -1065,9 +1091,9 @@ void SessionPanel::OnExecuteWrite(wxCommandEvent&) {
     }
     if (!ok) {
         ValidateValueInput();
-        wxMessageBox(wxString::Format(_("Write failed: invalid value for type %s.\n\n%s"),
-                                      wxString::FromUTF8(varCopy.type), wxString::FromUTF8(error)),
-                     _("Invalid Value"), wxOK | wxICON_WARNING, this);
+        ShowMsg(wxString::Format(_("Write failed: invalid value for type %s.\n\n%s"),
+                                 wxString::FromUTF8(varCopy.type), wxString::FromUTF8(error)),
+                _("Invalid Value"), wxOK | wxICON_WARNING, this);
         return;
     }
 
@@ -1127,8 +1153,8 @@ bool SessionPanel::ValidateSelectedValue(const wxString& action) {
     const auto& var = m_sessionConfig->variables[m_selectedVarName];
     const std::string text = var.currentValue;
     if (text.empty()) {
-        wxMessageBox(_("Payload is empty. Please fill in the 'Value' field."), _("Notice"),
-                     wxOK | wxICON_WARNING, this);
+        ShowMsg(_("Payload is empty. Please fill in the 'Value' field."), _("Notice"),
+                wxOK | wxICON_WARNING, this);
         return false;
     }
 
@@ -1149,9 +1175,9 @@ bool SessionPanel::ValidateSelectedValue(const wxString& action) {
 
     if (!ok) {
         ValidateValueInput();
-        wxMessageBox(wxString::Format(_("%s failed: invalid value for type %s.\n\n%s"), action,
-                                      wxString::FromUTF8(var.type), wxString::FromUTF8(error)),
-                     _("Invalid Value"), wxOK | wxICON_WARNING, this);
+        ShowMsg(wxString::Format(_("%s failed: invalid value for type %s.\n\n%s"), action,
+                                 wxString::FromUTF8(var.type), wxString::FromUTF8(error)),
+                _("Invalid Value"), wxOK | wxICON_WARNING, this);
         return false;
     }
     return true;
@@ -1194,10 +1220,9 @@ void SessionPanel::OnExecuteSend(wxCommandEvent&) {
     std::vector<uint8_t> bytes;
     std::string encodeError;
     if (!ValueValidator::Encode(var.type, payload, bytes, encodeError)) {
-        wxMessageBox(
-            wxString::Format(_("Send failed: invalid value for type %s.\n\n%s"),
-                             wxString::FromUTF8(var.type), wxString::FromUTF8(encodeError)),
-            _("Invalid Value"), wxOK | wxICON_WARNING, this);
+        ShowMsg(wxString::Format(_("Send failed: invalid value for type %s.\n\n%s"),
+                                 wxString::FromUTF8(var.type), wxString::FromUTF8(encodeError)),
+                _("Invalid Value"), wxOK | wxICON_WARNING, this);
         return;
     }
 
@@ -1216,7 +1241,7 @@ void SessionPanel::OnExecuteSend(wxCommandEvent&) {
         double chartVal;
         if (TryParseNumeric(var.type, payload, chartVal)) RecordData(m_selectedVarName, chartVal);
     } else {
-        wxMessageBox(_("Send failed"), _("Error"), wxOK | wxICON_ERROR);
+        ShowMsg(_("Send failed"), _("Error"), wxOK | wxICON_ERROR);
     }
 }
 
@@ -1302,8 +1327,7 @@ void SessionPanel::DoEditVariable() {
 
         if (newName != oldName) {
             if (m_sessionConfig->variables.count(newName)) {
-                wxMessageBox(_("Variable name already exists."), _("Error"), wxOK | wxICON_ERROR,
-                             this);
+                ShowMsg(_("Variable name already exists."), _("Error"), wxOK | wxICON_ERROR, this);
                 return;
             }
             CommVariable var = it->second;
@@ -1396,10 +1420,13 @@ void SessionPanel::RefreshStepList(wxListCtrl* stepList, const nlohmann::json& f
         for (const auto& s : flow) {
             long item = stepList->InsertItem(idx++, wxString::FromUTF8(s.value("name", "Unnamed")));
             stepList->SetItem(item, 1, _("Pending"));
+            stepList->SetItemTextColour(item, kSubTextColor);
+            stepList->SetItemBackgroundColour(item, kCardBgColor);
         }
     }
     long newItem = stepList->InsertItem(idx, _("+ New Step"));
     stepList->SetItemTextColour(newItem, kThemeColor);
+    UpdateStepProgress(stepList, 0, "");
 }
 
 void SessionPanel::OnListLeftDown(wxListCtrl* list, const wxPoint& pos) {
@@ -1464,34 +1491,32 @@ void SessionPanel::CancelListDrag() {
 }
 
 void SessionPanel::UpdateStepProgress(wxListCtrl* list, int completed, const wxString& text) {
-    const bool autoMode = (list == m_autoStepList);
-    wxGauge* gauge = autoMode ? m_autoProgressGauge : m_interactiveProgressGauge;
-    wxStaticText* label = autoMode ? m_autoProgressLabel : m_interactiveProgressLabel;
+    (void)text;
     if (!list) return;
+
+    const bool autoMode = (list == m_autoStepList);
+    ui::ProgressBar* bar = autoMode ? m_autoProgressBar : m_interactiveProgressBar;
+    if (!bar) return;
 
     const int total = std::max(0, static_cast<int>(list->GetItemCount()) - 1);
     const int value = std::max(0, std::min(completed, total));
-    if (gauge) {
-        gauge->SetRange(std::max(1, total));
-        gauge->SetValue(value);
-    }
-    if (label) {
-        label->SetLabel(text.IsEmpty() ? wxString::Format("%d / %d", value, total) : text);
-        label->GetParent()->Layout();
-    }
+    bar->SetProgress(value, total);
 }
 
 void SessionPanel::HighlightRunningStep(wxListCtrl* list, long row) {
     if (!list || row < 0 || row >= list->GetItemCount() - 1) return;
     if (m_runningStepList == list && m_runningStepRow == row) {
-        // 重试同一步时把失败时的红色背景恢复成运行中的蓝色
-        list->SetItemBackgroundColour(row, wxColour(219, 234, 254));
+        // 重试同一步时把失败时的红色背景恢复成运行中的主题色
+        list->SetItemBackgroundColour(row, ui::kSelectBgColor);
         list->EnsureVisible(row);
         return;
     }
 
     ClearRunningHighlight();
-    list->SetItemBackgroundColour(row, wxColour(219, 234, 254));
+    for (long i = 0; i < list->GetItemCount() - 1; ++i) {
+        if (i != row) list->SetItemState(i, 0, wxLIST_STATE_SELECTED);
+    }
+    list->SetItemBackgroundColour(row, ui::kSelectBgColor);
     list->SetItemState(row, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
     list->EnsureVisible(row);
     m_runningStepList = list;
@@ -1650,43 +1675,75 @@ void SessionPanel::ShowStepContextMenu(wxListCtrl* stepList, const wxPoint& pos)
 }
 
 StepFailureAction SessionPanel::AskStepFailure(int stepIndex, const std::string& message) {
-    struct State {
-        std::mutex mutex;
-        std::condition_variable cv;
-        bool done = false;
-        StepFailureAction action = StepFailureAction::Stop;
-    };
-    auto state = std::make_shared<State>();
-
     if (!wxTheApp) return StepFailureAction::Stop;
 
+    auto state = std::make_shared<PendingFailure>();
+    m_pendingFailure = state;
+
     wxTheApp->CallAfter([this, stepIndex, message, state]() {
-        const wxString text = wxString::Format(
-            _("Step %d failed:\n\n%s\n\nYes = Retry this step\nNo = Skip this step\n"
-              "Cancel = Stop the flow"),
-            stepIndex + 1, wxString::FromUTF8(message));
-        const int ret =
-            wxMessageBox(text, _("Step Failed"), wxYES_NO | wxCANCEL | wxICON_WARNING, this);
-
-        StepFailureAction action = StepFailureAction::Stop;
-        if (ret == wxYES)
-            action = StepFailureAction::Retry;
-        else if (ret == wxNO)
-            action = StepFailureAction::Skip;
-
-        {
-            std::lock_guard<std::mutex> lock(state->mutex);
-            state->action = action;
-            state->done = true;
-        }
-        state->cv.notify_all();
+        ShowInlineFailure(m_activeStepList, stepIndex, wxString::FromUTF8(message), state);
     });
 
     std::unique_lock<std::mutex> lock(state->mutex);
     if (!state->cv.wait_for(lock, std::chrono::minutes(5), [&]() { return state->done; })) {
+        wxTheApp->CallAfter([this]() {
+            m_pendingFailure.reset();
+            HideInlineFailure();
+        });
         return StepFailureAction::Stop;
     }
     return state->action;
+}
+
+void SessionPanel::ShowInlineFailure(wxListCtrl* list, int stepIndex, const wxString& message,
+                                     std::shared_ptr<PendingFailure> state) {
+    if (!list) return;
+    m_pendingFailure = state;
+
+    const bool autoMode = (list == m_autoStepList);
+    ui::FlatButton* retry = autoMode ? m_autoRetryBtn : m_interactiveRetryBtn;
+    ui::FlatButton* stop = autoMode ? m_autoStopBtn : m_interactiveStopBtn;
+    wxStaticText* label = autoMode ? m_autoFailLabel : m_interactiveFailLabel;
+
+    if (retry) retry->Show();
+    if (stop) stop->Show();
+    if (label) {
+        label->SetLabel(wxString::Format(_("Step %d failed: %s"), stepIndex + 1, message));
+        label->Wrap(520);
+        label->Show();
+        label->GetParent()->Layout();
+    }
+
+    HighlightRunningStep(list, stepIndex);
+    list->SetItemBackgroundColour(stepIndex, wxColour(254, 242, 242));
+}
+
+void SessionPanel::HideInlineFailure() {
+    auto hide = [](ui::FlatButton* retry, ui::FlatButton* stop, wxStaticText* label) {
+        if (retry) retry->Hide();
+        if (stop) stop->Hide();
+        if (label) {
+            label->SetLabel("");
+            label->Hide();
+        }
+        if (label && label->GetParent()) label->GetParent()->Layout();
+    };
+    hide(m_autoRetryBtn, m_autoStopBtn, m_autoFailLabel);
+    hide(m_interactiveRetryBtn, m_interactiveStopBtn, m_interactiveFailLabel);
+}
+
+void SessionPanel::ResolvePendingFailure(StepFailureAction action) {
+    auto state = m_pendingFailure;
+    if (!state) return;
+
+    {
+        std::lock_guard<std::mutex> lock(state->mutex);
+        state->action = action;
+        state->done = true;
+    }
+    state->cv.notify_all();
+    m_pendingFailure.reset();
+    HideInlineFailure();
 }
 
 void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
@@ -1695,23 +1752,33 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     auto* card = new ui::CardPanel(parent);
     auto* cardSizer = new wxBoxSizer(wxVERTICAL);
 
-    auto* header = new wxStaticText(
-        card, wxID_ANY, isAutoMode ? _("Auto Mode Test Flow") : _("Interactive Mode Test Flow"));
-    wxFont hf = header->GetFont();
+    auto* progressRow = new wxBoxSizer(wxHORIZONTAL);
+    auto* progressTitle = new wxStaticText(card, wxID_ANY, _("Test Progress") + ":");
+    wxFont hf = progressTitle->GetFont();
     hf.SetPointSize(10);
     hf.MakeBold();
-    header->SetFont(hf);
-    header->SetForegroundColour(kSubTextColor);
-    cardSizer->Add(header, 0, wxLEFT | wxRIGHT | wxTOP, 12);
+    progressTitle->SetFont(hf);
+    progressTitle->SetForegroundColour(kSubTextColor);
+    auto* progressBar = new ui::ProgressBar(card);
+    auto* retryBtn = new ui::FlatButton(card, _("Retry"), kThemeColor, *wxWHITE, [this]() {
+        ResolvePendingFailure(StepFailureAction::Retry);
+    });
+    auto* stopBtn = new ui::FlatButton(card, _("Stop"), kBorderColor, kTextColor, [this]() {
+        ResolvePendingFailure(StepFailureAction::Stop);
+    });
+    retryBtn->Hide();
+    stopBtn->Hide();
+    progressRow->Add(progressTitle, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
+    progressRow->Add(progressBar, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
+    progressRow->Add(retryBtn, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 6);
+    progressRow->Add(stopBtn, 0, wxALIGN_CENTER_VERTICAL);
+    cardSizer->Add(progressRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
 
-    auto* progressRow = new wxBoxSizer(wxHORIZONTAL);
-    auto* progressGauge = new wxGauge(card, wxID_ANY, 100, wxDefaultPosition, wxSize(-1, 10));
-    progressGauge->SetValue(0);
-    auto* progressLabel = new wxStaticText(card, wxID_ANY, "0 / 0");
-    progressLabel->SetForegroundColour(kSubTextColor);
-    progressRow->Add(progressGauge, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
-    progressRow->Add(progressLabel, 0, wxALIGN_CENTER_VERTICAL);
-    cardSizer->Add(progressRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 12);
+    auto* failLabel = new wxStaticText(card, wxID_ANY, "");
+    failLabel->SetForegroundColour(wxColour(198, 40, 40));
+    failLabel->Wrap(520);
+    failLabel->Hide();
+    cardSizer->Add(failLabel, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 12);
 
     auto* stepList = new wxListCtrl(card, wxID_ANY, wxDefaultPosition, wxDefaultSize,
                                     wxLC_REPORT | wxBORDER_NONE);
@@ -1726,12 +1793,16 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
 
     if (isAutoMode) {
         m_autoStepList = stepList;
-        m_autoProgressGauge = progressGauge;
-        m_autoProgressLabel = progressLabel;
+        m_autoProgressBar = progressBar;
+        m_autoRetryBtn = retryBtn;
+        m_autoStopBtn = stopBtn;
+        m_autoFailLabel = failLabel;
     } else {
         m_interactiveStepList = stepList;
-        m_interactiveProgressGauge = progressGauge;
-        m_interactiveProgressLabel = progressLabel;
+        m_interactiveProgressBar = progressBar;
+        m_interactiveRetryBtn = retryBtn;
+        m_interactiveStopBtn = stopBtn;
+        m_interactiveFailLabel = failLabel;
     }
 
     stepList->Bind(wxEVT_LEFT_DOWN, [this, stepList](wxMouseEvent& evt) {
@@ -1932,7 +2003,7 @@ void SessionPanel::DoBatchStep() {
 
     long sel = stepList->GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
     if (sel == -1 || sel == stepList->GetItemCount() - 1) {
-        wxMessageBox(_("Please select a base step first."), _("Notice"), wxOK);
+        ShowMsg(_("Please select a base step first."), _("Notice"), wxOK);
         return;
     }
     if (sel >= static_cast<long>(flow.size())) return;
@@ -2093,19 +2164,21 @@ void SessionPanel::OnTbRecord(wxCommandEvent&) {
     for (const auto& [name, var] : m_sessionConfig->variables)
         if (var.enabled) choices.Add(wxString::FromUTF8(name));
     if (choices.IsEmpty()) {
-        wxMessageBox(_("No enabled variables to record."), _("Notice"), wxOK);
+        ShowMsg(_("No enabled variables to record."), _("Notice"), wxOK);
         return;
     }
 
-    wxMultiChoiceDialog dlg(this, _("Select variables to record:"), _("Record Settings"), choices);
-    wxArrayInt selections;
-    for (unsigned int i = 0; i < choices.GetCount(); ++i) selections.Add(i);
-    dlg.SetSelections(selections);
+    std::vector<int> initial;
+    for (unsigned int i = 0; i < choices.GetCount(); ++i) initial.push_back(static_cast<int>(i));
 
-    if (dlg.ShowModal() == wxID_OK) {
+    std::vector<int> selected;
+    if (ui::CheckListDialog::Show(this, _("Record Settings"), _("Select variables to record:"),
+                                  choices, initial, selected)) {
         m_loggingVars.clear();
-        for (int sel : dlg.GetSelections())
-            m_loggingVars.insert(std::string(choices[sel].utf8_str()));
+        for (int sel : selected) {
+            if (sel >= 0 && sel < static_cast<int>(choices.GetCount()))
+                m_loggingVars.insert(std::string(choices[sel].utf8_str()));
+        }
         m_isRecording = true;
         if (m_chartPanel) m_chartPanel->Clear();
         UpdateToolbarState();
@@ -2118,7 +2191,7 @@ void SessionPanel::OnTbHistory(wxCommandEvent&) {
     for (const auto& [n, v] : m_sessionConfig->variables)
         if (v.access != "WO") varNames.push_back(n);
     if (varNames.empty()) {
-        wxMessageBox(_("No readable variables found."), _("Notice"), wxOK);
+        ShowMsg(_("No readable variables found."), _("Notice"), wxOK);
         return;
     }
 
@@ -2156,6 +2229,7 @@ void SessionPanel::OnTbDelete(wxCommandEvent&) {
 
 void SessionPanel::OnTbRunStop(wxCommandEvent&) {
     if (m_testRunner) {
+        if (m_pendingFailure) ResolvePendingFailure(StepFailureAction::Stop);
         m_testRunner->Stop();
         return;
     }
@@ -2166,6 +2240,8 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
         isAutoMode ? m_sessionConfig->autoMode.testFlow : m_sessionConfig->interactiveMode.testFlow;
     wxListCtrl* stepList = isAutoMode ? m_autoStepList : m_interactiveStepList;
     if (!stepList || !flow.is_array() || flow.empty()) return;
+    m_activeStepList = stepList;
+    m_pendingFailure.reset();
 
     std::vector<ITestStepPtr> steps;
     for (const auto& stepJson : flow) {
@@ -2179,7 +2255,7 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
         if (step)
             steps.push_back(std::move(step));
         else {
-            wxMessageBox(
+            ShowMsg(
                 wxString::Format(_("Protocol '%s' does not support action '%s'."),
                                  wxString::FromUTF8(m_protocol->Id()), wxString::FromUTF8(type)),
                 _("Unsupported Action"), wxOK | wxICON_ERROR);
@@ -2187,16 +2263,17 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
         }
     }
     if (steps.empty()) {
-        wxMessageBox(_("No valid steps."), _("Error"), wxOK);
+        ShowMsg(_("No valid steps."), _("Error"), wxOK);
         return;
     }
 
     for (int i = 0; i < stepList->GetItemCount() - 1; ++i) {
         stepList->SetItem(i, 1, _("Pending"));
-        stepList->SetItemTextColour(i, *wxBLACK);
+        stepList->SetItemTextColour(i, kSubTextColor);
         stepList->SetItemBackgroundColour(i, kCardBgColor);
     }
     ClearRunningHighlight();
+    HideInlineFailure();
     UpdateStepProgress(stepList, 0, wxString::Format("0 / %d", static_cast<int>(flow.size())));
 
     m_testRunner =
@@ -2207,23 +2284,23 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
         wxTheApp->CallAfter([this, stepList, index, status]() {
             if (index < 0 || index >= stepList->GetItemCount() - 1) return;
             wxString text;
-            wxColour colour = *wxBLACK;
+            wxColour colour = kSubTextColor;
             switch (status) {
                 case StepStatus::Running:
                     text = _("Running");
-                    colour = wxColour(37, 99, 235);
+                    colour = kThemeColor;
                     break;
                 case StepStatus::Passed:
                     text = _("Passed");
-                    colour = *wxGREEN;
+                    colour = wxColour(46, 125, 50);
                     break;
                 case StepStatus::Failed:
                     text = _("Failed");
-                    colour = *wxRED;
+                    colour = wxColour(198, 40, 40);
                     break;
                 case StepStatus::Skipped:
                     text = _("Skipped");
-                    colour = wxColour(217, 119, 6);
+                    colour = wxColour(180, 83, 9);
                     break;
             }
             stepList->SetItem(index, 1, text);
@@ -2232,21 +2309,24 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
             const int total = std::max(0, static_cast<int>(stepList->GetItemCount()) - 1);
             switch (status) {
                 case StepStatus::Running:
+                    HideInlineFailure();
+                    stepList->SetItemBackgroundColour(index, kCardBgColor);
                     HighlightRunningStep(stepList, index);
                     UpdateStepProgress(stepList, index,
                                        wxString::Format(_("Running %d / %d"), index + 1, total));
                     break;
                 case StepStatus::Passed:
+                    stepList->SetItemBackgroundColour(index, kCardBgColor);
                     UpdateStepProgress(stepList, index + 1,
                                        wxString::Format(_("Completed %d / %d"), index + 1, total));
                     break;
                 case StepStatus::Failed:
-                    stepList->SetItemBackgroundColour(index, wxColour(254, 226, 226));
+                    stepList->SetItemBackgroundColour(index, wxColour(254, 242, 242));
                     UpdateStepProgress(stepList, index,
                                        wxString::Format(_("Step %d failed"), index + 1));
                     break;
                 case StepStatus::Skipped:
-                    stepList->SetItemBackgroundColour(index, kCardBgColor);
+                    stepList->SetItemBackgroundColour(index, wxColour(255, 251, 235));
                     UpdateStepProgress(stepList, index + 1,
                                        wxString::Format(_("Skipped %d / %d"), index + 1, total));
                     break;
@@ -2298,6 +2378,9 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
                 stepList ? std::max(0, static_cast<int>(stepList->GetItemCount()) - 1) : 0;
             const int completed = (m_runningStepRow >= 0) ? m_runningStepRow + 1 : 0;
             ClearRunningHighlight();
+            HideInlineFailure();
+            m_pendingFailure.reset();
+            m_activeStepList = nullptr;
             UpdateStepProgress(stepList, overallSuccess ? total : completed,
                                overallSuccess ? _("Finished") : _("Stopped"));
             if (m_commonLogCtrl) {
@@ -2319,10 +2402,12 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
     m_testRunner->OnWaitForNextStep([this, stepList](int nextIndex) {
         wxTheApp->CallAfter([this, stepList, nextIndex]() {
             if (nextIndex < stepList->GetItemCount() - 1) {
+                for (long i = 0; i < stepList->GetItemCount() - 1; ++i)
+                    stepList->SetItemState(i, 0, wxLIST_STATE_SELECTED);
                 stepList->SetItemState(nextIndex, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
                 stepList->EnsureVisible(nextIndex);
             }
-            int ret = wxMessageBox(
+            int ret = ShowMsg(
                 wxString::Format(_("Step %d finished.\n\nReady to execute Step %d. Continue?"),
                                  nextIndex - 1, nextIndex),
                 _("Interactive Mode"), wxYES_NO | wxICON_QUESTION, this);

@@ -10,6 +10,7 @@
 #include "settings/LanguageSettings.h"
 #include "settings/Settings.h"
 #include "spdlog/spdlog.h"
+#include "ui/UIUtils.h"
 
 namespace icu {
 
@@ -52,8 +53,9 @@ void App::SwitchLanguage(const wxString& canonicalName) {
 
     lang.SaveLanguage(canonicalName);
 
-    const int ret = wxMessageBox(_("Language will be applied after restart.\n\nRestart now?"),
-                                 _("Language Changed"), wxYES_NO | wxICON_QUESTION);
+    const int ret = ui::MessageDialog::Show(
+        GetTopWindow(), _("Language Changed"),
+        _("Language will be applied after restart.\n\nRestart now?"), wxYES_NO | wxICON_QUESTION);
 
     if (ret == wxYES) {
         const wxString exe = wxStandardPaths::Get().GetExecutablePath();
