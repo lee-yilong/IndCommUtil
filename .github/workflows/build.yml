@@ -10,6 +10,7 @@ jobs:
   build:
     runs-on: windows-latest
     strategy:
+      fail-fast: false
       matrix:
         build_type: [Debug, Release]
 
@@ -41,7 +42,7 @@ jobs:
       with:
         path: third_party/wxWidgets/lib
         # 修改 wx 版本或构建参数时请递增末尾的 v2
-        key: wxwidgets-${{ runner.os }}-3.3.5-${{ hashFiles('.gitmodules') }}-v2
+        key: wxwidgets-${{ runner.os }}-3.3.5-${{ matrix.build_type }}-${{ hashFiles('.gitmodules') }}-v2
 
     - name: Cache Paho
       id: cache-paho
@@ -50,7 +51,7 @@ jobs:
         path: |
           third_party/paho.mqtt.c/build/install
           third_party/paho.mqtt.cpp/build/install
-        key: paho-${{ runner.os }}-${{ hashFiles('.gitmodules') }}-v2
+        key: paho-${{ runner.os }}-${{ matrix.build_type }}-${{ hashFiles('.gitmodules') }}-v2
 
     # =========================================================================
     # 编译依赖 (如果没有命中缓存)
@@ -70,11 +71,28 @@ jobs:
           CFLAGS="-O2" CXXFLAGS="-O2"
         make -j$(nproc)
 
+    # 提前保存缓存：即使后续步骤失败，下次也不必重新编译 wxWidgets
+    - name: Save wxWidgets cache
+      if: steps.cache-wx.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: third_party/wxWidgets/lib
+        key: wxwidgets-${{ runner.os }}-3.3.5-${{ matrix.build_type }}-${{ hashFiles('.gitmodules') }}-v2
+
     - name: Build Paho
       if: steps.cache-paho.outputs.cache-hit != 'true'
       shell: msys2 {0}
       run: |
         ./scripts/build_paho.sh
+
+    - name: Save Paho cache
+      if: steps.cache-paho.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          third_party/paho.mqtt.c/build/install
+          third_party/paho.mqtt.cpp/build/install
+        key: paho-${{ runner.os }}-${{ matrix.build_type }}-${{ hashFiles('.gitmodules') }}-v2
 
     # =========================================================================
     # 编译与测试

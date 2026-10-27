@@ -73,6 +73,13 @@ if(EXISTS "${MODBUSLIB_ROOT}/CMakeLists.txt")
     set(MB_BUILD_EXAMPLES OFF CACHE BOOL "Disable ModbusLib examples" FORCE)
     add_subdirectory(${MODBUSLIB_ROOT} ${CMAKE_CURRENT_BINARY_DIR}/ModbusLib EXCLUDE_FROM_ALL)
     set(ICU_HAS_MODBUSLIB ON)
+
+    # ModbusLib 的 win/Modbus_win.cpp 使用了 std::find 但没有显式包含 <algorithm>，
+    # 某些 libstdc++ 版本不会间接引入，CI 上会因此编译失败。这里统一强制包含。
+    if(TARGET modbus)
+        target_compile_options(modbus PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:-include algorithm>)
+    endif()
 else()
     set(ICU_HAS_MODBUSLIB OFF)
 endif()
