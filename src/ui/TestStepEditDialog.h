@@ -5,6 +5,7 @@
 #include <wx/wx.h>
 
 #include <nlohmann/json.hpp>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -13,7 +14,8 @@ namespace icu {
 class TestStepEditDialog : public wxDialog {
 public:
     TestStepEditDialog(wxWindow* parent, const nlohmann::json& initialData,
-                       const std::vector<std::string>& availableVars);
+                       const std::vector<std::string>& availableVars,
+                       const std::map<std::string, std::string>& varTypes = {});
     ~TestStepEditDialog() override = default;
 
     nlohmann::json GetStepJson() const;
@@ -38,9 +40,11 @@ private:
     wxTextCtrl* m_assertExpectedCtrl = nullptr;
 
     std::vector<std::string> m_varNames;
+    std::map<std::string, std::string> m_varTypes;
 
     void OnActionChanged(wxCommandEvent& evt);
     void UpdateUiVisibility();
+    void OnOk();
 
     // 拖拽用
     wxPoint m_dragStart;

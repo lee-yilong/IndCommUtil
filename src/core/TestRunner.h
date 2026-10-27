@@ -18,6 +18,11 @@ class ISession;
 
 enum class TestRunMode { Auto, SingleStep };
 
+enum class StepStatus { Running, Passed, Failed, Skipped };
+
+// 步骤失败后由 UI 决定：重试当前步骤 / 跳过 / 结束流程
+enum class StepFailureAction { Retry, Skip, Stop };
+
 class TestRunner {
 public:
     TestRunner(IProtocol* protocol, ISession* session, std::vector<ITestStepPtr> steps,
@@ -25,9 +30,10 @@ public:
     ~TestRunner();
 
     using StepUpdateCallback =
-        std::function<void(int stepIndex, bool isSuccess, const std::string& msg)>;
+        std::function<void(int stepIndex, StepStatus status, const std::string& msg)>;
     using FinishCallback = std::function<void(bool overallSuccess)>;
     using WaitCallback = std::function<void(int nextIndex)>;
+    using FailureCallback = std::function<StepFailureAction(int stepIndex, const std::string& msg)>;
 
     // 阶段 10：底层报文日志回调
     using StepLogCallback = std::function<void(const std::string& logMsg)>;
@@ -37,6 +43,7 @@ public:
     void OnStepUpdated(StepUpdateCallback cb) { m_stepCb = std::move(cb); }
     void OnFinished(FinishCallback cb) { m_finishCb = std::move(cb); }
     void OnWaitForNextStep(WaitCallback cb) { m_waitCb = std::move(cb); }
+    void OnStepFailed(FailureCallback cb) { m_failCb = std::move(cb); }
     void OnStepLog(StepLogCallback cb) { m_stepLogCb = std::move(cb); }
     void OnDataRecorded(DataRecordedCallback cb) { m_dataRecordCb = std::move(cb); }
 
@@ -49,6 +56,8 @@ public:
 
 private:
     void RunLoop();
+    // 分段等待，保证 Stop() 能及时退出
+    void WaitWithStop(int ms);
 
     IProtocol* m_protocol;
     ISession* m_session;
@@ -66,6 +75,7 @@ private:
     StepUpdateCallback m_stepCb;
     FinishCallback m_finishCb;
     WaitCallback m_waitCb;
+    FailureCallback m_failCb;
     StepLogCallback m_stepLogCb;
     DataRecordedCallback m_dataRecordCb;
 };

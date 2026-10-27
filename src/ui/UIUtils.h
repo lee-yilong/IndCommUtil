@@ -115,7 +115,7 @@ public:
 
         Bind(wxEVT_PAINT, &FlatButton::OnPaint, this);
         Bind(wxEVT_LEFT_UP, [this](wxMouseEvent&) {
-            if (m_onClick) m_onClick();
+            if (m_enabled && m_onClick) m_onClick();
         });
         Bind(wxEVT_ENTER_WINDOW, [this](wxMouseEvent& e) {
             m_hover = true;

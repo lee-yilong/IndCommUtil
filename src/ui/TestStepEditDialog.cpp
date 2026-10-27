@@ -2,15 +2,18 @@
 
 #include <wx/stattext.h>
 
+#include "core/ValueValidator.h"
 #include "ui/UIUtils.h"
 
 namespace icu {
 
 TestStepEditDialog::TestStepEditDialog(wxWindow* parent, const nlohmann::json& initialData,
-                                       const std::vector<std::string>& availableVars)
+                                       const std::vector<std::string>& availableVars,
+                                       const std::map<std::string, std::string>& varTypes)
     : wxDialog(parent, wxID_ANY, _("Edit Test Step"), wxDefaultPosition, wxDefaultSize,
                wxBORDER_NONE | wxRESIZE_BORDER) {
     m_varNames = availableVars;
+    m_varTypes = varTypes;
     SetBackgroundColour(ui::kBgColor);
 
     auto* mainSizer = new wxBoxSizer(wxVERTICAL);
@@ -130,7 +133,7 @@ TestStepEditDialog::TestStepEditDialog(wxWindow* parent, const nlohmann::json& i
     auto* btnCancel = new ui::FlatButton(this, _("Cancel"), ui::kBtnGrayBg, ui::kTextColor,
                                          [this]() { EndModal(wxID_CANCEL); });
     auto* btnOk = new ui::FlatButton(this, _("OK"), ui::kThemeBlue, *wxWHITE,
-                                     [this]() { EndModal(wxID_OK); });
+                                     [this]() { OnOk(); });
 
     btnSizer->AddStretchSpacer();
     btnSizer->Add(btnCancel, 0, wxRIGHT, 10);
@@ -173,6 +176,31 @@ void TestStepEditDialog::UpdateUiVisibility() {
     GetSizer()->Layout();
     Layout();
     Fit();
+}
+
+void TestStepEditDialog::OnOk() {
+    const std::string action = std::string(m_actionCtrl->GetStringSelection().utf8_str());
+    if (action == "write" && m_valueCtrl->IsShown()) {
+        const std::string value = std::string(m_valueCtrl->GetValue().utf8_str());
+        std::string varName;
+        if (m_varCtrl->GetSelection() != wxNOT_FOUND)
+            varName = std::string(m_varCtrl->GetStringSelection().utf8_str());
+
+        auto it = m_varTypes.find(varName);
+        if (!value.empty() && it != m_varTypes.end()) {
+            std::string error;
+            if (!ValueValidator::Validate(it->second, value, error)) {
+                wxMessageBox(wxString::Format(
+                                 _("Invalid value for variable '%s' (type %s):\n\n%s"),
+                                 wxString::FromUTF8(varName), wxString::FromUTF8(it->second),
+                                 wxString::FromUTF8(error)),
+                             _("Invalid Value"), wxOK | wxICON_WARNING, this);
+                m_valueCtrl->SetFocus();
+                return;
+            }
+        }
+    }
+    EndModal(wxID_OK);
 }
 
 nlohmann::json TestStepEditDialog::GetStepJson() const {

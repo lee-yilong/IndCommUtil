@@ -124,6 +124,39 @@ TEST_CASE("ConnectionProfile: UDP roundtrip") {
     CHECK(loaded.fields["localPort"].AsInt() == 0);
 }
 
+TEST_CASE("ConnectionProfile: 变量顺序可以保存与恢复") {
+    TestEnv env;
+    auto* proto = Tcp();
+    REQUIRE(proto != nullptr);
+
+    std::map<std::string, FieldValue> fields;
+    fields["role"] = FieldValue(std::string("Client"));
+    fields["host"] = FieldValue(std::string("127.0.0.1"));
+    fields["port"] = FieldValue(502);
+
+    SessionConfig session;
+    CommVariable a;
+    a.name = "alpha";
+    a.type = "int32";
+    a.access = "RW";
+    CommVariable b;
+    b.name = "beta";
+    b.type = "string";
+    b.access = "RW";
+    session.variables["alpha"] = a;
+    session.variables["beta"] = b;
+    session.variableOrder = {"beta", "alpha"};
+
+    const wxString path = Wx(env.Path("var_order.json"));
+    REQUIRE(ConnectionProfile::Save(path, "tcp", 0, proto, fields, session));
+
+    ActiveProfile loaded;
+    REQUIRE(ConnectionProfile::Load(path, loaded));
+    REQUIRE(loaded.session.variableOrder.size() == 2);
+    CHECK(loaded.session.variableOrder[0] == "beta");
+    CHECK(loaded.session.variableOrder[1] == "alpha");
+}
+
 TEST_CASE("ConnectionProfile: 空字段也能 Save/Load") {
     TestEnv env;
     auto* proto = Tcp();

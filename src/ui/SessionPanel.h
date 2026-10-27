@@ -27,6 +27,7 @@
 #include "protocols/mqtt/MqttSession.h"
 #include "ui/ChartPanel.h"
 #include "ui/HistoryDialog.h"
+#include "ui/UIUtils.h"
 
 namespace icu {
 
@@ -117,6 +118,18 @@ private:
     // 重建变量列表时抑制 wxEVT_LIST_ITEM_SELECTED，避免重建右侧操作区
     bool m_refreshingVarList = false;
 
+    // 手动操作区的按钮与校验错误提示
+    ui::FlatButton* m_sendBtn = nullptr;
+    ui::FlatButton* m_readBtn = nullptr;
+    ui::FlatButton* m_writeBtn = nullptr;
+    wxStaticText* m_valueHintLabel = nullptr;
+
+    // 列表拖拽排序的临时状态
+    wxListCtrl* m_dragList = nullptr;
+    long m_dragIndex = -1;
+    bool m_dragging = false;
+    wxPoint m_dragStart;
+
     wxStaticText* m_titleLabel = nullptr;
     wxStaticText* m_statusLabel = nullptr;
     wxStaticText* m_targetLabel = nullptr;
@@ -182,6 +195,9 @@ private:
     void OnExecuteWrite(wxCommandEvent& evt);
     void OnExecuteSend(wxCommandEvent& evt);
 
+    // 执行手动操作前校验当前变量的值；不合法时弹提示并返回 false
+    bool ValidateSelectedValue(const wxString& action);
+
     void BindStreamCallbacks();
     void BindTransactionCallbacks();
     void BindMqttCallbacks();
@@ -191,6 +207,21 @@ private:
     void RefreshVariableList();
     void RefreshStepList(wxListCtrl* stepList, const nlohmann::json& flow);
     void OnVarSelected(wxListEvent& evt);
+
+    // 变量值类型校验：更新提示文字并启/禁用发送按钮
+    void ValidateValueInput();
+    // 变量 / 步骤列表的右键菜单
+    void ShowVarContextMenu(const wxPoint& pos);
+    void ShowStepContextMenu(wxListCtrl* stepList, const wxPoint& pos);
+    // 列表拖拽排序
+    void OnListLeftDown(wxListCtrl* list, const wxPoint& pos);
+    void OnListMotion(wxListCtrl* list, const wxPoint& pos);
+    void OnListLeftUp(wxListCtrl* list, const wxPoint& pos);
+    void CancelListDrag();
+    void MoveVariableOrder(long from, long to);
+    void MoveStepOrder(wxListCtrl* stepList, nlohmann::json& flow, long from, long to);
+    // 测试步骤失败时询问用户：重试 / 跳过 / 结束
+    StepFailureAction AskStepFailure(int stepIndex, const std::string& message);
 
     void DoAddVariable();
     void DoCopyVariable();

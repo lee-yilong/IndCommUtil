@@ -12,6 +12,7 @@ add_library(icu_core_test STATIC
     "${CMAKE_SOURCE_DIR}/src/core/ProtocolRegistry.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/StreamSession.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/SessionManager.cpp"
+    "${CMAKE_SOURCE_DIR}/src/core/TestRunner.cpp"
     "${CMAKE_SOURCE_DIR}/src/config/ConnectionProfile.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/tcpip/TcpIpProtocol.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/tcpip/TcpTransport.cpp"

@@ -1,5 +1,6 @@
 #include "ModbusWriteStep.h"
 
+#include "core/ValueValidator.h"
 #include "log/Log.h"
 
 namespace icu {
@@ -8,6 +9,7 @@ ModbusWriteStep::ModbusWriteStep(const nlohmann::json& params) {
     m_name = params.value("name", "Modbus Write");
     m_variableName = params.value("variable", "");
     m_writeValue = params.value("value", "");
+    m_waitMs = params.value("wait_ms", 0);
 }
 
 std::string ModbusWriteStep::Name() const {
@@ -53,8 +55,19 @@ TestResult ModbusWriteStep::Execute(ISession* session, std::map<std::string, Com
         return result;
     }
 
+    std::string validationError;
+    if (!ValueValidator::Validate(var.type, valStr, validationError)) {
+        result.errorMessage = "Invalid value for " + var.type + ": " + validationError;
+        return result;
+    }
+
     try {
-        req.writeValues.push_back(std::stoi(valStr));
+        const int v = std::stoi(valStr);
+        if (v < 0 || v > 65535) {
+            result.errorMessage = "Modbus register value must be 0..65535: " + valStr;
+            return result;
+        }
+        req.writeValues.push_back(static_cast<uint16_t>(v));
     } catch (...) {
         result.errorMessage = "Invalid integer value: " + valStr;
         return result;

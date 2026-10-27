@@ -7,6 +7,7 @@
 #include <regex>
 
 #include "core/StreamSession.h"
+#include "core/ValueValidator.h"
 #include "log/Log.h"
 
 namespace icu {
@@ -69,14 +70,22 @@ TestResult TcpSendStep::Execute(ISession* session, std::map<std::string, CommVar
     });
 
     if (!m_isReadOnly) {
-        std::string payload = var.currentValue;
+        const std::string payload = var.currentValue;
         if (payload.empty()) {
             streamSession->OnRawData(nullptr);
             result.errorMessage = "Variable payload is empty.";
             return result;
         }
-        bool sendSuccess = streamSession->SendRaw(reinterpret_cast<const uint8_t*>(payload.data()),
-                                                  payload.size());
+
+        std::vector<uint8_t> bytes;
+        std::string validationError;
+        if (!ValueValidator::Encode(var.type, payload, bytes, validationError)) {
+            streamSession->OnRawData(nullptr);
+            result.errorMessage = "Invalid value for " + var.type + ": " + validationError;
+            return result;
+        }
+
+        const bool sendSuccess = streamSession->SendRaw(bytes.data(), bytes.size());
         if (!sendSuccess) {
             streamSession->OnRawData(nullptr);
             result.errorMessage = "Failed to send payload";

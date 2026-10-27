@@ -41,6 +41,8 @@ struct AutoModeConfig {
 struct SessionConfig {
     SessionMode activeMode = SessionMode::Manual;
     std::map<std::string, CommVariable> variables;
+    // 变量在 UI 中的显示顺序（仅保存已有变量；缺失的会按名称追加）
+    std::vector<std::string> variableOrder;
     ManualModeConfig manualMode;
     InteractiveModeConfig interactiveMode;
     AutoModeConfig autoMode;

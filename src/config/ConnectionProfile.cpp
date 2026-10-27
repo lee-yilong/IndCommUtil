@@ -71,6 +71,12 @@ void ParseSession(const json& j, SessionConfig& outSession) {
         }
     }
 
+    if (s.contains("variable_order") && s["variable_order"].is_array()) {
+        for (const auto& name : s["variable_order"]) {
+            if (name.is_string()) outSession.variableOrder.push_back(name.get<std::string>());
+        }
+    }
+
     if (s.contains("manual_mode") && s["manual_mode"].is_object()) {
         outSession.manualMode.sendPayload = s["manual_mode"].value("send_payload", "");
         outSession.manualMode.appendNewline = s["manual_mode"].value("append_newline", true);
@@ -116,6 +122,8 @@ void WriteSession(json& j, const SessionConfig& session) {
         v["enabled"] = var.enabled;
         s["variables"][key] = v;
     }
+
+    s["variable_order"] = session.variableOrder;
 
     s["manual_mode"] = json::object();
     s["manual_mode"]["send_payload"] = session.manualMode.sendPayload;

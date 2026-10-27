@@ -1,6 +1,7 @@
 #include "MqttPublishStep.h"
 
 #include "MqttSession.h"
+#include "core/ValueValidator.h"
 
 namespace icu {
 
@@ -8,6 +9,7 @@ MqttPublishStep::MqttPublishStep(const nlohmann::json& params) {
     m_name = params.value("name", "MQTT Step");
     m_variableName = params.value("variable", "");
     m_isReadOnly = (params.value("action", "") == "read");
+    m_waitMs = params.value("wait_ms", 0);
 }
 
 std::string MqttPublishStep::Name() const {
@@ -30,6 +32,11 @@ TestResult MqttPublishStep::Execute(ISession* session, std::map<std::string, Com
     auto& var = vars[m_variableName];
 
     if (!m_isReadOnly) {
+        std::string validationError;
+        if (!ValueValidator::Validate(var.type, var.currentValue, validationError)) {
+            result.errorMessage = "Invalid value for " + var.type + ": " + validationError;
+            return result;
+        }
         std::string topic = var.params.value("topic", "test/topic");
         int qos = var.params.value("qos", 0);
         mqttSession->Publish(topic, var.currentValue, qos);

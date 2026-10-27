@@ -34,6 +34,9 @@ public:
     // ★ 返回值：返回被更新过的变量名列表
     virtual std::vector<std::string> Extract(const TestResult& result,
                                              std::map<std::string, CommVariable>& vars) = 0;
+
+    // 执行成功后的固定等待（毫秒）。已经自行等待过响应的步骤返回 0，避免重复等待。
+    virtual int WaitMs() const { return 0; }
 };
 
 using ITestStepPtr = std::unique_ptr<ITestStep>;

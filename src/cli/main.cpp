@@ -2,12 +2,14 @@
 #include <wx/string.h>
 
 #include <iostream>
+#include <memory>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <thread>
 #include <vector>
 
 #include "config/ConnectionProfile.h"
+#include "core/DelayStep.h"
 #include "core/ITransactionSession.h"
 #include "core/ProtocolRegistry.h"
 #include "core/TestRunner.h"
@@ -199,7 +201,11 @@ int main(int argc, char** argv) {
         std::vector<icu::ITestStepPtr> steps;
         for (const auto& stepJson : testFlow) {
             std::string type = stepJson.value("action", "");
-            auto step = proto->CreateTestStep(type, stepJson);
+            icu::ITestStepPtr step;
+            if (type == "delay")
+                step = std::make_unique<icu::DelayStep>(stepJson);
+            else
+                step = proto->CreateTestStep(type, stepJson);
             if (step) steps.push_back(std::move(step));
         }
 
@@ -233,8 +239,23 @@ int main(int argc, char** argv) {
         bool overallSuccess = true;
 
         // ★ 修改这里：增加变量池的输出
-        runner.OnStepUpdated([&](int index, bool success, const std::string& msg) {
-            std::cout << (success ? "[PASS] " : "[FAIL] ") << "Step " << index;
+        runner.OnStepUpdated([&](int index, icu::StepStatus status, const std::string& msg) {
+            const char* label = "[INFO]";
+            switch (status) {
+                case icu::StepStatus::Running:
+                    label = "[RUN ]";
+                    break;
+                case icu::StepStatus::Passed:
+                    label = "[PASS]";
+                    break;
+                case icu::StepStatus::Failed:
+                    label = "[FAIL]";
+                    break;
+                case icu::StepStatus::Skipped:
+                    label = "[SKIP]";
+                    break;
+            }
+            std::cout << label << " Step " << index;
             if (!msg.empty()) std::cout << " - " << msg;
             std::cout << std::endl;
 
@@ -244,8 +265,17 @@ int main(int argc, char** argv) {
                 std::cout << name << " = [" << var.currentValue << "]  ";
             }
             std::cout << std::endl;
+        });
 
-            if (!success) overallSuccess = false;
+        runner.OnStepFailed([](int index, const std::string& msg) {
+            std::cout << "\n[FAILED] Step " << index << ": " << msg << std::endl;
+            std::cout << "Retry (r) / Skip (s) / Stop (q)? ";
+            std::cout.flush();
+            std::string input;
+            std::getline(std::cin, input);
+            if (input == "r" || input == "R") return icu::StepFailureAction::Retry;
+            if (input == "s" || input == "S") return icu::StepFailureAction::Skip;
+            return icu::StepFailureAction::Stop;
         });
 
         runner.OnFinished([&](bool success) { overallSuccess = overallSuccess && success; });

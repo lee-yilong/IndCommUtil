@@ -7,6 +7,7 @@ namespace icu {
 ModbusReadStep::ModbusReadStep(const nlohmann::json& params) {
     m_name = params.value("name", "Modbus Read");
     m_variableName = params.value("variable", "");
+    m_waitMs = params.value("wait_ms", 0);
 
     m_hasAssert = false;
     if (params.contains("assert") && params["assert"].is_object()) {
