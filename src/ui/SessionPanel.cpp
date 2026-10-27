@@ -2212,7 +2212,7 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     timeLabel->SetForegroundColour(kSubTextColor);
 
     progressRow->Add(progressTitle, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
-    progressRow->Add(progressBar, 1, wxEXPAND | wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
+    progressRow->Add(progressBar, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
     progressRow->Add(ratioLabel, 0, wxALIGN_CENTER_VERTICAL);
     cardSizer->Add(progressRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
     cardSizer->Add(timeLabel, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
