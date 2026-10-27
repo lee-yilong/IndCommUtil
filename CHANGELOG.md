@@ -10,6 +10,11 @@
 
 ## [未发布]
 
+### 已完成（CI 修复）
+
+- **wxWidgets 构建**：CI 补充 `make` / `mingw32-make` / `pkgconf`，改为 in-source 构建并启用 `--disable-dependency-tracking`，修复 bundled libtiff 在 `config.status` 阶段的依赖跟踪失败；缓存键加入 wx 版本号。
+- **格式检查**：改用 `actions/setup-python` + `pip install clang-format==19.1.5`，在 Git Bash 中执行 `scripts/format.sh check`。
+
 ### 已完成（阶段 22 测试执行与操作增强）
 
 - **输入校验**：手动操作区的值按变量类型校验（int/uint/float/bool/hex/string），非法输入显示红色错误并禁用发送/写入；测试步骤编辑和实际下发也会再次校验，避免把非法数据发到设备。
