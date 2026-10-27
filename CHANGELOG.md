@@ -13,6 +13,8 @@
 ### 已完成（CI 修复）
 
 - **wxWidgets 构建**：CI 补充 `make` / `mingw32-make` / `pkgconf`，改为 in-source 构建并启用 `--disable-dependency-tracking`，修复 bundled libtiff 在 `config.status` 阶段的依赖跟踪失败；缓存键加入 wx 版本号。
+- **ModbusLib 编译**：为 `modbus` 目标强制包含 `<algorithm>`，修复干净检出的 CI 上 `std::find` 编译失败。
+- **缓存与矩阵**：wx / Paho 缓存按构建类型区分，编译完成后立即保存；矩阵改为 `fail-fast: false`，避免一个配置失败取消另一个。
 - **格式检查**：改用 `actions/setup-python` + `pip install clang-format==19.1.5`，在 Git Bash 中执行 `scripts/format.sh check`。
 
 ### 已完成（阶段 22 测试执行与操作增强）
