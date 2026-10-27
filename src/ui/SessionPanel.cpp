@@ -698,6 +698,82 @@ void SessionPanel::UpdateToolbarState() {
                _("Batch Create Steps"));
     SetToolBtn(idTbUp, "up", hasSession && isStepCtx && hasSelection, _("Move Up"));
     SetToolBtn(idTbDown, "down", hasSession && isStepCtx && hasSelection, _("Move Down"));
+
+    UpdateRuntimeButtons();
+}
+
+void SessionPanel::UpdateRuntimeButtons() {
+    if (!m_rtPauseBtn) return;
+
+    const bool running = (m_testRunner != nullptr);
+    const bool paused = running && m_testRunner->IsPaused();
+    const bool failure = (m_pendingFailure != nullptr);
+    const int current = running ? m_testRunner->CurrentStepIndex() : -1;
+    wxListCtrl* list = m_activeStepList ? m_activeStepList : m_autoStepList;
+    const int total = list ? static_cast<int>(list->GetItemCount()) - 1 : 0;
+
+    m_rtPauseBtn->SetBtnText(paused ? _("Resume") : _("Pause"));
+    m_rtPauseBtn->SetBtnEnabled(running && !failure);
+    m_rtRetryBtn->SetBtnEnabled(running && (failure || paused));
+    m_rtPrevBtn->SetBtnEnabled(running && paused && !failure && current > 0);
+    m_rtNextBtn->SetBtnEnabled(running && paused && !failure && current >= 0 &&
+                               current + 1 < total);
+    m_rtJumpBtn->SetBtnEnabled(running && paused && !failure && total > 0);
+    m_rtStopBtn->SetBtnEnabled(running);
+
+    if (m_rtPauseBtn->GetParent()) m_rtPauseBtn->GetParent()->Layout();
+}
+
+void SessionPanel::RuntimeTogglePause() {
+    if (!m_testRunner || m_pendingFailure) return;
+    if (m_testRunner->IsPaused())
+        m_testRunner->Resume();
+    else
+        m_testRunner->Pause();
+    UpdateRuntimeButtons();
+}
+
+void SessionPanel::RuntimeRetry() {
+    if (m_pendingFailure) {
+        ResolvePendingFailure(StepFailureAction::Retry);
+    } else if (m_testRunner && m_testRunner->IsPaused()) {
+        m_testRunner->JumpToStep(std::max(0, m_testRunner->CurrentStepIndex()));
+    }
+    UpdateRuntimeButtons();
+}
+
+void SessionPanel::RuntimePrevious() {
+    if (!m_testRunner || !m_testRunner->IsPaused() || m_pendingFailure) return;
+    const int current = m_testRunner->CurrentStepIndex();
+    m_testRunner->JumpToStep(std::max(0, current - 1));
+    UpdateRuntimeButtons();
+}
+
+void SessionPanel::RuntimeNext() {
+    if (!m_testRunner || !m_testRunner->IsPaused() || m_pendingFailure) return;
+    m_testRunner->JumpToStep(m_testRunner->CurrentStepIndex() + 1);
+    UpdateRuntimeButtons();
+}
+
+void SessionPanel::RuntimeJump() {
+    if (!m_testRunner || !m_testRunner->IsPaused() || m_pendingFailure) return;
+    wxListCtrl* list = m_activeStepList;
+    if (!list || list->GetItemCount() <= 1) return;
+
+    wxArrayString names;
+    for (long i = 0; i < list->GetItemCount() - 1; ++i) names.Add(list->GetItemText(i));
+    int selected = std::max(0, m_testRunner->CurrentStepIndex());
+    if (ui::ChoiceDialog::Show(this, _("Jump to Step"), _("Select a step:"), names, selected,
+                               selected)) {
+        m_testRunner->JumpToStep(selected);
+        UpdateRuntimeButtons();
+    }
+}
+
+void SessionPanel::RuntimeStop() {
+    if (m_pendingFailure) ResolvePendingFailure(StepFailureAction::Stop);
+    if (m_testRunner) m_testRunner->Stop();
+    UpdateRuntimeButtons();
 }
 
 void SessionPanel::BuildCommonUi(wxBoxSizer* mainSizer) {
@@ -788,6 +864,31 @@ void SessionPanel::BuildCommonUi(wxBoxSizer* mainSizer) {
 
     topSizer->Add(infoRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
     topSizer->Add(statsRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
+
+    auto* runtimeSeparator = new wxPanel(topPanel, wxID_ANY, wxDefaultPosition, wxSize(-1, 1));
+    runtimeSeparator->SetBackgroundColour(kBorderColor);
+    topSizer->Add(runtimeSeparator, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
+
+    auto* runtimeSizer = new wxBoxSizer(wxHORIZONTAL);
+    auto* runtimeTitle = new wxStaticText(topPanel, wxID_ANY, _("Run Controls") + ":");
+    runtimeTitle->SetForegroundColour(kSubTextColor);
+    runtimeSizer->Add(runtimeTitle, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
+
+    auto addRuntimeBtn = [&](const wxString& text, std::function<void()> onClick) {
+        auto* btn =
+            new ui::FlatButton(topPanel, text, ui::kBtnGrayBg, kTextColor, std::move(onClick));
+        runtimeSizer->Add(btn, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 6);
+        return btn;
+    };
+    m_rtPauseBtn = addRuntimeBtn(_("Pause"), [this]() { RuntimeTogglePause(); });
+    m_rtRetryBtn = addRuntimeBtn(_("Retry"), [this]() { RuntimeRetry(); });
+    m_rtPrevBtn = addRuntimeBtn(_("Previous Step"), [this]() { RuntimePrevious(); });
+    m_rtNextBtn = addRuntimeBtn(_("Next Step"), [this]() { RuntimeNext(); });
+    m_rtJumpBtn = addRuntimeBtn(_("Jump to Step..."), [this]() { RuntimeJump(); });
+    m_rtStopBtn = addRuntimeBtn(_("Stop"), [this]() { RuntimeStop(); });
+    runtimeSizer->AddStretchSpacer();
+
+    topSizer->Add(runtimeSizer, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP | wxBOTTOM, 8);
 
     topPanel->SetSizer(topSizer);
     mainSizer->Add(topPanel, 0, wxEXPAND | wxALL, 6);
@@ -1627,7 +1728,7 @@ void SessionPanel::UpdateRunTiming(wxListCtrl* list) {
 
     if (!m_runTimingActive) {
         label->SetLabel(
-            wxString::Format(_("Est. %s / Elapsed %s / Remaining %s"), "--", "--", "--"));
+            wxString::Format(_("Est.: %s, Elapsed: %s, Remaining: %s"), "--", "--", "--"));
         return;
     }
 
@@ -1636,7 +1737,7 @@ void SessionPanel::UpdateRunTiming(wxListCtrl* list) {
         std::chrono::duration_cast<std::chrono::milliseconds>(now - m_runStart).count();
     const long long estimatedMs = m_plannedWaitMs + m_extraWaitMs;
     const long long remainingMs = std::max(0LL, estimatedMs - elapsedMs);
-    label->SetLabel(wxString::Format(_("Est. %s / Elapsed %s / Remaining %s"),
+    label->SetLabel(wxString::Format(_("Est.: %s, Elapsed: %s, Remaining: %s"),
                                      FormatDurationCN(estimatedMs), FormatDurationCN(elapsedMs),
                                      FormatDurationCN(remainingMs)));
 }
@@ -1896,6 +1997,7 @@ void SessionPanel::ShowStepContextMenu(wxListCtrl* stepList, const wxPoint& pos)
         default:
             break;
     }
+    UpdateRuntimeButtons();
 }
 
 StepFailureAction SessionPanel::AskStepFailure(int stepIndex, const std::string& message) {
@@ -1930,35 +2032,33 @@ void SessionPanel::ShowInlineFailure(wxListCtrl* list, int stepIndex, const wxSt
     m_failureWaitStart = std::chrono::steady_clock::now();
 
     const bool autoMode = (list == m_autoStepList);
-    ui::FlatButton* retry = autoMode ? m_autoRetryBtn : m_interactiveRetryBtn;
-    ui::FlatButton* stop = autoMode ? m_autoStopBtn : m_interactiveStopBtn;
     wxStaticText* label = autoMode ? m_autoFailLabel : m_interactiveFailLabel;
 
-    if (retry) retry->Show();
-    if (stop) stop->Show();
     if (label) {
-        label->SetLabel(wxString::Format(_("Step %d failed: %s"), stepIndex + 1, message));
-        label->Wrap(520);
+        label->SetLabel(wxString::Format(
+            _("Step %d failed: %s\nRight-click the failed step, or use Run Controls, to Retry or "
+              "Stop."),
+            stepIndex + 1, message));
+        label->Wrap(620);
         label->Show();
         label->GetParent()->Layout();
     }
 
     HighlightRunningStep(list, stepIndex);
     list->SetItemBackgroundColour(stepIndex, wxColour(254, 242, 242));
+    UpdateRuntimeButtons();
 }
 
 void SessionPanel::HideInlineFailure() {
-    auto hide = [](ui::FlatButton* retry, ui::FlatButton* stop, wxStaticText* label) {
-        if (retry) retry->Hide();
-        if (stop) stop->Hide();
+    auto hide = [](wxStaticText* label) {
         if (label) {
             label->SetLabel("");
             label->Hide();
+            if (label->GetParent()) label->GetParent()->Layout();
         }
-        if (label && label->GetParent()) label->GetParent()->Layout();
     };
-    hide(m_autoRetryBtn, m_autoStopBtn, m_autoFailLabel);
-    hide(m_interactiveRetryBtn, m_interactiveStopBtn, m_interactiveFailLabel);
+    hide(m_autoFailLabel);
+    hide(m_interactiveFailLabel);
 }
 
 void SessionPanel::ResolvePendingFailure(StepFailureAction action) {
@@ -1982,6 +2082,7 @@ void SessionPanel::ResolvePendingFailure(StepFailureAction action) {
     }
 
     HideInlineFailure();
+    UpdateRuntimeButtons();
 }
 
 void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
@@ -2008,38 +2109,17 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
 
     auto* timeLabel =
         new wxStaticText(card, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxST_ELLIPSIZE_END);
-    timeLabel->SetFont(timeLabel->GetFont().Scaled(0.8));
     timeLabel->SetForegroundColour(kSubTextColor);
-
-    // 固定宽度按钮区：即使按钮隐藏也保留位置，避免进度条随状态伸缩
-    auto* actionPanel =
-        new wxPanel(card, wxID_ANY, wxDefaultPosition, wxSize(166, 32), wxBORDER_NONE);
-    actionPanel->SetBackgroundColour(kCardBgColor);
-    actionPanel->SetMinSize(wxSize(166, 32));
-    actionPanel->SetMaxSize(wxSize(166, 32));
-    auto* actionSizer = new wxBoxSizer(wxHORIZONTAL);
-    auto* retryBtn = new ui::FlatButton(actionPanel, _("Retry"), kThemeColor, *wxWHITE, [this]() {
-        ResolvePendingFailure(StepFailureAction::Retry);
-    });
-    auto* stopBtn = new ui::FlatButton(actionPanel, _("Stop"), kBorderColor, kTextColor, [this]() {
-        ResolvePendingFailure(StepFailureAction::Stop);
-    });
-    retryBtn->Hide();
-    stopBtn->Hide();
-    actionSizer->Add(retryBtn, 0, wxRIGHT, 6);
-    actionSizer->Add(stopBtn, 0);
-    actionPanel->SetSizer(actionSizer);
 
     progressRow->Add(progressTitle, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
     progressRow->Add(progressBar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
-    progressRow->Add(ratioLabel, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
-    progressRow->Add(timeLabel, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 6);
-    progressRow->Add(actionPanel, 0, wxALIGN_CENTER_VERTICAL);
+    progressRow->Add(ratioLabel, 0, wxALIGN_CENTER_VERTICAL);
     cardSizer->Add(progressRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
+    cardSizer->Add(timeLabel, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
 
     auto* failLabel = new wxStaticText(card, wxID_ANY, "");
     failLabel->SetForegroundColour(wxColour(198, 40, 40));
-    failLabel->Wrap(520);
+    failLabel->Wrap(620);
     failLabel->Hide();
     cardSizer->Add(failLabel, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 12);
 
@@ -2060,16 +2140,12 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
         m_autoProgressBar = progressBar;
         m_autoRatioLabel = ratioLabel;
         m_autoTimeLabel = timeLabel;
-        m_autoRetryBtn = retryBtn;
-        m_autoStopBtn = stopBtn;
         m_autoFailLabel = failLabel;
     } else {
         m_interactiveStepList = stepList;
         m_interactiveProgressBar = progressBar;
         m_interactiveRatioLabel = ratioLabel;
         m_interactiveTimeLabel = timeLabel;
-        m_interactiveRetryBtn = retryBtn;
-        m_interactiveStopBtn = stopBtn;
         m_interactiveFailLabel = failLabel;
     }
 
@@ -2679,6 +2755,7 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
                 m_testRunner = nullptr;
             }
             UpdateToolbarState();
+            UpdateRuntimeButtons();
         });
     });
 
@@ -2705,6 +2782,7 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
 
     UpdateToolbarState();
     m_testRunner->Start();
+    UpdateRuntimeButtons();
 }
 
 void SessionPanel::OnTbBatch(wxCommandEvent&) {

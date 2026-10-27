@@ -35,6 +35,9 @@
 #include "ui/UIUtils.h"
 
 namespace icu {
+namespace ui {
+class FlatButton;
+}
 
 class SessionPanel : public wxPanel {
 public:
@@ -115,10 +118,12 @@ private:
     wxStaticText* m_interactiveRatioLabel = nullptr;
     wxStaticText* m_autoTimeLabel = nullptr;
     wxStaticText* m_interactiveTimeLabel = nullptr;
-    ui::FlatButton* m_autoRetryBtn = nullptr;
-    ui::FlatButton* m_autoStopBtn = nullptr;
-    ui::FlatButton* m_interactiveRetryBtn = nullptr;
-    ui::FlatButton* m_interactiveStopBtn = nullptr;
+    ui::FlatButton* m_rtPauseBtn = nullptr;
+    ui::FlatButton* m_rtRetryBtn = nullptr;
+    ui::FlatButton* m_rtPrevBtn = nullptr;
+    ui::FlatButton* m_rtNextBtn = nullptr;
+    ui::FlatButton* m_rtJumpBtn = nullptr;
+    ui::FlatButton* m_rtStopBtn = nullptr;
     wxStaticText* m_autoFailLabel = nullptr;
     wxStaticText* m_interactiveFailLabel = nullptr;
     wxListCtrl* m_activeStepList = nullptr;
@@ -204,6 +209,13 @@ private:
     void OnToolClick(wxCommandEvent& evt);
     // ★ 按当前会话 / 选中状态显式刷新工具栏（只在状态变化时真正刷新控件）
     void UpdateToolbarState();
+    void UpdateRuntimeButtons();
+    void RuntimeTogglePause();
+    void RuntimeRetry();
+    void RuntimePrevious();
+    void RuntimeNext();
+    void RuntimeJump();
+    void RuntimeStop();
     // ★ 设置单个按钮的图标 / 可用状态 / 提示，内部做差异比较
     void SetToolBtn(int id, const wxString& iconName, bool enabled, const wxString& tooltip);
 
