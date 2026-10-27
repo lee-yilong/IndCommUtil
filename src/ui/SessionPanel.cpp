@@ -930,6 +930,27 @@ void SessionPanel::BuildCommonUi(wxBoxSizer* mainSizer) {
     addBtn(idTbUp, "up", _("Move Up"));
     addBtn(idTbDown, "down", _("Move Down"));
 
+    addSep();
+
+    auto* runtimeTitle = new wxStaticText(tbWrapper, wxID_ANY, _("Run Controls"));
+    runtimeTitle->SetForegroundColour(kSubTextColor);
+    tbSizer->Add(runtimeTitle, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
+
+    auto addRuntimeBtn = [&](const wxString& text, std::function<void()> onClick) {
+        auto* btn =
+            new ui::FlatButton(tbWrapper, text, ui::kBtnGrayBg, kTextColor, std::move(onClick));
+        btn->SetMinSize(wxSize(70, 30));
+        btn->SetMaxSize(wxSize(70, 30));
+        tbSizer->Add(btn, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
+        return btn;
+    };
+    m_rtPauseBtn = addRuntimeBtn(_("Pause"), [this]() { RuntimeTogglePause(); });
+    m_rtRetryBtn = addRuntimeBtn(_("Retry"), [this]() { RuntimeRetry(); });
+    m_rtPrevBtn = addRuntimeBtn(_("Previous Step"), [this]() { RuntimePrevious(); });
+    m_rtNextBtn = addRuntimeBtn(_("Next Step"), [this]() { RuntimeNext(); });
+    m_rtJumpBtn = addRuntimeBtn(_("Jump to Step..."), [this]() { RuntimeJump(); });
+    m_rtStopBtn = addRuntimeBtn(_("Stop"), [this]() { RuntimeStop(); });
+
     tbSizer->AddStretchSpacer();
 
     tbWrapper->SetSizer(tbSizer);
@@ -968,31 +989,6 @@ void SessionPanel::BuildCommonUi(wxBoxSizer* mainSizer) {
 
     topSizer->Add(infoRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
     topSizer->Add(statsRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
-
-    auto* runtimeSeparator = new wxPanel(topPanel, wxID_ANY, wxDefaultPosition, wxSize(-1, 1));
-    runtimeSeparator->SetBackgroundColour(kBorderColor);
-    topSizer->Add(runtimeSeparator, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
-
-    auto* runtimeSizer = new wxBoxSizer(wxHORIZONTAL);
-    auto* runtimeTitle = new wxStaticText(topPanel, wxID_ANY, _("Run Controls") + ":");
-    runtimeTitle->SetForegroundColour(kSubTextColor);
-    runtimeSizer->Add(runtimeTitle, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
-
-    auto addRuntimeBtn = [&](const wxString& text, std::function<void()> onClick) {
-        auto* btn =
-            new ui::FlatButton(topPanel, text, ui::kBtnGrayBg, kTextColor, std::move(onClick));
-        runtimeSizer->Add(btn, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 6);
-        return btn;
-    };
-    m_rtPauseBtn = addRuntimeBtn(_("Pause"), [this]() { RuntimeTogglePause(); });
-    m_rtRetryBtn = addRuntimeBtn(_("Retry"), [this]() { RuntimeRetry(); });
-    m_rtPrevBtn = addRuntimeBtn(_("Previous Step"), [this]() { RuntimePrevious(); });
-    m_rtNextBtn = addRuntimeBtn(_("Next Step"), [this]() { RuntimeNext(); });
-    m_rtJumpBtn = addRuntimeBtn(_("Jump to Step..."), [this]() { RuntimeJump(); });
-    m_rtStopBtn = addRuntimeBtn(_("Stop"), [this]() { RuntimeStop(); });
-    runtimeSizer->AddStretchSpacer();
-
-    topSizer->Add(runtimeSizer, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP | wxBOTTOM, 8);
 
     topPanel->SetSizer(topSizer);
     mainSizer->Add(topPanel, 0, wxEXPAND | wxALL, 6);
@@ -2204,8 +2200,8 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     progressTitle->SetForegroundColour(kSubTextColor);
 
     auto* progressBar = new ui::ProgressBar(card);
-    progressBar->SetMinSize(wxSize(120, 22));
-    progressBar->SetMaxSize(wxSize(120, 22));
+    progressBar->SetMinSize(wxSize(240, 24));
+    progressBar->SetMaxSize(wxSize(-1, 24));
 
     auto* ratioLabel = new wxStaticText(card, wxID_ANY, "0 / 0");
     ratioLabel->SetMinSize(wxSize(60, -1));
@@ -2216,7 +2212,7 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     timeLabel->SetForegroundColour(kSubTextColor);
 
     progressRow->Add(progressTitle, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
-    progressRow->Add(progressBar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
+    progressRow->Add(progressBar, 1, wxEXPAND | wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
     progressRow->Add(ratioLabel, 0, wxALIGN_CENTER_VERTICAL);
     cardSizer->Add(progressRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
     cardSizer->Add(timeLabel, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
