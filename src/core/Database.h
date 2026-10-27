@@ -14,6 +14,12 @@ struct DataRecord {
     double timeSec;
 };
 
+struct TextDataRecord {
+    std::string varName;
+    std::string value;
+    double timeSec;
+};
+
 class Database {
 public:
     Database() = default;
@@ -31,10 +37,14 @@ public:
     // 插入时记录毫秒时间戳
     bool InsertRunData(int64_t runId, const std::string& variableName, double value,
                        double timeSec);
+    bool InsertRunTextData(int64_t runId, const std::string& variableName, const std::string& value,
+                           double timeSec);
 
     // ★ 新增：查询指定项目、时间段的历史数据
     std::vector<DataRecord> QueryHistory(const std::string& projectPath, double startTimeSec,
                                          double endTimeSec);
+    std::vector<TextDataRecord> QueryTextHistory(const std::string& projectPath,
+                                                 double startTimeSec, double endTimeSec);
 
     std::string LastError() const { return m_lastError; }
 

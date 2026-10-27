@@ -71,6 +71,18 @@ bool Database::CreateTables() {
         );
     )";
 
+    const char* sqlText = R"(
+        CREATE TABLE IF NOT EXISTS run_text_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER,
+            timestamp DATETIME,
+            time_sec REAL,
+            variable TEXT,
+            text_value TEXT,
+            FOREIGN KEY(run_id) REFERENCES test_runs(id)
+        );
+    )";
+
     char* errMsg = nullptr;
     if (sqlite3_exec(m_db, sqlRuns, nullptr, nullptr, &errMsg) != SQLITE_OK) {
         m_lastError = errMsg ? errMsg : "Unknown error";
@@ -79,6 +91,12 @@ bool Database::CreateTables() {
     }
 
     if (sqlite3_exec(m_db, sqlData, nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        m_lastError = errMsg ? errMsg : "Unknown error";
+        sqlite3_free(errMsg);
+        return false;
+    }
+
+    if (sqlite3_exec(m_db, sqlText, nullptr, nullptr, &errMsg) != SQLITE_OK) {
         m_lastError = errMsg ? errMsg : "Unknown error";
         sqlite3_free(errMsg);
         return false;
@@ -160,6 +178,34 @@ bool Database::InsertRunData(int64_t runId, const std::string& variableName, dou
     return ok;
 }
 
+bool Database::InsertRunTextData(int64_t runId, const std::string& variableName,
+                                 const std::string& value, double timeSec) {
+    if (!m_db || runId < 0) return false;
+
+    const char* sql =
+        "INSERT INTO run_text_data (run_id, timestamp, time_sec, variable, text_value) VALUES (?, "
+        "datetime('now', 'localtime'), ?, ?, ?);";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        m_lastError = sqlite3_errmsg(m_db);
+        return false;
+    }
+
+    sqlite3_bind_int64(stmt, 1, runId);
+    sqlite3_bind_double(stmt, 2, timeSec);
+    sqlite3_bind_text(stmt, 3, variableName.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 4, value.c_str(), -1, SQLITE_TRANSIENT);
+
+    bool ok = false;
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        ok = true;
+    } else {
+        m_lastError = sqlite3_errmsg(m_db);
+    }
+    sqlite3_finalize(stmt);
+    return ok;
+}
+
 std::vector<DataRecord> Database::QueryHistory(const std::string& projectPath, double startTimeSec,
                                                double endTimeSec) {
     std::vector<DataRecord> records;
@@ -191,6 +237,45 @@ std::vector<DataRecord> Database::QueryHistory(const std::string& projectPath, d
         const unsigned char* varName = sqlite3_column_text(stmt, 1);
         rec.varName = varName ? reinterpret_cast<const char*>(varName) : "";
         rec.value = sqlite3_column_double(stmt, 2);
+        records.push_back(rec);
+    }
+
+    sqlite3_finalize(stmt);
+    return records;
+}
+
+std::vector<TextDataRecord> Database::QueryTextHistory(const std::string& projectPath,
+                                                       double startTimeSec, double endTimeSec) {
+    std::vector<TextDataRecord> records;
+    if (!m_db) return records;
+
+    const char* sql = R"(
+        SELECT td.time_sec, td.variable, td.text_value
+        FROM run_text_data td
+        JOIN test_runs tr ON td.run_id = tr.id
+        WHERE tr.project_path = ?
+          AND td.time_sec >= ?
+          AND td.time_sec <= ?
+        ORDER BY td.time_sec ASC;
+    )";
+
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        m_lastError = sqlite3_errmsg(m_db);
+        return records;
+    }
+
+    sqlite3_bind_text(stmt, 1, projectPath.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_double(stmt, 2, startTimeSec);
+    sqlite3_bind_double(stmt, 3, endTimeSec);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        TextDataRecord rec;
+        rec.timeSec = sqlite3_column_double(stmt, 0);
+        const unsigned char* varName = sqlite3_column_text(stmt, 1);
+        rec.varName = varName ? reinterpret_cast<const char*>(varName) : "";
+        const unsigned char* value = sqlite3_column_text(stmt, 2);
+        rec.value = value ? reinterpret_cast<const char*>(value) : "";
         records.push_back(rec);
     }
 

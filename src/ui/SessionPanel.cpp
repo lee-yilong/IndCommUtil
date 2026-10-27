@@ -256,6 +256,26 @@ void SessionPanel::RecordData(const std::string& varName, double value) {
     if (m_chartPanel) m_chartPanel->AddDataPointWithTime(varName, value, timeSec);
 }
 
+void SessionPanel::RecordVariableValue(const std::string& varName, const std::string& value) {
+    if (!m_isRecording || !m_sessionConfig) return;
+    if (!m_loggingVars.empty() && m_loggingVars.find(varName) == m_loggingVars.end()) return;
+
+    auto it = m_sessionConfig->variables.find(varName);
+    if (it == m_sessionConfig->variables.end()) return;
+
+    double numeric = 0.0;
+    if (TryParseNumeric(it->second.type, value, numeric)) {
+        RecordData(varName, numeric);
+        return;
+    }
+
+    auto now = std::chrono::system_clock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    const double timeSec = static_cast<double>(ms) / 1000.0;
+    if (m_currentRunId == -1) m_currentRunId = m_db.CreateTestRun(m_historyKey);
+    if (m_currentRunId != -1) m_db.InsertRunTextData(m_currentRunId, varName, value, timeSec);
+}
+
 void SessionPanel::AppendUnifiedLog(bool isRx, const std::string& varName, const std::string& type,
                                     const std::string& value, const std::vector<uint8_t>& rawBytes,
                                     int clientId) {
@@ -456,7 +476,7 @@ void SessionPanel::BuildUi() {
     m_chartWindowUnit->Bind(wxEVT_CHOICE, applyChartWindow);
 
     auto* chartHint = new wxStaticText(chartPage, wxID_ANY,
-                                       _("Scroll to zoom · Drag to pan · Double-click to follow"));
+                                       _("Scroll to zoom | Drag to pan | Double-click to follow"));
     chartHint->SetForegroundColour(kSubTextColor);
 
     chartBar->Add(windowTitle, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
@@ -649,8 +669,18 @@ void SessionPanel::UpdateToolbarState() {
     SetToolBtn(idTbConfigure, "configure", canConfigure, _("Configure Connection"));
 
     // 录制中允许从任意页签停止，否则切到步骤页后就再也点不到“停止录制”了
+    bool hasRecordableVar = false;
+    if (m_sessionConfig) {
+        for (const auto& [name, var] : m_sessionConfig->variables) {
+            (void)name;
+            if (var.enabled) {
+                hasRecordableVar = true;
+                break;
+            }
+        }
+    }
     SetToolBtn(idTbRecord, m_isRecording ? "stoprecording" : "record",
-               hasSession && (m_isRecording || isVarCtx),
+               hasSession && (m_isRecording || hasRecordableVar),
                m_isRecording ? _("Stop Recording") : _("Record Data"));
 
     SetToolBtn(idTbHistory, "history", hasSession, _("History"));
@@ -1143,9 +1173,7 @@ void SessionPanel::OnExecuteRead(wxCommandEvent&) {
                         txt->ChangeValue(rawStr);
                 RefreshVariableList();
                 AppendUnifiedLog(true, name, m_sessionConfig->variables[name].type, valStr, raw);
-                double chartVal;
-                if (TryParseNumeric(m_sessionConfig->variables[name].type, valStr, chartVal))
-                    RecordData(name, chartVal);
+                RecordVariableValue(name, valStr);
             } else {
                 AppendUnifiedLog(true, name, "Error", resp.errorMessage, {});
             }
@@ -1226,9 +1254,7 @@ void SessionPanel::OnExecuteWrite(wxCommandEvent&) {
                 RefreshVariableList();
                 AppendUnifiedLog(false, name, m_sessionConfig->variables[name].type, targetVal,
                                  raw);
-                double chartVal;
-                if (TryParseNumeric(m_sessionConfig->variables[name].type, targetVal, chartVal))
-                    RecordData(name, chartVal);
+                RecordVariableValue(name, targetVal);
             } else {
                 AppendUnifiedLog(false, name, "Error", resp.errorMessage, {});
             }
@@ -1294,8 +1320,7 @@ void SessionPanel::OnExecuteSend(wxCommandEvent&) {
             if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__raw_bytes"]))
                 txt->ChangeValue(rawStr.Trim());
         AppendUnifiedLog(false, m_selectedVarName, var.type, payload, bytes);
-        double chartVal;
-        if (TryParseNumeric(var.type, payload, chartVal)) RecordData(m_selectedVarName, chartVal);
+        RecordVariableValue(m_selectedVarName, payload);
         return;
     }
 
@@ -1327,8 +1352,7 @@ void SessionPanel::OnExecuteSend(wxCommandEvent&) {
             if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__raw_bytes"]))
                 txt->ChangeValue(rawStr.Trim());
         AppendUnifiedLog(false, m_selectedVarName, var.type, payload, bytes);
-        double chartVal;
-        if (TryParseNumeric(var.type, payload, chartVal)) RecordData(m_selectedVarName, chartVal);
+        RecordVariableValue(m_selectedVarName, payload);
     } else {
         ShowMsg(_("Send failed"), _("Error"), wxOK | wxICON_ERROR);
     }
@@ -2405,8 +2429,13 @@ void SessionPanel::OnTbRecord(wxCommandEvent&) {
     if (!m_sessionConfig) return;
 
     wxArrayString choices;
-    for (const auto& [name, var] : m_sessionConfig->variables)
-        if (var.enabled) choices.Add(wxString::FromUTF8(name));
+    std::vector<std::string> names;
+    for (const auto& [name, var] : m_sessionConfig->variables) {
+        if (!var.enabled) continue;
+        names.push_back(name);
+        choices.Add(
+            wxString::Format("%s (%s)", wxString::FromUTF8(name), wxString::FromUTF8(var.type)));
+    }
     if (choices.IsEmpty()) {
         ShowMsg(_("No enabled variables to record."), _("Notice"), wxOK);
         return;
@@ -2416,12 +2445,16 @@ void SessionPanel::OnTbRecord(wxCommandEvent&) {
     for (unsigned int i = 0; i < choices.GetCount(); ++i) initial.push_back(static_cast<int>(i));
 
     std::vector<int> selected;
-    if (ui::CheckListDialog::Show(this, _("Record Settings"), _("Select variables to record:"),
+    if (ui::CheckListDialog::Show(this, _("Record Settings"),
+                                  _("Select variables to record (numeric: chart, text: details):"),
                                   choices, initial, selected)) {
+        if (selected.empty()) {
+            ShowMsg(_("Please select at least one variable."), _("Notice"), wxOK);
+            return;
+        }
         m_loggingVars.clear();
         for (int sel : selected) {
-            if (sel >= 0 && sel < static_cast<int>(choices.GetCount()))
-                m_loggingVars.insert(std::string(choices[sel].utf8_str()));
+            if (sel >= 0 && sel < static_cast<int>(names.size())) m_loggingVars.insert(names[sel]);
         }
         m_isRecording = true;
         if (m_chartPanel) m_chartPanel->Clear();
@@ -2619,9 +2652,9 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
         CallAfter([this, msg]() { AppendRunnerLog(wxString::FromUTF8(msg)); });
     });
 
-    m_testRunner->OnDataRecorded([this](const std::string& varName, double val) {
+    m_testRunner->OnDataRecorded([this](const std::string& varName, const std::string& val) {
         // 数据记录回调在测试线程触发，DB/图表只能在 UI 线程访问
-        CallAfter([this, varName, val]() { RecordData(varName, val); });
+        CallAfter([this, varName, val]() { RecordVariableValue(varName, val); });
     });
 
     m_testRunner->OnFinished([this, stepList](bool overallSuccess) {
@@ -2779,9 +2812,7 @@ void SessionPanel::BindStreamCallbacks() {
                     if (m_varOpControls.count("__raw_bytes"))
                         if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__raw_bytes"]))
                             txt->ChangeValue(rawStr.Trim());
-                    double chartVal;
-                    if (TryParseNumeric(var.type, var.currentValue, chartVal))
-                        RecordData(m_selectedVarName, chartVal);
+                    RecordVariableValue(m_selectedVarName, var.currentValue);
                 } else {
                     parsedValue = "<Parse Failed>";
                 }
@@ -2871,9 +2902,7 @@ void SessionPanel::BindMqttCallbacks() {
                     if (m_varOpControls.count("__raw_bytes"))
                         if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__raw_bytes"]))
                             txt->ChangeValue(rawStr.Trim());
-                    double chartVal;
-                    if (TryParseNumeric(var.type, var.currentValue, chartVal))
-                        RecordData(m_selectedVarName, chartVal);
+                    RecordVariableValue(m_selectedVarName, var.currentValue);
                 }
             }
         });

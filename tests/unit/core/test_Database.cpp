@@ -31,6 +31,13 @@ TEST_CASE("Database: 历史记录按项目和编号查询") {
     // 未保存的会话统一使用 Untitled，而不是空字符串；空 key 不应命中
     CHECK(db.QueryHistory("", timeSec - 1.0, timeSec + 1.0).empty());
 
+    REQUIRE(db.InsertRunTextData(runId, "message", "hello world", timeSec));
+    auto textRecords = db.QueryTextHistory("Untitled", timeSec - 1.0, timeSec + 1.0);
+    REQUIRE(textRecords.size() == 1);
+    CHECK(textRecords[0].varName == "message");
+    CHECK(textRecords[0].value == "hello world");
+    CHECK(db.QueryTextHistory("", timeSec - 1.0, timeSec + 1.0).empty());
+
     db.Close();
     std::filesystem::remove(path);
 }

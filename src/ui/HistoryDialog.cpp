@@ -107,13 +107,34 @@ HistoryDialog::HistoryDialog(wxWindow* parent, Database* db, const std::string& 
     leftCard->SetSizer(leftSizer);
     contentSizer->Add(leftCard, 1, wxEXPAND | wxRIGHT, 10);
 
-    // --- 右侧：图表卡片 ---
+    // --- 右侧：图表 / 明细卡片 ---
     auto* rightCard = new ui::CardPanel(this);
     auto* rightSizer = new wxBoxSizer(wxVERTICAL);
 
-    m_chart = new ChartPanel(rightCard);
-    // 图表默认有白底，所以嵌在卡片内看起来很自然
-    rightSizer->Add(m_chart, 1, wxEXPAND | wxALL, 8);
+    m_resultBook = new wxNotebook(rightCard, wxID_ANY);
+
+    auto* chartPage = new wxPanel(m_resultBook);
+    chartPage->SetBackgroundColour(*wxWHITE);
+    auto* chartSizer = new wxBoxSizer(wxVERTICAL);
+    m_chart = new ChartPanel(chartPage);
+    chartSizer->Add(m_chart, 1, wxEXPAND | wxALL, 8);
+    chartPage->SetSizer(chartSizer);
+    m_resultBook->AddPage(chartPage, _("Chart"));
+
+    auto* textPage = new wxPanel(m_resultBook);
+    textPage->SetBackgroundColour(*wxWHITE);
+    auto* textSizer = new wxBoxSizer(wxVERTICAL);
+    m_textList = new wxListCtrl(textPage, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                                wxLC_REPORT | wxLC_SINGLE_SEL | wxBORDER_NONE);
+    m_textList->SetBackgroundColour(*wxWHITE);
+    m_textList->InsertColumn(0, _("Time"), wxLIST_FORMAT_LEFT, 160);
+    m_textList->InsertColumn(1, _("Variable"), wxLIST_FORMAT_LEFT, 160);
+    m_textList->InsertColumn(2, _("Value"), wxLIST_FORMAT_LEFT, 360);
+    textSizer->Add(m_textList, 1, wxEXPAND | wxALL, 8);
+    textPage->SetSizer(textSizer);
+    m_resultBook->AddPage(textPage, _("Details"));
+
+    rightSizer->Add(m_resultBook, 1, wxEXPAND | wxALL, 4);
 
     rightCard->SetSizer(rightSizer);
     contentSizer->Add(rightCard, 3, wxEXPAND);
@@ -190,21 +211,39 @@ void HistoryDialog::OnQuery(wxCommandEvent&) {
     }
 
     auto records = m_db->QueryHistory(m_projectPath, startSec, endSec);
+    auto textRecords = m_db->QueryTextHistory(m_projectPath, startSec, endSec);
 
     m_chart->Clear();
     m_chart->SetTimeWindow(endSec - startSec);
+    m_textList->DeleteAllItems();
 
-    int loadedCount = 0;
+    int chartCount = 0;
     for (const auto& rec : records) {
         if (std::find(selectedVars.begin(), selectedVars.end(), rec.varName) ==
             selectedVars.end()) {
             continue;
         }
         m_chart->AddDataPointWithTime(rec.varName, rec.value, rec.timeSec);
-        loadedCount++;
+        chartCount++;
     }
 
-    if (loadedCount == 0) {
+    int textCount = 0;
+    for (const auto& rec : textRecords) {
+        if (std::find(selectedVars.begin(), selectedVars.end(), rec.varName) ==
+            selectedVars.end()) {
+            continue;
+        }
+        const wxDateTime stamp(static_cast<time_t>(rec.timeSec));
+        const long row =
+            m_textList->InsertItem(m_textList->GetItemCount(), stamp.Format("%Y-%m-%d %H:%M:%S"));
+        m_textList->SetItem(row, 1, wxString::FromUTF8(rec.varName));
+        m_textList->SetItem(row, 2, wxString::FromUTF8(rec.value));
+        textCount++;
+    }
+
+    if (m_resultBook) m_resultBook->SetSelection(chartCount > 0 ? 0 : 1);
+
+    if (chartCount == 0 && textCount == 0) {
         ui::MessageDialog::Show(this, _("Notice"), _("No data found in this time range."),
                                 wxOK | wxICON_INFORMATION);
     }

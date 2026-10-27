@@ -3,6 +3,8 @@
 #include <wx/checklst.h>
 #include <wx/datectrl.h>
 #include <wx/dateevt.h>
+#include <wx/listctrl.h>
+#include <wx/notebook.h>
 #include <wx/spinctrl.h>
 #include <wx/timectrl.h>
 #include <wx/wx.h>
@@ -32,7 +34,9 @@ private:
     wxTimePickerCtrl* m_startTime;
     wxDatePickerCtrl* m_endDate;
     wxTimePickerCtrl* m_endTime;
-    ChartPanel* m_chart;
+    wxNotebook* m_resultBook = nullptr;
+    ChartPanel* m_chart = nullptr;
+    wxListCtrl* m_textList = nullptr;
 
     wxPoint m_dragStart;
     wxPoint m_winStart;

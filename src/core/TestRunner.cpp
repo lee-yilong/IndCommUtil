@@ -126,13 +126,8 @@ void TestRunner::RunLoop() {
                 auto updatedVars = step->Extract(result, m_vars);
                 if (m_dataRecordCb) {
                     for (const auto& varName : updatedVars) {
-                        if (m_vars.count(varName)) {
-                            try {
-                                double val = std::stod(m_vars[varName].currentValue);
-                                m_dataRecordCb(varName, val);
-                            } catch (...) {
-                            }
-                        }
+                        auto it = m_vars.find(varName);
+                        if (it != m_vars.end()) m_dataRecordCb(varName, it->second.currentValue);
                     }
                 }
 

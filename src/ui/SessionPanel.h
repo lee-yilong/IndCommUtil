@@ -93,6 +93,7 @@ private:
     bool m_isRecording = false;
 
     void RecordData(const std::string& varName, double value);
+    void RecordVariableValue(const std::string& varName, const std::string& value);
     void AppendUnifiedLog(bool isRx, const std::string& varName, const std::string& type,
                           const std::string& value, const std::vector<uint8_t>& rawBytes,
                           int clientId = 0);

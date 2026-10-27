@@ -38,7 +38,8 @@ public:
     // 阶段 10：底层报文日志回调
     using StepLogCallback = std::function<void(const std::string& logMsg)>;
     // 阶段 11：数据记录回调（用于 SQLite 与图表）
-    using DataRecordedCallback = std::function<void(const std::string& varName, double value)>;
+    using DataRecordedCallback =
+        std::function<void(const std::string& varName, const std::string& value)>;
 
     void OnStepUpdated(StepUpdateCallback cb) { m_stepCb = std::move(cb); }
     void OnFinished(FinishCallback cb) { m_finishCb = std::move(cb); }
