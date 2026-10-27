@@ -1697,7 +1697,11 @@ StepFailureAction SessionPanel::AskStepFailure(int stepIndex, const std::string&
 
 void SessionPanel::ShowInlineFailure(wxListCtrl* list, int stepIndex, const wxString& message,
                                      std::shared_ptr<PendingFailure> state) {
-    if (!list) return;
+    if (!list || !state) return;
+    {
+        std::lock_guard<std::mutex> lock(state->mutex);
+        if (state->done) return;
+    }
     m_pendingFailure = state;
 
     const bool autoMode = (list == m_autoStepList);
