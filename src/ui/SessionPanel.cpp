@@ -135,6 +135,9 @@ SessionPanel::SessionPanel(wxWindow* parent, IProtocol* protocol, int modeIndex,
     m_currentRunId = m_db.CreateTestRun(m_historyKey);
 
     BuildUi();
+    CallAfter([this]() {
+        if (m_mainSplitter) m_mainSplitter->SetSashPosition(300);
+    });
 
     m_runTimer = new wxTimer(this);
     Bind(wxEVT_TIMER, [this](wxTimerEvent&) {
@@ -189,9 +192,6 @@ SessionPanel::~SessionPanel() {
 
 void SessionPanel::ApplyGlobalSettings() {
     auto& ui = settings::UISettings::Instance();
-    if (m_hexDisplay) m_hexDisplay->SetValue(ui.GetHexDisplay());
-    if (m_showTimestamp) m_showTimestamp->SetValue(ui.GetShowTimestamp());
-    if (m_autoScroll) m_autoScroll->SetValue(ui.GetAutoScroll());
     if (m_commonLogCtrl) {
         m_commonLogCtrl->SetShowHex(ui.GetHexDisplay());
         m_commonLogCtrl->SetShowTime(ui.GetShowTimestamp());
@@ -274,7 +274,8 @@ void SessionPanel::BuildUi() {
     m_mainSplitter =
         new wxSplitterWindow(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSP_LIVE_UPDATE);
     m_mainSplitter->SetBackgroundColour(kBgColor);
-    m_mainSplitter->SetSashGravity(0.3);
+    m_mainSplitter->SetSashGravity(0.0);
+    m_mainSplitter->SetMinimumPaneSize(220);
 
     auto* varPanel = new wxPanel(m_mainSplitter);
     varPanel->SetBackgroundColour(kBgColor);
@@ -287,20 +288,18 @@ void SessionPanel::BuildUi() {
                                wxLC_REPORT | wxLC_SINGLE_SEL | wxBORDER_NONE);
     m_varList->SetBackgroundColour(kCardBgColor);
 
-    m_varList->InsertColumn(0, _("Name"), wxLIST_FORMAT_LEFT, 100);
+    m_varList->InsertColumn(0, _("Name"), wxLIST_FORMAT_LEFT, 130);
     m_varList->InsertColumn(1, _("Type"), wxLIST_FORMAT_LEFT, 60);
-    m_varList->InsertColumn(2, _("Access"), wxLIST_FORMAT_LEFT, 60);
-    m_varList->InsertColumn(3, _("Value"), wxLIST_FORMAT_LEFT, 100);
+    m_varList->InsertColumn(2, _("Value"), wxLIST_FORMAT_LEFT, 110);
 
     m_varList->Bind(wxEVT_SIZE, [this](wxSizeEvent& evt) {
         int w = m_varList->GetClientSize().x;
         if (w > 0) {
             int avail = w - 24;
             if (avail < 100) avail = 100;
-            m_varList->SetColumnWidth(0, avail * 0.35);
+            m_varList->SetColumnWidth(0, avail * 0.45);
             m_varList->SetColumnWidth(1, avail * 0.20);
-            m_varList->SetColumnWidth(2, avail * 0.20);
-            m_varList->SetColumnWidth(3, avail * 0.25);
+            m_varList->SetColumnWidth(2, avail * 0.35);
         }
         evt.Skip();
     });
@@ -525,7 +524,7 @@ void SessionPanel::BuildUi() {
     m_rightSplitter->SplitHorizontally(m_modeNotebook, logPanel, 320);
     m_rightSplitter->SetMinimumPaneSize(150);
 
-    m_mainSplitter->SplitVertically(varPanel, m_rightSplitter, 240);
+    m_mainSplitter->SplitVertically(varPanel, m_rightSplitter, 300);
     m_mainSplitter->SetMinimumPaneSize(180);
 
     main->Add(m_mainSplitter, 1, wxEXPAND | wxALL, 4);
@@ -750,39 +749,12 @@ void SessionPanel::OnToolClick(wxCommandEvent& evt) {
 }
 
 void SessionPanel::BuildStreamUi(wxBoxSizer* mainSizer, wxWindow* parentWindow) {
+    (void)mainSizer;
+    (void)parentWindow;
     if (m_streamSession && m_streamSession->IsServerMode())
         m_clientsLabel->Show();
     else
         m_clientsLabel->Hide();
-
-    auto* logToolbar = new wxBoxSizer(wxHORIZONTAL);
-    m_hexDisplay = new wxCheckBox(parentWindow, wxID_ANY, _("HEX Display"));
-    m_showTimestamp = new wxCheckBox(parentWindow, wxID_ANY, _("Timestamp"));
-    m_autoScroll = new wxCheckBox(parentWindow, wxID_ANY, _("Auto Scroll"));
-
-    auto& ui = settings::UISettings::Instance();
-    m_hexDisplay->SetValue(ui.GetHexDisplay());
-    m_showTimestamp->SetValue(ui.GetShowTimestamp());
-    m_autoScroll->SetValue(ui.GetAutoScroll());
-
-    m_hexDisplay->Bind(wxEVT_CHECKBOX, [this](wxCommandEvent& evt) {
-        settings::UISettings::Instance().SetHexDisplay(evt.IsChecked());
-        if (m_commonLogCtrl) m_commonLogCtrl->SetShowHex(evt.IsChecked());
-    });
-    m_showTimestamp->Bind(wxEVT_CHECKBOX, [this](wxCommandEvent& evt) {
-        settings::UISettings::Instance().SetShowTimestamp(evt.IsChecked());
-        if (m_commonLogCtrl) m_commonLogCtrl->SetShowTime(evt.IsChecked());
-    });
-    m_autoScroll->Bind(wxEVT_CHECKBOX, [this](wxCommandEvent& evt) {
-        settings::UISettings::Instance().SetAutoScroll(evt.IsChecked());
-        if (m_commonLogCtrl) m_commonLogCtrl->SetAutoScroll(evt.IsChecked());
-    });
-
-    logToolbar->Add(m_hexDisplay, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 16);
-    logToolbar->Add(m_showTimestamp, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 16);
-    logToolbar->Add(m_autoScroll, 0, wxALIGN_CENTER_VERTICAL);
-
-    mainSizer->Add(logToolbar, 0, wxEXPAND | wxALL, 8);
 }
 
 void SessionPanel::BuildTransactionUi(wxBoxSizer* mainSizer, wxWindow* parentWindow) {
@@ -917,7 +889,7 @@ void SessionPanel::BuildVarOpUi(const CommVariable& var) {
             if (m_varList) {
                 for (long i = 0; i < m_varList->GetItemCount() - 1; ++i) {
                     if (std::string(m_varList->GetItemText(i).utf8_str()) == m_selectedVarName) {
-                        m_varList->SetItem(i, 3, valueCtrl->GetValue());
+                        m_varList->SetItem(i, 2, valueCtrl->GetValue());
                         break;
                     }
                 }
@@ -1058,8 +1030,7 @@ void SessionPanel::RefreshVariableList() {
         const auto& var = m_sessionConfig->variables.at(name);
         long item = m_varList->InsertItem(idx++, wxString::FromUTF8(name));
         m_varList->SetItem(item, 1, wxString::FromUTF8(var.type));
-        m_varList->SetItem(item, 2, wxString::FromUTF8(var.access));
-        m_varList->SetItem(item, 3, wxString::FromUTF8(var.currentValue));
+        m_varList->SetItem(item, 2, wxString::FromUTF8(var.currentValue));
         if (!m_selectedVarName.empty() && name == m_selectedVarName) restoreRow = item;
     }
     long newItem = m_varList->InsertItem(idx, _("+ New Variable"));
@@ -1604,6 +1575,7 @@ void SessionPanel::HighlightRunningStep(wxListCtrl* list, long row) {
     if (m_runningStepList == list && m_runningStepRow == row) {
         // 重试同一步时把失败时的红色背景恢复成运行中的主题色
         list->SetItemBackgroundColour(row, ui::kSelectBgColor);
+        list->SetItemState(row, wxLIST_STATE_FOCUSED, wxLIST_STATE_FOCUSED);
         list->EnsureVisible(row);
         return;
     }
@@ -1613,7 +1585,8 @@ void SessionPanel::HighlightRunningStep(wxListCtrl* list, long row) {
         if (i != row) list->SetItemState(i, 0, wxLIST_STATE_SELECTED);
     }
     list->SetItemBackgroundColour(row, ui::kSelectBgColor);
-    list->SetItemState(row, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
+    list->SetItemState(row, wxLIST_STATE_SELECTED | wxLIST_STATE_FOCUSED,
+                       wxLIST_STATE_SELECTED | wxLIST_STATE_FOCUSED);
     list->EnsureVisible(row);
     m_runningStepList = list;
     m_runningStepRow = row;
@@ -2379,6 +2352,12 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
     if (!stepList || !flow.is_array() || flow.empty()) return;
     m_activeStepList = stepList;
     m_pendingFailure.reset();
+
+    // 运行总是切到对应的流程页，方便看到当前步骤高亮和进度
+    if (m_modeNotebook) {
+        const int targetPage = isAutoMode ? 2 : 1;
+        if (m_modeNotebook->GetSelection() != targetPage) m_modeNotebook->SetSelection(targetPage);
+    }
 
     std::vector<ITestStepPtr> steps;
     for (const auto& stepJson : flow) {

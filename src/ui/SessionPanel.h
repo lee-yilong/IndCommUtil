@@ -183,10 +183,6 @@ private:
 
     ui::LogList* m_commonLogCtrl = nullptr;
 
-    wxCheckBox* m_hexDisplay = nullptr;
-    wxCheckBox* m_showTimestamp = nullptr;
-    wxCheckBox* m_autoScroll = nullptr;
-
     wxListCtrl* m_interactiveStepList = nullptr;
     wxListCtrl* m_autoStepList = nullptr;
 

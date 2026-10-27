@@ -29,6 +29,7 @@ public:
     void SetShowTime(bool show);
     void SetShowHex(bool show);
     void SetAutoScroll(bool enabled);
+    void ScrollToBottom();
 
 protected:
     void OnDrawItem(wxDC& dc, const wxRect& rect, size_t n) const override;

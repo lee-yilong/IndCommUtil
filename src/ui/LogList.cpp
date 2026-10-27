@@ -30,6 +30,16 @@ wxString FitText(wxDC& dc, const wxString& text, int maxWidth) {
 LogList::LogList(wxWindow* parent)
     : wxVListBox(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE) {
     SetBackgroundColour(*wxWHITE);
+    Bind(wxEVT_SHOW, [this](wxShowEvent& evt) {
+        if (evt.IsShown() && m_autoScroll) ScrollToBottom();
+        evt.Skip();
+    });
+}
+
+void LogList::ScrollToBottom() {
+    if (m_entries.empty()) return;
+    ScrollToRow(m_entries.size() - 1);
+    Refresh();
 }
 
 void LogList::Append(const wxString& time, Kind kind, const wxString& content,
@@ -40,8 +50,10 @@ void LogList::Append(const wxString& time, Kind kind, const wxString& content,
     if (m_entries.size() > 5000) m_entries.erase(m_entries.begin());
 
     SetItemCount(m_entries.size());
-    Refresh();
-    if (m_autoScroll && !m_entries.empty()) ScrollToRow(m_entries.size() - 1);
+    if (m_autoScroll)
+        ScrollToBottom();
+    else
+        Refresh();
 }
 
 void LogList::AppendMessage(const wxString& time, const wxString& content, bool error) {
@@ -66,7 +78,7 @@ void LogList::SetShowHex(bool show) {
 
 void LogList::SetAutoScroll(bool enabled) {
     m_autoScroll = enabled;
-    if (m_autoScroll && !m_entries.empty()) ScrollToRow(m_entries.size() - 1);
+    if (m_autoScroll) ScrollToBottom();
 }
 
 wxCoord LogList::OnMeasureItem(size_t) const {
