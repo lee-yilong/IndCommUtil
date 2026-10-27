@@ -2,28 +2,48 @@
 
 #include <wx/stattext.h>
 
+#include "ui/UIUtils.h"
+
 namespace icu {
 
 TestStepEditDialog::TestStepEditDialog(wxWindow* parent, const nlohmann::json& initialData,
                                        const std::vector<std::string>& availableVars)
-    : wxDialog(parent, wxID_ANY, _("Edit Test Step"), wxDefaultPosition, wxSize(400, -1)) {
+    : wxDialog(parent, wxID_ANY, _("Edit Test Step"), wxDefaultPosition, wxDefaultSize,
+               wxBORDER_NONE | wxRESIZE_BORDER) {
     m_varNames = availableVars;
+    SetBackgroundColour(ui::kBgColor);
 
     auto* mainSizer = new wxBoxSizer(wxVERTICAL);
-    auto* grid = new wxFlexGridSizer(2, 8, 8);
+
+    // 1. 标题栏
+    auto* header = ui::CreateDialogHeader(this, _("Edit Test Step"), m_dragStart, m_winStart,
+                                          [this]() { EndModal(wxID_CANCEL); });
+    mainSizer->Add(header, 0, wxEXPAND | wxTOP | wxBOTTOM, 12);
+
+    // 2. 主体卡片
+    auto* card = new ui::CardPanel(this);
+    auto* cardSizer = new wxBoxSizer(wxVERTICAL);
+
+    auto* grid = new wxFlexGridSizer(2, 10, 12);
     grid->AddGrowableCol(1, 1);
 
-    grid->Add(new wxStaticText(this, wxID_ANY, _("Step Name:")), 0, wxALIGN_CENTER_VERTICAL);
+    // Step Name
+    auto* lblName = new wxStaticText(card, wxID_ANY, _("Step Name:"));
+    lblName->SetForegroundColour(ui::kTextColor);
+    grid->Add(lblName, 0, wxALIGN_CENTER_VERTICAL);
     m_nameCtrl =
-        new wxTextCtrl(this, wxID_ANY, wxString::FromUTF8(initialData.value("name", "New Step")));
+        new wxTextCtrl(card, wxID_ANY, wxString::FromUTF8(initialData.value("name", "New Step")));
     grid->Add(m_nameCtrl, 1, wxEXPAND);
 
-    grid->Add(new wxStaticText(this, wxID_ANY, _("Action:")), 0, wxALIGN_CENTER_VERTICAL);
+    // Action
+    auto* lblAction = new wxStaticText(card, wxID_ANY, _("Action:"));
+    lblAction->SetForegroundColour(ui::kTextColor);
+    grid->Add(lblAction, 0, wxALIGN_CENTER_VERTICAL);
     wxArrayString actions;
     actions.Add("read");
     actions.Add("write");
     actions.Add("delay");
-    m_actionCtrl = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, actions);
+    m_actionCtrl = new wxChoice(card, wxID_ANY, wxDefaultPosition, wxDefaultSize, actions);
 
     std::string initAction = initialData.value("action", "read");
     if (initAction == "send") initAction = "write";  // 兼容旧数据
@@ -32,11 +52,13 @@ TestStepEditDialog::TestStepEditDialog(wxWindow* parent, const nlohmann::json& i
     m_actionCtrl->Bind(wxEVT_CHOICE, &TestStepEditDialog::OnActionChanged, this);
     grid->Add(m_actionCtrl, 1, wxEXPAND);
 
-    m_varLabel = new wxStaticText(this, wxID_ANY, _("Variable:"));
+    // Variable
+    m_varLabel = new wxStaticText(card, wxID_ANY, _("Variable:"));
+    m_varLabel->SetForegroundColour(ui::kTextColor);
     grid->Add(m_varLabel, 0, wxALIGN_CENTER_VERTICAL);
     wxArrayString varChoices;
     for (const auto& v : m_varNames) varChoices.Add(wxString::FromUTF8(v));
-    m_varCtrl = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, varChoices);
+    m_varCtrl = new wxChoice(card, wxID_ANY, wxDefaultPosition, wxDefaultSize, varChoices);
     if (initialData.contains("variable") && initialData["variable"].is_string()) {
         m_varCtrl->SetStringSelection(
             wxString::FromUTF8(initialData["variable"].get<std::string>()));
@@ -45,18 +67,25 @@ TestStepEditDialog::TestStepEditDialog(wxWindow* parent, const nlohmann::json& i
     }
     grid->Add(m_varCtrl, 1, wxEXPAND);
 
-    m_valueLabel = new wxStaticText(this, wxID_ANY, _("Target Value (Write):"));
+    // Target Value
+    m_valueLabel = new wxStaticText(card, wxID_ANY, _("Target Value (Write):"));
+    m_valueLabel->SetForegroundColour(ui::kTextColor);
     grid->Add(m_valueLabel, 0, wxALIGN_CENTER_VERTICAL);
     m_valueCtrl =
-        new wxTextCtrl(this, wxID_ANY, wxString::FromUTF8(initialData.value("value", "")));
+        new wxTextCtrl(card, wxID_ANY, wxString::FromUTF8(initialData.value("value", "")));
     grid->Add(m_valueCtrl, 1, wxEXPAND);
 
-    grid->Add(new wxStaticText(this, wxID_ANY, _("Wait (ms):")), 0, wxALIGN_CENTER_VERTICAL);
-    m_waitCtrl = new wxSpinCtrl(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
+    // Wait
+    m_waitLabel = new wxStaticText(card, wxID_ANY, _("Wait (ms):"));
+    m_waitLabel->SetForegroundColour(ui::kTextColor);
+    grid->Add(m_waitLabel, 0, wxALIGN_CENTER_VERTICAL);
+    m_waitCtrl = new wxSpinCtrl(card, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
                                 wxSP_ARROW_KEYS, 0, 60000, initialData.value("wait_ms", 100));
     grid->Add(m_waitCtrl, 1, wxEXPAND);
 
-    m_assertTypeLabel = new wxStaticText(this, wxID_ANY, _("Assert Type:"));
+    // Assert Type
+    m_assertTypeLabel = new wxStaticText(card, wxID_ANY, _("Assert Type:"));
+    m_assertTypeLabel->SetForegroundColour(ui::kTextColor);
     grid->Add(m_assertTypeLabel, 0, wxALIGN_CENTER_VERTICAL);
     wxArrayString asserts;
     asserts.Add("");       // 无断言
@@ -65,7 +94,7 @@ TestStepEditDialog::TestStepEditDialog(wxWindow* parent, const nlohmann::json& i
     asserts.Add(">");      // 大于
     asserts.Add("<");      // 小于
     asserts.Add("regex");  // 正则
-    m_assertTypeCtrl = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, asserts);
+    m_assertTypeCtrl = new wxChoice(card, wxID_ANY, wxDefaultPosition, wxDefaultSize, asserts);
     if (initialData.contains("assert") && initialData["assert"].contains("type")) {
         std::string t = initialData["assert"]["type"].get<std::string>();
         // 兼容旧版 eq/gt/lt
@@ -81,22 +110,36 @@ TestStepEditDialog::TestStepEditDialog(wxWindow* parent, const nlohmann::json& i
     }
     grid->Add(m_assertTypeCtrl, 1, wxEXPAND);
 
-    m_assertExpectedLabel = new wxStaticText(this, wxID_ANY, _("Assert Expected:"));
+    // Assert Expected
+    m_assertExpectedLabel = new wxStaticText(card, wxID_ANY, _("Assert Expected:"));
+    m_assertExpectedLabel->SetForegroundColour(ui::kTextColor);
     grid->Add(m_assertExpectedLabel, 0, wxALIGN_CENTER_VERTICAL);
-    m_assertExpectedCtrl = new wxTextCtrl(this, wxID_ANY, "");
+    m_assertExpectedCtrl = new wxTextCtrl(card, wxID_ANY, "");
     if (initialData.contains("assert") && initialData["assert"].contains("expected")) {
         m_assertExpectedCtrl->SetValue(
             wxString::FromUTF8(initialData["assert"]["expected"].get<std::string>()));
     }
     grid->Add(m_assertExpectedCtrl, 1, wxEXPAND);
 
-    mainSizer->Add(grid, 1, wxEXPAND | wxALL, 15);
+    cardSizer->Add(grid, 1, wxEXPAND | wxALL, 16);
+    card->SetSizer(cardSizer);
+    mainSizer->Add(card, 1, wxEXPAND | wxLEFT | wxRIGHT, 16);
 
-    if (auto* btns = CreateButtonSizer(wxOK | wxCANCEL)) {
-        mainSizer->Add(btns, 0, wxEXPAND | wxALL, 10);
-    }
+    // 3. 底部扁平按钮
+    auto* btnSizer = new wxBoxSizer(wxHORIZONTAL);
+    auto* btnCancel = new ui::FlatButton(this, _("Cancel"), ui::kBtnGrayBg, ui::kTextColor,
+                                         [this]() { EndModal(wxID_CANCEL); });
+    auto* btnOk = new ui::FlatButton(this, _("OK"), ui::kThemeBlue, *wxWHITE,
+                                     [this]() { EndModal(wxID_OK); });
+
+    btnSizer->AddStretchSpacer();
+    btnSizer->Add(btnCancel, 0, wxRIGHT, 10);
+    btnSizer->Add(btnOk, 0);
+    mainSizer->Add(btnSizer, 0, wxEXPAND | wxALL, 16);
 
     SetSizerAndFit(mainSizer);
+    SetMinSize(FromDIP(wxSize(450, 400)));
+    CentreOnParent();
 
     // 初始化显隐状态
     UpdateUiVisibility();
@@ -120,13 +163,14 @@ void TestStepEditDialog::UpdateUiVisibility() {
     m_valueLabel->Show(isWrite);
     m_valueCtrl->Show(isWrite);
 
-    // 断言只有在 read 时可见（或者你认为 write 也可以断言，可改为 !isDelay）
-    // 通常工业上 read 需要验证返回值，write 成功即可
+    // 断言只有在 read 时可见
     m_assertTypeLabel->Show(isRead);
     m_assertTypeCtrl->Show(isRead);
     m_assertExpectedLabel->Show(isRead);
     m_assertExpectedCtrl->Show(isRead);
 
+    // 重新排版
+    GetSizer()->Layout();
     Layout();
     Fit();
 }

@@ -28,6 +28,7 @@ private:
     wxStaticText* m_valueLabel = nullptr;
     wxTextCtrl* m_valueCtrl = nullptr;
 
+    wxStaticText* m_waitLabel = nullptr;
     wxSpinCtrl* m_waitCtrl = nullptr;
 
     wxStaticText* m_assertTypeLabel = nullptr;
@@ -40,6 +41,10 @@ private:
 
     void OnActionChanged(wxCommandEvent& evt);
     void UpdateUiVisibility();
+
+    // 拖拽用
+    wxPoint m_dragStart;
+    wxPoint m_winStart;
 };
 
 }  // namespace icu

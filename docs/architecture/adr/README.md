@@ -67,6 +67,14 @@ docs/architecture/adr/
 | [0009](0009-sqlite-data-logging-and-charting.md) | 基于 SQLite 的数据记录与实时图表可视化 | 提议 |
 | [0010](0010-project-file-and-test-flow-redesign.md) | 项目文件重构与测试流重设计 | 已接受 |
 | [0011](0011-session-panel-ux-refactoring.md) | 会话面板 UX 交互优化与重构 | 已接受 |
+| [0012](0012-introduce-mqtt-protocol.md) | 引入 MQTT 协议 | 已接受 |
+| [0013](0013-application-settings-dialog-and-persistence.md) | 应用设置对话框与持久化 | 已接受 |
+| [0014](0014-introduce-cpack-and-nsis-for-distribution.md) | 引入 CPack 与 NSIS 打包 | 已接受 |
+| [0015](0015-unify-tcp-and-udp-into-tcpip.md) | 统一 TCP/UDP 为 TCP/IP 协议 | 已接受 |
+| [0016](0016-mqtt-modes-refactoring.md) | MQTT 模式细化（Publisher / Subscriber / Broker） | 已接受 |
+| [0017](0017-multi-session-architecture.md) | 多会话并发（多标签页架构） | 已接受 |
+| [0018](0018-ux-keyboard-shortcuts.md) | 列表操作键盘快捷键 | 已接受 |
+| [0019](0019-workbench-ui-revamp.md) | 工作台 UI 重构：自绘标签栏与会话内工具栏 | 已接受 |
 
 > 更早的决策（在引入 ADR 机制之前做的）汇总在根 `README.md` 第 14 节「关键决策记录」。
 > 后续新增决策一律写在 `docs/architecture/adr/`。

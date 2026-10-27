@@ -29,6 +29,9 @@ private:
     wxDatePickerCtrl* m_endDate;
     wxTimePickerCtrl* m_endTime;
     ChartPanel* m_chart;
+
+    wxPoint m_dragStart;
+    wxPoint m_winStart;
 };
 
 }  // namespace icu

@@ -6,27 +6,22 @@
 #include "LogSink.h"
 #include "log/Log.h"
 #include "spdlog/spdlog.h"
+#include "ui/UIUtils.h"
 
 namespace icu {
 
-wxBEGIN_EVENT_TABLE(LogFrame, wxFrame) EVT_CLOSE(LogFrame::OnClose)
-    EVT_BUTTON(wxID_ANY, LogFrame::OnClear)
-        EVT_BUTTON(wxID_ANY, LogFrame::OnLoad)  // 注意：这里的事件绑定需通过Bind区分
-    wxEND_EVENT_TABLE()
-
-        LogFrame::LogFrame(wxWindow* parent)
-    : wxFrame(parent, wxID_ANY, _("Log"), wxDefaultPosition, wxSize(900, 500),
-              wxDEFAULT_FRAME_STYLE) {
+LogFrame::LogFrame(wxWindow* parent)
+    : wxDialog(parent, wxID_ANY, _("Log"), wxDefaultPosition, wxSize(800, 550),
+               wxBORDER_NONE | wxRESIZE_BORDER) {  // 允许调整大小
+    SetBackgroundColour(ui::kBgColor);
     BuildUi();
 
-    // 加载内存中的历史日志
     auto history = log::GetHistory();
     for (const auto& msg : history) {
         m_textCtrl->AppendText(msg + "\n");
     }
     m_textCtrl->SetInsertionPointEnd();
 
-    // 实时日志追加
     log::AttachGuiSink(m_textCtrl);
     CentreOnParent();
 
@@ -38,60 +33,124 @@ LogFrame::~LogFrame() {
 }
 
 void LogFrame::BuildUi() {
-    auto* panel = new wxPanel(this);
-    auto* root = new wxBoxSizer(wxVERTICAL);
+    auto* mainSizer = new wxBoxSizer(wxVERTICAL);
+
+    // 1. 自定义标题栏
+    auto* header = new wxPanel(this);
+    header->SetBackgroundColour(ui::kBgColor);
+    auto* titleSizer = new wxBoxSizer(wxHORIZONTAL);
+
+    auto* titleText = new wxStaticText(header, wxID_ANY, _("Log"));
+    wxFont titleFont = titleText->GetFont();
+    titleFont.SetPointSize(12);
+    titleFont.MakeBold();
+    titleText->SetFont(titleFont);
+    titleText->SetForegroundColour(ui::kThemeDark);
+
+    auto* closeBtn =
+        new wxStaticBitmap(header, wxID_ANY, ui::LoadSvgIcon("close", 16, ui::kSubTextColor));
+    closeBtn->SetCursor(wxCursor(wxCURSOR_HAND));
+    closeBtn->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent&) { Hide(); });
+
+    closeBtn->Bind(wxEVT_ENTER_WINDOW, [closeBtn](wxMouseEvent& evt) {
+        closeBtn->SetBitmap(ui::LoadSvgIcon("close", 16, ui::kCloseHoverColor));
+        evt.Skip();
+    });
+    closeBtn->Bind(wxEVT_LEAVE_WINDOW, [closeBtn](wxMouseEvent& evt) {
+        closeBtn->SetBitmap(ui::LoadSvgIcon("close", 16, ui::kSubTextColor));
+        evt.Skip();
+    });
+
+    titleSizer->AddStretchSpacer(1);
+    titleSizer->Add(titleText, 0, wxALIGN_CENTER_VERTICAL);
+    titleSizer->AddStretchSpacer(1);
+    titleSizer->Add(closeBtn, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 12);
+    header->SetSizer(titleSizer);
+    mainSizer->Add(header, 0, wxEXPAND | wxTOP | wxBOTTOM, 12);
+
+    // 修复拖拽：将拖拽事件同时绑定到标题栏和文字上，防止文字吞噬点击
+    auto bindDrag = [this](wxWindow* w, wxWindow* target) {
+        w->Bind(wxEVT_LEFT_DOWN, [this, target](wxMouseEvent& evt) {
+            if (evt.LeftIsDown()) {
+                m_dragStart = wxGetMousePosition();
+                m_winStart = GetPosition();
+                if (!target->HasCapture()) target->CaptureMouse();
+            }
+        });
+        w->Bind(wxEVT_MOTION, [this, target](wxMouseEvent& evt) {
+            if (evt.LeftIsDown() && target->HasCapture()) {
+                Move(m_winStart + wxGetMousePosition() - m_dragStart);
+            }
+            evt.Skip();
+        });
+        w->Bind(wxEVT_LEFT_UP, [target](wxMouseEvent&) {
+            if (target->HasCapture()) target->ReleaseMouse();
+        });
+        w->Bind(wxEVT_MOUSE_CAPTURE_LOST, [target](wxMouseCaptureLostEvent&) {
+            if (target->HasCapture()) target->ReleaseMouse();
+        });
+    };
+    bindDrag(header, header);
+    bindDrag(titleText, header);
+
+    // 2. 主体卡片
+    auto* card = new ui::CardPanel(this);
+    auto* cardSizer = new wxBoxSizer(wxVERTICAL);
 
     auto* toolbar = new wxBoxSizer(wxHORIZONTAL);
+    auto* btnLoad =
+        new ui::FlatButton(card, _("Load File..."), ui::kBtnGrayBg, ui::kTextColor, [this]() {
+            wxCommandEvent e;
+            OnLoad(e);
+        });
+    auto* btnClear = new ui::FlatButton(card, _("Clear"), ui::kBtnGrayBg, ui::kTextColor, [this]() {
+        wxCommandEvent e;
+        OnClear(e);
+    });
 
-    m_loadBtn = new wxButton(panel, wxID_ANY, _("Load File..."));
-    m_loadBtn->Bind(wxEVT_BUTTON, &LogFrame::OnLoad, this);
-    toolbar->Add(m_loadBtn, 0, wxALL | wxALIGN_CENTER_VERTICAL, 4);
-
-    m_clearBtn = new wxButton(panel, wxID_ANY, _("Clear"));
-    m_clearBtn->Bind(wxEVT_BUTTON, &LogFrame::OnClear, this);
-    toolbar->Add(m_clearBtn, 0, wxALL | wxALIGN_CENTER_VERTICAL, 4);
-
-    m_autoScroll = new wxCheckBox(panel, wxID_ANY, _("Auto Scroll"));
+    m_autoScroll = new wxCheckBox(card, wxID_ANY, _("Auto Scroll"));
     m_autoScroll->SetValue(true);
-    toolbar->Add(m_autoScroll, 0, wxALL | wxALIGN_CENTER_VERTICAL, 4);
+    m_autoScroll->SetForegroundColour(ui::kTextColor);
 
-    root->Add(toolbar, 0, wxEXPAND);
+    toolbar->Add(btnLoad, 0, wxALL, 8);
+    toolbar->Add(btnClear, 0, wxALL, 8);
+    toolbar->Add(m_autoScroll, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, 8);
 
-    m_textCtrl = new wxTextCtrl(panel, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize,
+    cardSizer->Add(toolbar, 0, wxEXPAND);
+
+    m_textCtrl = new wxTextCtrl(card, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize,
                                 wxTE_MULTILINE | wxTE_READONLY | wxTE_RICH2);
-
     wxFont mono(10, wxFONTFAMILY_TELETYPE, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
     m_textCtrl->SetFont(mono);
+    cardSizer->Add(m_textCtrl, 1, wxEXPAND | wxALL, 8);
 
-    root->Add(m_textCtrl, 1, wxEXPAND | wxALL, 4);
+    card->SetSizer(cardSizer);
+    mainSizer->Add(card, 1, wxEXPAND | wxLEFT | wxRIGHT, 16);
 
-    panel->SetSizer(root);
+    // 3. 底部留白
+    mainSizer->AddSpacer(16);
+
+    SetSizer(mainSizer);
+    Layout();
 }
 
 void LogFrame::OnClose(wxCloseEvent& evt) {
-    if (m_forceDestroy) {
-        evt.Skip();
-        return;
-    }
-
     evt.Veto();
     Hide();
-    SPDLOG_INFO(_("Log window hidden"));
 }
 
 void LogFrame::OnClear(wxCommandEvent&) {
     m_textCtrl->Clear();
-    log::ClearHistory();  // 清空内存缓存
+    log::ClearHistory();
 }
 
 void LogFrame::OnLoad(wxCommandEvent&) {
-    // 默认定位到 exe 目录下的 logs 文件夹
     wxFileName exePath(wxStandardPaths::Get().GetExecutablePath());
-    exePath.SetFullName("");  // 去掉文件名，只保留目录
+    exePath.SetFullName("");
     wxString logDir = exePath.GetPath() + "/logs";
 
     if (!wxFileName::DirExists(logDir)) {
-        logDir = exePath.GetPath();  // 如果 logs 文件夹不存在，退回到 exe 目录
+        logDir = exePath.GetPath();
     }
 
     wxFileDialog dlg(this, _("Open Log File"), logDir, "",
@@ -106,20 +165,15 @@ void LogFrame::OnLoad(wxCommandEvent&) {
             file.ReadAll(&content, wxConvUTF8);
             if (m_textCtrl) {
                 m_textCtrl->SetValue(content);
-                m_textCtrl->SetInsertionPoint(0);  // 滚动到顶部开始阅读
-                if (m_autoScroll)
-                    m_autoScroll->SetValue(false);  // 关闭自动滚动，防止新日志覆盖阅读
+                m_textCtrl->SetInsertionPoint(0);
+                if (m_autoScroll) m_autoScroll->SetValue(false);
             }
             ICU_SPDLOG_INFO(_("Loaded log file: %s"), path);
         } else {
-            wxMessageBox(_("Failed to open log file."), _("Error"), wxOK | wxICON_ERROR, this);
+            ui::MessageDialog::Show(this, _("Error"), _("Failed to open log file."),
+                                    wxOK | wxICON_ERROR);
         }
     }
-}
-
-void LogFrame::ForceDestroy() {
-    m_forceDestroy = true;
-    Destroy();
 }
 
 }  // namespace icu

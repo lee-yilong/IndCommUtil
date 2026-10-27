@@ -3,25 +3,44 @@
 #include <wx/statbox.h>
 #include <wx/stattext.h>
 
+#include "ui/UIUtils.h"
+
 namespace icu {
 
 VariableEditDialog::VariableEditDialog(wxWindow* parent, IProtocol* protocol,
                                        const std::string& varName, const nlohmann::json& varData,
                                        bool isEditMode)
-    : wxDialog(parent, wxID_ANY, _("Edit Variable"), wxDefaultPosition, wxSize(400, -1)),
+    : wxDialog(parent, wxID_ANY, isEditMode ? _("Edit Variable") : _("Add Variable"),
+               wxDefaultPosition, wxDefaultSize, wxBORDER_NONE | wxRESIZE_BORDER),
       m_isEditMode(isEditMode) {
+    SetBackgroundColour(ui::kBgColor);
+
     auto* mainSizer = new wxBoxSizer(wxVERTICAL);
-    auto* grid = new wxFlexGridSizer(2, 8, 8);
-    grid->AddGrowableCol(1, 1);
 
-    // Name
-    grid->Add(new wxStaticText(this, wxID_ANY, _("Variable Name:")), 0, wxALIGN_CENTER_VERTICAL);
-    m_nameCtrl = new wxTextCtrl(this, wxID_ANY, wxString::FromUTF8(varName));
-    if (m_isEditMode) m_nameCtrl->Disable();
-    grid->Add(m_nameCtrl, 1, wxEXPAND);
+    // 1. 标题栏
+    auto* header =
+        ui::CreateDialogHeader(this, isEditMode ? _("Edit Variable") : _("Add Variable"),
+                               m_dragStart, m_winStart, [this]() { EndModal(wxID_CANCEL); });
+    mainSizer->Add(header, 0, wxEXPAND | wxTOP | wxBOTTOM, 12);
 
-    // Type
-    grid->Add(new wxStaticText(this, wxID_ANY, _("Data Type:")), 0, wxALIGN_CENTER_VERTICAL);
+    // 2. 主体卡片
+    auto* card = new ui::CardPanel(this);
+    auto* cardSizer = new wxBoxSizer(wxVERTICAL);
+
+    // --- 基础信息区 ---
+    auto* baseGrid = new wxFlexGridSizer(2, 8, 12);
+    baseGrid->AddGrowableCol(1, 1);
+
+    auto* lblName = new wxStaticText(card, wxID_ANY, _("Variable Name:"));
+    lblName->SetForegroundColour(ui::kTextColor);
+    baseGrid->Add(lblName, 0, wxALIGN_CENTER_VERTICAL);
+    // 允许编辑名称，使用原生样式但置于白卡上，不会显得突兀
+    m_nameCtrl = new wxTextCtrl(card, wxID_ANY, wxString::FromUTF8(varName));
+    baseGrid->Add(m_nameCtrl, 1, wxEXPAND);
+
+    auto* lblType = new wxStaticText(card, wxID_ANY, _("Data Type:"));
+    lblType->SetForegroundColour(ui::kTextColor);
+    baseGrid->Add(lblType, 0, wxALIGN_CENTER_VERTICAL);
     wxArrayString types;
     types.Add("int8");
     types.Add("uint8");
@@ -35,53 +54,84 @@ VariableEditDialog::VariableEditDialog(wxWindow* parent, IProtocol* protocol,
     types.Add("string");
     types.Add("hex");
 
-    m_typeCtrl = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, types);
+    m_typeCtrl = new wxChoice(card, wxID_ANY, wxDefaultPosition, wxDefaultSize, types);
     m_typeCtrl->SetStringSelection(wxString::FromUTF8(varData.value("type", "int32")));
-    grid->Add(m_typeCtrl, 1, wxEXPAND);
+    baseGrid->Add(m_typeCtrl, 1, wxEXPAND);
 
-    // Access
-    grid->Add(new wxStaticText(this, wxID_ANY, _("Access:")), 0, wxALIGN_CENTER_VERTICAL);
+    auto* lblAccess = new wxStaticText(card, wxID_ANY, _("Access:"));
+    lblAccess->SetForegroundColour(ui::kTextColor);
+    baseGrid->Add(lblAccess, 0, wxALIGN_CENTER_VERTICAL);
     wxArrayString accesses;
     accesses.Add("RW");
     accesses.Add("RO");
     accesses.Add("WO");
-    m_accessCtrl = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, accesses);
+    m_accessCtrl = new wxChoice(card, wxID_ANY, wxDefaultPosition, wxDefaultSize, accesses);
     m_accessCtrl->SetStringSelection(wxString::FromUTF8(varData.value("access", "RW")));
-    grid->Add(m_accessCtrl, 1, wxEXPAND);
+    baseGrid->Add(m_accessCtrl, 1, wxEXPAND);
 
-    mainSizer->Add(grid, 0, wxEXPAND | wxALL, 15);
+    cardSizer->Add(baseGrid, 0, wxEXPAND | wxALL, 16);
 
-    // 动态协议参数
+    // --- 动态协议参数区 ---
     if (protocol) {
         auto fields = protocol->VariableParamsFields();
         if (!fields.empty()) {
-            auto* box = new wxStaticBoxSizer(wxVERTICAL, this, _("Protocol Parameters"));
-            auto* pGrid = new wxFlexGridSizer(2, 8, 8);
+            // 使用浅灰底色块代表参数区，去掉生硬的 StaticBox 边框
+            auto* paramBox =
+                new wxPanel(card, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE);
+            paramBox->SetBackgroundColour(wxColour(249, 250, 251));
+            auto* pBoxSizer = new wxBoxSizer(wxVERTICAL);
+
+            auto* pTitle = new wxStaticText(paramBox, wxID_ANY, _("Protocol Parameters"));
+            wxFont ptf = pTitle->GetFont();
+            ptf.MakeBold();
+            pTitle->SetFont(ptf);
+            pTitle->SetForegroundColour(ui::kThemeDark);
+            pBoxSizer->Add(pTitle, 0, wxALL, 10);
+
+            auto* pGrid = new wxFlexGridSizer(2, 8, 12);
             pGrid->AddGrowableCol(1, 1);
 
             nlohmann::json currentParams =
                 varData.contains("params") ? varData["params"] : nlohmann::json::object();
 
             for (const auto& fd : fields) {
-                pGrid->Add(new wxStaticText(box->GetStaticBox(), wxID_ANY,
-                                            wxGetTranslation(wxString::FromUTF8(fd.label))),
-                           0, wxALIGN_CENTER_VERTICAL);
+                auto* lbl = new wxStaticText(paramBox, wxID_ANY,
+                                             wxGetTranslation(wxString::FromUTF8(fd.label)));
+                lbl->SetForegroundColour(ui::kTextColor);
+                pGrid->Add(lbl, 0, wxALIGN_CENTER_VERTICAL);
 
                 nlohmann::json val =
                     currentParams.contains(fd.key) ? currentParams[fd.key] : nlohmann::json();
-                wxWindow* ctrl = CreateParamControl(box->GetStaticBox(), fd, val);
+                wxWindow* ctrl = CreateParamControl(paramBox, fd, val);
                 pGrid->Add(ctrl, 1, wxEXPAND);
                 m_paramControls[fd.key] = ctrl;
             }
-            box->Add(pGrid, 1, wxEXPAND | wxALL, 8);
-            mainSizer->Add(box, 1, wxEXPAND | wxLEFT | wxRIGHT, 15);
+
+            pBoxSizer->Add(pGrid, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
+            paramBox->SetSizer(pBoxSizer);
+
+            cardSizer->Add(paramBox, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 16);
         }
     }
 
-    if (auto* btns = CreateButtonSizer(wxOK | wxCANCEL)) {
-        mainSizer->Add(btns, 0, wxEXPAND | wxALL, 10);
-    }
+    card->SetSizer(cardSizer);
+    mainSizer->Add(card, 1, wxEXPAND | wxLEFT | wxRIGHT, 16);
+
+    // 3. 底部扁平按钮
+    auto* btnSizer = new wxBoxSizer(wxHORIZONTAL);
+    auto* btnCancel = new ui::FlatButton(this, _("Cancel"), ui::kBtnGrayBg, ui::kTextColor,
+                                         [this]() { EndModal(wxID_CANCEL); });
+    auto* btnOk = new ui::FlatButton(this, _("OK"), ui::kThemeBlue, *wxWHITE,
+                                     [this]() { EndModal(wxID_OK); });
+
+    btnSizer->AddStretchSpacer();
+    btnSizer->Add(btnCancel, 0, wxRIGHT, 10);
+    btnSizer->Add(btnOk, 0);
+    mainSizer->Add(btnSizer, 0, wxEXPAND | wxALL, 16);
+
     SetSizerAndFit(mainSizer);
+    SetMinSize(FromDIP(wxSize(400, 350)));
+    CentreOnParent();
 }
 
 wxWindow* VariableEditDialog::CreateParamControl(wxWindow* parent, const FieldDescriptor& fd,
@@ -144,7 +194,7 @@ nlohmann::json VariableEditDialog::GetVarJson() const {
                 wxString txt = ch->GetStringSelection();
                 long v;
                 if (txt.BeforeFirst(' ').ToLong(&v)) {
-                    params[key] = v;  // 如果像 Modbus 功能码那样是数字，转回 int
+                    params[key] = v;
                 } else {
                     params[key] = std::string(txt.utf8_str());
                 }

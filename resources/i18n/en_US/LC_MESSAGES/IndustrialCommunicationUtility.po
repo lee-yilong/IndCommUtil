@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 23:46+0800\n"
+"POT-Creation-Date: 2026-10-27 08:43+0800\n"
 "PO-Revision-Date: 2026-10-19 20:00+0800\n"
 "Last-Translator: AI Assistant\n"
 "Language-Team: none\n"
@@ -21,7 +21,8 @@ msgstr ""
 msgid "Application initializing..."
 msgstr "Application initializing..."
 
-#: src/app/App.cpp:31 src/app/MainFrame.cpp:551
+#: src/app/App.cpp:31 src/app/MainFrame.cpp:1291 src/app/MainFrame.cpp:1372
+#: src/ui/WelcomePanel.cpp:44
 msgid "IndComm"
 msgstr "IndComm"
 
@@ -61,243 +62,187 @@ msgstr "Restarting application: %s"
 msgid "Language will be applied on next start"
 msgstr "Language will be applied on next start"
 
-#: src/app/MainFrame.cpp:94
-msgid "IndComm started"
-msgstr "IndComm started"
+#: src/app/MainFrame.cpp:174 src/app/MainFrame.cpp:179
+msgid "Select Language"
+msgstr "Select Language"
 
-#: src/app/MainFrame.cpp:99
-msgid "MainFrame destroyed"
-msgstr "MainFrame destroyed"
+#: src/app/MainFrame.cpp:186
+msgid "Please select your language:"
+msgstr "Please select your language:"
 
-#: src/app/MainFrame.cpp:113
-msgid "Too many protocols, menu ID overflow"
-msgstr "Too many protocols, menu ID overflow"
-
-#: src/app/MainFrame.cpp:123
-msgid "&New Connection"
-msgstr "&New Connection"
-
-#: src/app/MainFrame.cpp:123
-msgid "Create a new connection"
-msgstr "Create a new connection"
-
-#: src/app/MainFrame.cpp:126
-msgid "Recent &Connections"
-msgstr "Recent &Connections"
-
-#: src/app/MainFrame.cpp:127
-msgid "Recently used connections"
-msgstr "Recently used connections"
-
-#: src/app/MainFrame.cpp:129
-msgid "&Open Connection\tCtrl+O"
-msgstr "&Open Connection\tCtrl+O"
-
-#: src/app/MainFrame.cpp:130
-msgid "Open a saved connection"
-msgstr "Open a saved connection"
-
-#: src/app/MainFrame.cpp:132
-msgid "&Save Connection\tCtrl+S"
-msgstr "&Save Connection\tCtrl+S"
-
-#: src/app/MainFrame.cpp:133
-msgid "Save the current connection profile"
-msgstr "Save the current connection profile"
-
-#: src/app/MainFrame.cpp:135
-msgid "Save Connection &As...\tCtrl+Shift+S"
-msgstr "Save Connection &As...\tCtrl+Shift+S"
-
-#: src/app/MainFrame.cpp:136
-msgid "Save the current connection profile to a new file"
-msgstr "Save the current connection profile to a new file"
-
-#: src/app/MainFrame.cpp:138
-msgid "&Close Connection\tCtrl+W"
-msgstr "&Close Connection\tCtrl+W"
-
-#: src/app/MainFrame.cpp:139
-msgid "Close the current connection"
-msgstr "Close the current connection"
-
-#: src/app/MainFrame.cpp:142
-msgid "&Quit\tAlt+F4"
-msgstr "&Quit\tAlt+F4"
-
-#: src/app/MainFrame.cpp:142
-msgid "Quit the application"
-msgstr "Quit the application"
-
-#: src/app/MainFrame.cpp:144
-msgid "&File"
-msgstr "&File"
-
-#: src/app/MainFrame.cpp:147
-msgid "&Show Log\tF2"
-msgstr "&Show Log\tF2"
-
-#: src/app/MainFrame.cpp:147
-msgid "Show application logs"
-msgstr "Show application logs"
-
-#: src/app/MainFrame.cpp:148
-msgid "&View"
-msgstr "&View"
-
-#: src/app/MainFrame.cpp:152
+#: src/app/MainFrame.cpp:193
 msgid "Simplified Chinese"
 msgstr "Simplified Chinese"
 
-#: src/app/MainFrame.cpp:153
+#: src/app/MainFrame.cpp:193
 msgid "English"
 msgstr "English"
 
-#: src/app/MainFrame.cpp:160
-msgid "Language"
-msgstr "Language"
+#: src/app/MainFrame.cpp:202 src/ui/GenericProtocolDialog.cpp:330
+#: src/ui/SessionPanel.cpp:501 src/ui/SettingsDialog.cpp:117
+#: src/ui/TestStepEditDialog.cpp:130 src/ui/UIUtils.h:313 src/ui/UIUtils.h:317
+#: src/ui/VariableEditDialog.cpp:122
+msgid "Cancel"
+msgstr "Cancel"
 
-#: src/app/MainFrame.cpp:163
-msgid "&Options..."
-msgstr ""
+#: src/app/MainFrame.cpp:204 src/ui/SettingsDialog.cpp:113
+#: src/ui/TestStepEditDialog.cpp:132 src/ui/UIUtils.h:318 src/ui/UIUtils.h:376
+#: src/ui/VariableEditDialog.cpp:124
+msgid "OK"
+msgstr "OK"
 
-#: src/app/MainFrame.cpp:164
-#, fuzzy
-msgid "Configure application settings"
-msgstr "Application exiting"
+#: src/app/MainFrame.cpp:368 src/app/MainFrame.cpp:779
+#: src/app/MainFrame.cpp:910 src/ui/HistoryDialog.cpp:93
+msgid "Close"
+msgstr "Close"
 
-#: src/app/MainFrame.cpp:166
-msgid "&Settings"
-msgstr "&Settings"
-
-#: src/app/MainFrame.cpp:169
-msgid "&About\tF1"
-msgstr "&About\tF1"
-
-#: src/app/MainFrame.cpp:169
-msgid "Show info about this application"
-msgstr "Show info about this application"
-
-#: src/app/MainFrame.cpp:170
-msgid "&Help"
-msgstr "&Help"
-
-#: src/app/MainFrame.cpp:174
-msgid "Ready"
-msgstr "Ready"
-
-#: src/app/MainFrame.cpp:187
-msgid ""
-"No active connection.\n"
-"Use File → New Connection to get started."
-msgstr ""
-"No active connection.\n"
-"Use File → New Connection to get started."
-
-#: src/app/MainFrame.cpp:194
+#: src/app/MainFrame.cpp:654 src/app/MainFrame.cpp:1256
 msgid "Welcome"
 msgstr "Welcome"
 
-#: src/app/MainFrame.cpp:196 src/app/MainFrame.cpp:208
-#: src/app/MainFrame.cpp:223
-msgid "Session"
-msgstr "Session"
+#: src/app/MainFrame.cpp:688
+msgid "IndComm started"
+msgstr "IndComm started"
 
-#: src/app/MainFrame.cpp:232 src/app/MainFrame.cpp:282
-msgid "Application exiting"
-msgstr "Application exiting"
+#: src/app/MainFrame.cpp:699
+msgid "MainFrame destroyed"
+msgstr "MainFrame destroyed"
 
-#: src/app/MainFrame.cpp:255 src/app/MainFrame.cpp:377
+#: src/app/MainFrame.cpp:749
+msgid "New"
+msgstr "New"
+
+#: src/app/MainFrame.cpp:764
+msgid "(None)"
+msgstr "(None)"
+
+#: src/app/MainFrame.cpp:767
+msgid "Open"
+msgstr "Open"
+
+#: src/app/MainFrame.cpp:771
+msgid "Save"
+msgstr "Save"
+
+#: src/app/MainFrame.cpp:775
+msgid "Save As"
+msgstr "Save As"
+
+#: src/app/MainFrame.cpp:784
+msgid "Quit"
+msgstr "Quit"
+
+#: src/app/MainFrame.cpp:805
+msgid "Add"
+msgstr "Add"
+
+#: src/app/MainFrame.cpp:809
+msgid "Copy"
+msgstr "Copy"
+
+#: src/app/MainFrame.cpp:813 src/app/MainFrame.cpp:941
+msgid "Edit"
+msgstr "Edit"
+
+#: src/app/MainFrame.cpp:817
+msgid "Delete"
+msgstr "Delete"
+
+#: src/app/MainFrame.cpp:906
+msgid "Minimize"
+msgstr "Minimize"
+
+#: src/app/MainFrame.cpp:908 src/app/MainFrame.cpp:1116
+msgid "Maximize"
+msgstr "Maximize"
+
+#: src/app/MainFrame.cpp:937
+msgid "File"
+msgstr "File"
+
+#: src/app/MainFrame.cpp:979
+msgid "Show Log"
+msgstr "Show Log"
+
+#: src/app/MainFrame.cpp:986
+msgid "Language"
+msgstr "Language"
+
+#: src/app/MainFrame.cpp:988
+msgid "Settings"
+msgstr "Settings"
+
+#: src/app/MainFrame.cpp:994 src/ui/UIUtils.h:342 src/ui/UIUtils.h:347
+msgid "About"
+msgstr "About"
+
+#: src/app/MainFrame.cpp:1077 src/app/MainFrame.cpp:1293
+msgid "Ready"
+msgstr "Ready"
+
+#: src/app/MainFrame.cpp:1113
+msgid "Restore Down"
+msgstr "Restore Down"
+
+#: src/app/MainFrame.cpp:1183 src/app/MainFrame.cpp:1221
+msgid "Failed to open session"
+msgstr "Failed to open session"
+
+#: src/app/MainFrame.cpp:1308 src/ui/SessionPanel.cpp:1771
+msgid "Connected"
+msgstr "Connected"
+
+#: src/app/MainFrame.cpp:1312 src/ui/SessionPanel.cpp:1758
+msgid "Connecting..."
+msgstr "Connecting..."
+
+#: src/app/MainFrame.cpp:1316 src/ui/SessionPanel.cpp:1762
+msgid "Reconnecting..."
+msgstr "Reconnecting..."
+
+#: src/app/MainFrame.cpp:1320 src/ui/SessionPanel.cpp:1775
+msgid "Disconnected"
+msgstr "Disconnected"
+
+#: src/app/MainFrame.cpp:1342 src/app/MainFrame.cpp:1354
+msgid "Untitled"
+msgstr "Untitled"
+
+#: src/app/MainFrame.cpp:1401 src/app/MainFrame.cpp:1480
+#: src/app/MainFrame.cpp:1585
+msgid "Save Connection Profile"
+msgstr "Save Connection Profile"
+
+#: src/app/MainFrame.cpp:1402 src/app/MainFrame.cpp:1481
 #, c-format
 msgid "Save changes to '%s' before closing?"
 msgstr "Save changes to '%s' before closing?"
 
-#: src/app/MainFrame.cpp:256 src/app/MainFrame.cpp:378
-#: src/app/MainFrame.cpp:604
-msgid "Save Connection Profile"
-msgstr "Save Connection Profile"
+#: src/app/MainFrame.cpp:1432
+msgid "A tool for testing industrial protocols."
+msgstr "A tool for testing industrial protocols."
 
-#: src/app/MainFrame.cpp:260 src/app/MainFrame.cpp:381
-msgid "Close cancelled by user"
-msgstr "Close cancelled by user"
-
-#: src/app/MainFrame.cpp:267 src/app/MainFrame.cpp:387
-msgid "Save cancelled, close aborted"
-msgstr "Save cancelled, close aborted"
-
-#: src/app/MainFrame.cpp:307
-msgid ""
-"IndComm\n"
-"A tool for testing industrial protocols."
-msgstr ""
-"IndComm\n"
-"A tool for testing industrial protocols."
-
-#: src/app/MainFrame.cpp:307
-msgid "About"
-msgstr "About"
-
-#: src/app/MainFrame.cpp:309
-msgid "About dialog shown"
-msgstr "About dialog shown"
-
-#: src/app/MainFrame.cpp:331
-msgid "User invoked Open Connection"
-msgstr "User invoked Open Connection"
-
-#: src/app/MainFrame.cpp:334 src/app/MainFrame.cpp:409
-#: src/app/MainFrame.cpp:667
-msgid "Please close the current connection first."
-msgstr "Please close the current connection first."
-
-#: src/app/MainFrame.cpp:334 src/app/MainFrame.cpp:409
-#: src/app/MainFrame.cpp:667 src/ui/HistoryDialog.cpp:80
-#: src/ui/HistoryDialog.cpp:124 src/ui/SessionPanel.cpp:743
-#: src/ui/SessionPanel.cpp:783 src/ui/SessionPanel.cpp:977
-#: src/ui/SessionPanel.cpp:1469 src/ui/SessionPanel.cpp:1494
-msgid "Notice"
-msgstr "Notice"
-
-#: src/app/MainFrame.cpp:340
+#: src/app/MainFrame.cpp:1451
 msgid "Open Connection Configuration"
 msgstr "Open Connection Configuration"
 
-#: src/app/MainFrame.cpp:344
-msgid "Open connection cancelled by user"
-msgstr "Open connection cancelled by user"
-
-#: src/app/MainFrame.cpp:352 src/app/MainFrame.cpp:427
-#, c-format
-msgid ""
-"Failed to load connection profile:\n"
-"%s"
-msgstr ""
-"Failed to load connection profile:\n"
-"%s"
-
-#: src/app/MainFrame.cpp:353 src/app/MainFrame.cpp:417
-#: src/app/MainFrame.cpp:428 src/app/MainFrame.cpp:581
-#: src/app/MainFrame.cpp:628 src/ui/SessionPanel.cpp:814
-#: src/ui/SessionPanel.cpp:1112
+#: src/app/MainFrame.cpp:1459 src/app/MainFrame.cpp:1498
+#: src/app/MainFrame.cpp:1507 src/app/MainFrame.cpp:1615
+#: src/ui/LogFrame.cpp:173 src/ui/SessionPanel.cpp:1053
+#: src/ui/SessionPanel.cpp:1130 src/ui/SessionPanel.cpp:1648
 msgid "Error"
 msgstr "Error"
 
-#: src/app/MainFrame.cpp:363
+#: src/app/MainFrame.cpp:1460 src/app/MainFrame.cpp:1508
 #, c-format
-msgid "Opening connection from file: %s"
-msgstr "Opening connection from file: %s"
+msgid ""
+"Failed to load connection profile:\n"
+"%s"
+msgstr ""
+"Failed to load connection profile:\n"
+"%s"
 
-#: src/app/MainFrame.cpp:372
-#, c-format
-msgid "Closing connection: %s"
-msgstr "Closing connection: %s"
-
-#: src/app/MainFrame.cpp:401 src/app/MainFrame.cpp:768
-#: src/ui/SessionPanel.cpp:1248
-msgid "Disconnected"
-msgstr "Disconnected"
-
-#: src/app/MainFrame.cpp:417
+#: src/app/MainFrame.cpp:1499
 #, c-format
 msgid ""
 "Connection profile not found:\n"
@@ -306,42 +251,21 @@ msgstr ""
 "Connection profile not found:\n"
 "%s"
 
-#: src/app/MainFrame.cpp:456
+#: src/app/MainFrame.cpp:1524
 #, c-format
 msgid "AddRecentConnection: not a .json path, ignored: %s"
 msgstr "AddRecentConnection: not a .json path, ignored: %s"
 
-#: src/app/MainFrame.cpp:478
-msgid "(None)"
-msgstr "(None)"
+#: src/app/MainFrame.cpp:1600
+msgid "Warning"
+msgstr "Warning"
 
-#: src/app/MainFrame.cpp:483
+#: src/app/MainFrame.cpp:1601
 #, c-format
-msgid "&%d %s"
-msgstr "&%d %s"
+msgid "The file '%s' is already opened in another tab."
+msgstr "The file '%s' is already opened in another tab."
 
-#: src/app/MainFrame.cpp:492
-msgid "User selected Simplified Chinese"
-msgstr "User selected Simplified Chinese"
-
-#: src/app/MainFrame.cpp:497 src/app/MainFrame.cpp:506
-msgid "wxTheApp is not icu::App"
-msgstr "wxTheApp is not icu::App"
-
-#: src/app/MainFrame.cpp:501
-msgid "User selected English"
-msgstr "User selected English"
-
-#: src/app/MainFrame.cpp:546
-msgid "Untitled"
-msgstr "Untitled"
-
-#: src/app/MainFrame.cpp:577
-#, c-format
-msgid "Profile saved: %s"
-msgstr "Profile saved: %s"
-
-#: src/app/MainFrame.cpp:579 src/app/MainFrame.cpp:626
+#: src/app/MainFrame.cpp:1616
 msgid ""
 "Failed to save connection profile.\n"
 "\n"
@@ -353,73 +277,10 @@ msgstr ""
 "Please check if the target folder is writable, or blocked by Windows "
 "Defender."
 
-#: src/app/MainFrame.cpp:624
-#, c-format
-msgid "Profile saved as: %s"
-msgstr "Profile saved as: %s"
-
-#: src/app/MainFrame.cpp:633
-msgid "User clicked Save Connection"
-msgstr "User clicked Save Connection"
-
-#: src/app/MainFrame.cpp:638
-msgid "User clicked Save Connection As"
-msgstr "User clicked Save Connection As"
-
-#: src/app/MainFrame.cpp:644
-msgid "Minimized to system tray"
-msgstr "Minimized to system tray"
-
-#: src/app/MainFrame.cpp:651
-msgid "Restored from system tray"
-msgstr "Restored from system tray"
-
-#: src/app/MainFrame.cpp:658
-#, c-format
-msgid "Unknown protocol menu id: %d"
-msgstr "Unknown protocol menu id: %d"
-
-#: src/app/MainFrame.cpp:663
-#, c-format
-msgid "User invoked New Connection for protocol: %s"
-msgstr "User invoked New Connection for protocol: %s"
-
-#: src/app/MainFrame.cpp:717
-msgid "User clicked Configure Connection"
-msgstr "User clicked Configure Connection"
-
-#: src/app/MainFrame.cpp:736
-msgid "User clicked Open Connection"
-msgstr "User clicked Open Connection"
-
-#: src/app/MainFrame.cpp:755
-#, c-format
-msgid "Listening on %s"
-msgstr "Listening on %s"
-
-#: src/app/MainFrame.cpp:758
-#, c-format
-msgid "Connected [%s]: %s"
-msgstr "Connected [%s]: %s"
-
-#: src/app/MainFrame.cpp:762 src/app/MainFrame.cpp:779
-#, c-format
-msgid "Connecting to %s ..."
-msgstr "Connecting to %s ..."
-
-#: src/app/MainFrame.cpp:765
-#, c-format
-msgid "Reconnecting to %s ..."
-msgstr "Reconnecting to %s ..."
-
-#: src/app/MainFrame.cpp:776
-msgid "Failed to open session"
-msgstr "Failed to open session"
-
 #: src/core/Database.cpp:29
-#, fuzzy, c-format
+#, c-format
 msgid "Failed to open database: %s"
-msgstr "Failed to open serial port: %s"
+msgstr "Failed to open database: %s"
 
 #: src/core/ReconnectConfig.h:22
 msgid "Auto reconnect on disconnect"
@@ -612,92 +473,88 @@ msgstr "Reconnect attempts exhausted."
 #: src/protocols/mqtt/MqttBrokerSession.cpp:28
 msgid ""
 "MQTT Broker mode is currently a placeholder. No actual server is listening."
-msgstr ""
+msgstr "MQTT Broker mode is currently a placeholder. No actual server is listening."
 
 #: src/protocols/mqtt/MqttProtocol.cpp:29
 msgid "Publisher"
-msgstr ""
+msgstr "Publisher"
 
 #: src/protocols/mqtt/MqttProtocol.cpp:29
 msgid "Subscriber"
-msgstr ""
+msgstr "Subscriber"
 
 #: src/protocols/mqtt/MqttProtocol.cpp:29
-#, fuzzy
 msgid "Broker"
-msgstr "Remote Host:"
+msgstr "Broker"
 
 #: src/protocols/mqtt/MqttProtocol.cpp:33
-#, fuzzy
 msgid "Broker Host:"
-msgstr "Remote Host:"
+msgstr "Broker Host:"
 
 #: src/protocols/mqtt/MqttProtocol.cpp:35
-#, fuzzy
 msgid "Broker Port:"
-msgstr "Remote Port:"
+msgstr "Broker Port:"
 
 #: src/protocols/mqtt/MqttProtocol.cpp:37
-#, fuzzy
 msgid "Client ID:"
-msgstr "Client"
+msgstr "Client ID:"
 
 #: src/protocols/mqtt/MqttProtocol.cpp:39
 msgid "Keep Alive (s):"
-msgstr ""
+msgstr "Keep Alive (s):"
 
 #: src/protocols/mqtt/MqttProtocol.cpp:48
 msgid "Subscribe Topic:"
-msgstr ""
+msgstr "Subscribe Topic:"
 
 #: src/protocols/mqtt/MqttProtocol.cpp:51
 msgid "Subscribe QoS:"
-msgstr ""
+msgstr "Subscribe QoS:"
 
-#: src/protocols/mqtt/MqttProtocol.cpp:61 src/protocols/tcp/TcpProtocol.cpp:58
+#: src/protocols/mqtt/MqttProtocol.cpp:61
 msgid "Listen Port:"
 msgstr "Listen Port:"
 
 #: src/protocols/mqtt/MqttProtocol.cpp:77
 msgid "Publish Topic:"
-msgstr ""
+msgstr "Publish Topic:"
 
 #: src/protocols/mqtt/MqttProtocol.cpp:80
 msgid "Publish QoS:"
-msgstr ""
+msgstr "Publish QoS:"
 
 #: src/protocols/mqtt/MqttProtocol.h:14
 msgid "&MQTT"
-msgstr ""
+msgstr "&MQTT"
 
 #: src/protocols/mqtt/MqttSession.cpp:37
-#, fuzzy, c-format
+#, c-format
 msgid "MQTT Connection failed: %s"
-msgstr "Connection failed."
+msgstr "MQTT Connection failed: %s"
 
 #: src/protocols/mqtt/MqttSession.cpp:56
 msgid "Cannot publish in Subscriber mode."
-msgstr ""
+msgstr "Cannot publish in Subscriber mode."
 
 #: src/protocols/mqtt/MqttSession.cpp:64
 #, c-format
 msgid "MQTT Publish failed: %s"
-msgstr ""
+msgstr "MQTT Publish failed: %s"
 
 #: src/protocols/mqtt/MqttSession.cpp:74
 #, c-format
 msgid "MQTT Subscribed to: %s"
-msgstr ""
+msgstr "MQTT Subscribed to: %s"
 
 #: src/protocols/mqtt/MqttSession.cpp:76
-#, fuzzy, c-format
+#, c-format
 msgid "MQTT Subscribe failed: %s"
-msgstr "Connection failed."
+msgstr "MQTT Subscribe failed: %s"
 
 #: src/protocols/mqtt/MqttSession.cpp:84
-#, fuzzy, c-format
+#, c-format
 msgid "MQTT Connection lost: %s"
-msgstr "Connection lost."
+msgstr "MQTT Connection lost: %s"
 
 #: src/protocols/serial/SerialProtocol.cpp:77
 msgid "Data Bits:"
@@ -757,165 +614,119 @@ msgstr "Serial port closed"
 msgid "Serial port read error"
 msgstr "Serial port read error"
 
-#: src/protocols/tcp/TcpProtocol.cpp:32
+#: src/protocols/tcpip/TcpIpProtocol.cpp:32
+msgid "UDP"
+msgstr "UDP"
+
 #: src/protocols/tcpip/TcpIpProtocol.cpp:43
 #: src/protocols/tcpip/TcpIpProtocol.cpp:64
 msgid "Client"
 msgstr "Client"
 
-#: src/protocols/tcp/TcpProtocol.cpp:32
 #: src/protocols/tcpip/TcpIpProtocol.cpp:43
 #: src/protocols/tcpip/TcpIpProtocol.cpp:64
 msgid "Server"
 msgstr "Server"
 
-#: src/protocols/tcp/TcpProtocol.cpp:37
-msgid "Remote Host:"
-msgstr "Remote Host:"
+#: src/protocols/tcpip/TcpIpProtocol.cpp:44
+#: src/protocols/tcpip/TcpIpProtocol.cpp:65
+msgid "Host / Listen IP:"
+msgstr "Host / Listen IP:"
 
-#: src/protocols/tcp/TcpProtocol.cpp:39
-msgid "Remote Port:"
-msgstr "Remote Port:"
+#: src/protocols/tcpip/TcpIpProtocol.cpp:49
+msgid "Max Connections:"
+msgstr "Max Connections:"
 
-#: src/protocols/tcp/TcpProtocol.cpp:41
-msgid "Local Host (optional):"
-msgstr "Local Host (optional):"
-
-#: src/protocols/tcp/TcpProtocol.cpp:43
 #: src/protocols/tcpip/TcpIpProtocol.cpp:68
 msgid "Local Port (0 = auto):"
 msgstr "Local Port (0 = auto):"
 
-#: src/protocols/tcp/TcpProtocol.cpp:45
-msgid "Connect Timeout (ms):"
-msgstr "Connect Timeout (ms):"
-
-#: src/protocols/tcp/TcpProtocol.cpp:56
-msgid "Listen Host:"
-msgstr "Listen Host:"
-
-#: src/protocols/tcp/TcpProtocol.cpp:60
-msgid "Max Clients:"
-msgstr "Max Clients:"
-
-#: src/protocols/tcp/TcpProtocol.cpp:61
-msgid "Listen Backlog:"
-msgstr "Listen Backlog:"
-
-#: src/protocols/tcp/TcpProtocol.h:14 src/protocols/tcpip/TcpIpProtocol.h:14
+#: src/protocols/tcpip/TcpIpProtocol.h:14
 msgid "&TCP/IP"
 msgstr "&TCP/IP"
 
-#: src/protocols/tcp/TcpTransport.cpp:55
 #: src/protocols/tcpip/TcpTransport.cpp:51
 #, c-format
 msgid "TCP transport connecting to %s:%d (attempt %d)"
 msgstr "TCP transport connecting to %s:%d (attempt %d)"
 
-#: src/protocols/tcp/TcpTransport.cpp:101
 #: src/protocols/tcpip/TcpTransport.cpp:97
 #, c-format
 msgid "TCP transport connected to %s:%d"
 msgstr "TCP transport connected to %s:%d"
 
-#: src/protocols/tcp/TcpTransport.cpp:119
 #: src/protocols/tcpip/TcpTransport.cpp:115
 #, c-format
 msgid "TCP transport failed to connect to %s:%d"
 msgstr "TCP transport failed to connect to %s:%d"
 
-#: src/protocols/tcp/TcpTransport.cpp:122
 #: src/protocols/tcpip/TcpTransport.cpp:118
 #, c-format
 msgid "TCP transport reconnection failed to %s:%d"
 msgstr "TCP transport reconnection failed to %s:%d"
 
-#: src/protocols/tcp/TcpTransport.cpp:125
 #: src/protocols/tcpip/TcpTransport.cpp:121
 #, c-format
 msgid "TCP transport disconnected from %s:%d"
 msgstr "TCP transport disconnected from %s:%d"
 
-#: src/protocols/tcp/TcpTransport.cpp:149
 #: src/protocols/tcpip/TcpTransport.cpp:145
 #, c-format
 msgid "TCP transport connect to %s:%d timed out"
 msgstr "TCP transport connect to %s:%d timed out"
 
-#: src/protocols/tcp/TcpTransport.cpp:170
 #: src/protocols/tcpip/TcpTransport.cpp:166
 #, c-format
 msgid "Reconnect attempts exhausted (%d)"
 msgstr "Reconnect attempts exhausted (%d)"
 
-#: src/protocols/tcp/TcpTransport.cpp:182
 #: src/protocols/tcpip/TcpTransport.cpp:178
 #, c-format
 msgid "Reconnecting in %d s (attempt %d)"
 msgstr "Reconnecting in %d s (attempt %d)"
 
-#: src/protocols/tcp/TcpTransport.cpp:216
 #: src/protocols/tcpip/TcpTransport.cpp:208
 #, c-format
 msgid "Failed to listen on %s:%d"
 msgstr "Failed to listen on %s:%d"
 
-#: src/protocols/tcp/TcpTransport.cpp:230
 #: src/protocols/tcpip/TcpTransport.cpp:222
 #, c-format
 msgid "TCP server listening on %s:%d"
 msgstr "TCP server listening on %s:%d"
 
-#: src/protocols/tcp/TcpTransport.cpp:291
 #: src/protocols/tcpip/TcpTransport.cpp:283
 #, c-format
 msgid "Max clients (%d) reached, rejecting new connection"
 msgstr "Max clients (%d) reached, rejecting new connection"
 
-#: src/protocols/tcp/TcpTransport.cpp:306
 #: src/protocols/tcpip/TcpTransport.cpp:298
 #, c-format
 msgid "Client #%d connected (total: %d)"
 msgstr "Client #%d connected (total: %d)"
 
-#: src/protocols/tcp/TcpTransport.cpp:327
 #: src/protocols/tcpip/TcpTransport.cpp:319
 #, c-format
 msgid "Client #%d disconnected (remaining: %d)"
 msgstr "Client #%d disconnected (remaining: %d)"
 
-#: src/protocols/tcpip/TcpIpProtocol.cpp:32
-msgid "UDP"
-msgstr ""
-
-#: src/protocols/tcpip/TcpIpProtocol.cpp:44
-#: src/protocols/tcpip/TcpIpProtocol.cpp:65
-#, fuzzy
-msgid "Host / Listen IP:"
-msgstr "Listen Port:"
-
-#: src/protocols/tcpip/TcpIpProtocol.cpp:49
-#, fuzzy
-msgid "Max Clients (Server):"
-msgstr "Max Clients:"
-
 #: src/protocols/tcpip/UdpTransport.cpp:41
-#, fuzzy, c-format
+#, c-format
 msgid "Failed to create UDP socket on port %d"
-msgstr "Failed to create wxIcon from HICON"
+msgstr "Failed to create UDP socket on port %d"
 
 #: src/protocols/tcpip/UdpTransport.cpp:54
-#, fuzzy, c-format
+#, c-format
 msgid "UDP socket opened: %s"
-msgstr "Serial port opened: %s"
+msgstr "UDP socket opened: %s"
 
 #: src/protocols/tcpip/UdpTransport.cpp:68
 msgid "UDP socket closed"
-msgstr ""
+msgstr "UDP socket closed"
 
 #: src/protocols/tcpip/UdpTransport.cpp:80
 msgid "UDP Server has no peer to send to yet. Waiting for incoming data."
-msgstr ""
+msgstr "UDP Server has no peer to send to yet. Waiting for incoming data."
 
 #: src/settings/LanguageSettings.cpp:44
 msgid "UTF-8 locale not available"
@@ -970,7 +781,7 @@ msgid "Settings shutdown"
 msgstr "Settings shutdown"
 
 #: src/ui/AppTaskBarIcon.cpp:40 src/ui/AppTaskBarIcon.cpp:43
-#: src/ui/AppTaskBarIcon.cpp:47
+#: src/ui/AppTaskBarIcon.cpp:47 src/ui/WelcomePanel.cpp:52
 msgid "Industrial Communication Utility"
 msgstr "Industrial Communication Utility"
 
@@ -984,69 +795,150 @@ msgstr "Exit"
 
 #: src/ui/ChartPanel.cpp:143
 msgid "(Paused - Double click to follow)"
-msgstr ""
+msgstr "(Paused - Double click to follow)"
 
 #: src/ui/ChartPanel.cpp:192
 msgid "Waiting for data..."
-msgstr ""
+msgstr "Waiting for data..."
 
 #: src/ui/ChartPanel.cpp:224
 #, c-format
 msgid "Time (Window: %.1fs)"
-msgstr ""
+msgstr "Time (Window: %.1fs)"
 
-#: src/ui/GenericProtocolDialog.cpp:17
-msgid "New Connection"
-msgstr "New Connection"
+#: src/ui/GenericProtocolDialog.cpp:213 src/ui/GenericProtocolDialog.cpp:362
+msgid "Protocol"
+msgstr "Protocol"
 
-#: src/ui/GenericProtocolDialog.cpp:39
+#: src/ui/GenericProtocolDialog.cpp:213 src/ui/GenericProtocolDialog.cpp:363
 msgid "Mode"
 msgstr "Mode"
 
-#: src/ui/GenericProtocolDialog.cpp:57 src/ui/SettingsDialog.cpp:68
-msgid "OK"
-msgstr ""
+#: src/ui/GenericProtocolDialog.cpp:213 src/ui/GenericProtocolDialog.cpp:364
+msgid "Role"
+msgstr "Role"
 
-#: src/ui/GenericProtocolDialog.cpp:58 src/ui/SessionPanel.cpp:1262
-#: src/ui/SettingsDialog.cpp:69
-msgid "Cancel"
-msgstr "Cancel"
+#: src/ui/GenericProtocolDialog.cpp:213
+msgid "Parameters"
+msgstr "Parameters"
 
-#: src/ui/HistoryDialog.cpp:14 src/ui/SessionPanel.cpp:359
+#: src/ui/GenericProtocolDialog.cpp:214 src/ui/GenericProtocolDialog.cpp:341
+#: src/ui/GenericProtocolDialog.cpp:366
+msgid "Finish"
+msgstr "Finish"
+
+#: src/ui/GenericProtocolDialog.cpp:265
+msgid "New Connection Wizard"
+msgstr "New Connection Wizard"
+
+#: src/ui/GenericProtocolDialog.cpp:288
+msgid "New Connection"
+msgstr "New Connection"
+
+#: src/ui/GenericProtocolDialog.cpp:332
+msgid "Back"
+msgstr "Back"
+
+#: src/ui/GenericProtocolDialog.cpp:336
+msgid "Next"
+msgstr "Next"
+
+#: src/ui/GenericProtocolDialog.cpp:365
+msgid "Params"
+msgstr "Params"
+
+#: src/ui/GenericProtocolDialog.cpp:386
+msgid "Select Protocol"
+msgstr "Select Protocol"
+
+#: src/ui/GenericProtocolDialog.cpp:509
+msgid "Based on this protocol, client/server communication."
+msgstr "Based on this protocol, client/server communication."
+
+#: src/ui/GenericProtocolDialog.cpp:521
+msgid "Protocol Details"
+msgstr "Protocol Details"
+
+#: src/ui/GenericProtocolDialog.cpp:529
+msgid "Type:"
+msgstr "Type:"
+
+#: src/ui/GenericProtocolDialog.cpp:538
+msgid "Features:"
+msgstr "Features:"
+
+#: src/ui/GenericProtocolDialog.cpp:543
+msgid "Reliable, stable, suitable for industrial control."
+msgstr "Reliable, stable, suitable for industrial control."
+
+#: src/ui/GenericProtocolDialog.cpp:562
+msgid "Select Mode"
+msgstr "Select Mode"
+
+#: src/ui/GenericProtocolDialog.cpp:601
+msgid "This protocol does not have multiple modes."
+msgstr "This protocol does not have multiple modes."
+
+#: src/ui/GenericProtocolDialog.cpp:617
+msgid "Select Role"
+msgstr "Select Role"
+
+#: src/ui/GenericProtocolDialog.cpp:666
+msgid "This protocol does not require a role selection."
+msgstr "This protocol does not require a role selection."
+
+#: src/ui/GenericProtocolDialog.cpp:682
+msgid "Set Parameters"
+msgstr "Set Parameters"
+
+#: src/ui/GenericProtocolDialog.cpp:758
+msgid "Setup Complete"
+msgstr "Setup Complete"
+
+#: src/ui/GenericProtocolDialog.cpp:767
+msgid "Click Finish to create the connection."
+msgstr "Click Finish to create the connection."
+
+#: src/ui/HistoryDialog.cpp:16 src/ui/HistoryDialog.cpp:25
 msgid "History Query"
-msgstr ""
+msgstr "History Query"
 
-#: src/ui/HistoryDialog.cpp:24
-#, fuzzy
+#: src/ui/HistoryDialog.cpp:35
 msgid "Select Variables"
-msgstr "Delete Variable"
+msgstr "Select Variables"
 
-#: src/ui/HistoryDialog.cpp:31
+#: src/ui/HistoryDialog.cpp:45
 msgid "Time Range"
-msgstr ""
+msgstr "Time Range"
 
-#: src/ui/HistoryDialog.cpp:33
+#: src/ui/HistoryDialog.cpp:54
 msgid "Start: "
-msgstr ""
+msgstr "Start: "
 
-#: src/ui/HistoryDialog.cpp:46
+#: src/ui/HistoryDialog.cpp:62
 msgid "End:   "
-msgstr ""
+msgstr "End:   "
 
-#: src/ui/HistoryDialog.cpp:56
+#: src/ui/HistoryDialog.cpp:69
 msgid "Query"
-msgstr ""
+msgstr "Query"
 
-#: src/ui/HistoryDialog.cpp:80
-#, fuzzy
+#: src/ui/HistoryDialog.cpp:112
 msgid "Please select at least one variable."
-msgstr "Please select a variable from the list above."
+msgstr "Please select at least one variable."
 
-#: src/ui/HistoryDialog.cpp:124
+#: src/ui/HistoryDialog.cpp:112 src/ui/HistoryDialog.cpp:153
+#: src/ui/SessionPanel.cpp:1004 src/ui/SessionPanel.cpp:1033
+#: src/ui/SessionPanel.cpp:1418 src/ui/SessionPanel.cpp:1554
+#: src/ui/SessionPanel.cpp:1579
+msgid "Notice"
+msgstr "Notice"
+
+#: src/ui/HistoryDialog.cpp:153
 msgid "No data found in this time range."
-msgstr ""
+msgstr "No data found in this time range."
 
-#: src/ui/LogFrame.cpp:13
+#: src/ui/LogFrame.cpp:14 src/ui/LogFrame.cpp:43
 msgid "Log"
 msgstr "Log"
 
@@ -1054,253 +946,302 @@ msgstr "Log"
 msgid "Log window opened"
 msgstr "Log window opened"
 
-#: src/ui/LogFrame.cpp:41 src/ui/SessionPanel.cpp:294
-#: src/ui/SessionPanel.cpp:394
+#: src/ui/LogFrame.cpp:102
+msgid "Load File..."
+msgstr "Load File..."
+
+#: src/ui/LogFrame.cpp:106 src/ui/SessionPanel.cpp:402
 msgid "Clear"
 msgstr "Clear"
 
-#: src/ui/LogFrame.cpp:44 src/ui/SessionPanel.cpp:377
+#: src/ui/LogFrame.cpp:111 src/ui/SessionPanel.cpp:651
 msgid "Auto Scroll"
 msgstr "Auto Scroll"
 
-#: src/ui/LogFrame.cpp:69
-msgid "Log window hidden"
-msgstr "Log window hidden"
+#: src/ui/LogFrame.cpp:156
+msgid "Open Log File"
+msgstr "Open Log File"
 
-#: src/ui/SessionPanel.cpp:223
+#: src/ui/LogFrame.cpp:171
+#, c-format
+msgid "Loaded log file: %s"
+msgstr "Loaded log file: %s"
+
+#: src/ui/LogFrame.cpp:173
+msgid "Failed to open log file."
+msgstr "Failed to open log file."
+
+#: src/ui/SessionPanel.cpp:271
 msgid "Communication Variables"
 msgstr "Communication Variables"
 
-#: src/ui/SessionPanel.cpp:228
+#: src/ui/SessionPanel.cpp:277
 msgid "Name"
 msgstr "Name"
 
-#: src/ui/SessionPanel.cpp:229
+#: src/ui/SessionPanel.cpp:278
 msgid "Type"
 msgstr "Type"
 
-#: src/ui/SessionPanel.cpp:230
+#: src/ui/SessionPanel.cpp:279
 msgid "Access"
 msgstr "Access"
 
-#: src/ui/SessionPanel.cpp:231
+#: src/ui/SessionPanel.cpp:280
 msgid "Value"
 msgstr "Value"
 
-#: src/ui/SessionPanel.cpp:239 src/ui/SessionPanel.cpp:905
-msgid "Add"
-msgstr "Add"
-
-#: src/ui/SessionPanel.cpp:240 src/ui/SessionPanel.cpp:906
-msgid "Copy"
-msgstr ""
-
-#: src/ui/SessionPanel.cpp:241 src/ui/SessionPanel.cpp:908
-msgid "Edit"
-msgstr "Edit"
-
-#: src/ui/SessionPanel.cpp:242 src/ui/SessionPanel.cpp:909
-msgid "Delete"
-msgstr "Delete"
-
-#: src/ui/SessionPanel.cpp:267
+#: src/ui/SessionPanel.cpp:351
 msgid "Manual Mode"
 msgstr "Manual Mode"
 
-#: src/ui/SessionPanel.cpp:268 src/ui/SessionPanel.cpp:1174
+#: src/ui/SessionPanel.cpp:352 src/ui/SessionPanel.cpp:1709
 msgid "Interactive Mode"
 msgstr "Interactive Mode"
 
-#: src/ui/SessionPanel.cpp:269
+#: src/ui/SessionPanel.cpp:353
 msgid "Auto Mode"
 msgstr "Auto Mode"
 
-#: src/ui/SessionPanel.cpp:270
+#: src/ui/SessionPanel.cpp:354
 msgid "Chart"
-msgstr ""
+msgstr "Chart"
 
-#: src/ui/SessionPanel.cpp:274
+#: src/ui/SessionPanel.cpp:361
 msgid "Operation Request"
 msgstr "Operation Request"
 
-#: src/ui/SessionPanel.cpp:276
+#: src/ui/SessionPanel.cpp:370 src/ui/SessionPanel.cpp:1186
 msgid "Please select a variable from the left list."
 msgstr "Please select a variable from the left list."
 
-#: src/ui/SessionPanel.cpp:292
-#, fuzzy
+#: src/ui/SessionPanel.cpp:395
 msgid "Communication Log"
-msgstr "Communication Variables"
+msgstr "Communication Log"
 
-#: src/ui/SessionPanel.cpp:327
-msgid "Session Status"
-msgstr "Session Status"
+#: src/ui/SessionPanel.cpp:493 src/ui/SessionPanel.cpp:558
+msgid "Open Connection (Ctrl+O)"
+msgstr "Open Connection (Ctrl+O)"
 
-#: src/ui/SessionPanel.cpp:338
+#: src/ui/SessionPanel.cpp:496
+msgid "Stop Listening"
+msgstr "Stop Listening"
+
+#: src/ui/SessionPanel.cpp:497
+msgid "Disconnect"
+msgstr "Disconnect"
+
+#: src/ui/SessionPanel.cpp:505 src/ui/SessionPanel.cpp:559
+msgid "Configure Connection"
+msgstr "Configure Connection"
+
+#: src/ui/SessionPanel.cpp:510
+msgid "Stop Recording"
+msgstr "Stop Recording"
+
+#: src/ui/SessionPanel.cpp:510 src/ui/SessionPanel.cpp:560
+msgid "Record Data"
+msgstr "Record Data"
+
+#: src/ui/SessionPanel.cpp:512 src/ui/SessionPanel.cpp:561
+msgid "History"
+msgstr "History"
+
+#: src/ui/SessionPanel.cpp:515
+msgid "Add Variable (Ctrl+N)"
+msgstr "Add Variable (Ctrl+N)"
+
+#: src/ui/SessionPanel.cpp:515
+msgid "Add Step (Ctrl+N)"
+msgstr "Add Step (Ctrl+N)"
+
+#: src/ui/SessionPanel.cpp:516 src/ui/SessionPanel.cpp:566
+msgid "Copy (Ctrl+C)"
+msgstr "Copy (Ctrl+C)"
+
+#: src/ui/SessionPanel.cpp:517 src/ui/SessionPanel.cpp:567
+msgid "Edit (Ctrl+E)"
+msgstr "Edit (Ctrl+E)"
+
+#: src/ui/SessionPanel.cpp:518 src/ui/SessionPanel.cpp:568
+msgid "Delete (Del)"
+msgstr "Delete (Del)"
+
+#: src/ui/SessionPanel.cpp:521
+msgid "Stop Flow"
+msgstr "Stop Flow"
+
+#: src/ui/SessionPanel.cpp:521 src/ui/SessionPanel.cpp:572
+msgid "Run Flow"
+msgstr "Run Flow"
+
+#: src/ui/SessionPanel.cpp:524 src/ui/SessionPanel.cpp:573
+msgid "Batch Create Steps"
+msgstr "Batch Create Steps"
+
+#: src/ui/SessionPanel.cpp:525 src/ui/SessionPanel.cpp:577
+msgid "Move Up"
+msgstr "Move Up"
+
+#: src/ui/SessionPanel.cpp:526 src/ui/SessionPanel.cpp:578
+msgid "Move Down"
+msgstr "Move Down"
+
+#: src/ui/SessionPanel.cpp:565
+msgid "Add (Ctrl+N)"
+msgstr "Add (Ctrl+N)"
+
+#: src/ui/SessionPanel.cpp:601
 msgid "Received: 0 bytes"
 msgstr "Received: 0 bytes"
 
-#: src/ui/SessionPanel.cpp:339
+#: src/ui/SessionPanel.cpp:602
 msgid "Sent: 0 bytes"
 msgstr "Sent: 0 bytes"
 
-#: src/ui/SessionPanel.cpp:340
+#: src/ui/SessionPanel.cpp:603
 msgid "Clients: 0"
 msgstr "Clients: 0"
 
-#: src/ui/SessionPanel.cpp:348 src/ui/SessionPanel.cpp:1259
-msgid "Open Connection"
-msgstr "Open Connection"
-
-#: src/ui/SessionPanel.cpp:351
-msgid "Configure Connection..."
-msgstr "Configure Connection..."
-
-#: src/ui/SessionPanel.cpp:355 src/ui/SessionPanel.cpp:1460
-#: src/ui/SessionPanel.cpp:1473
-#, fuzzy
-msgid "Record Settings"
-msgstr "Reconnect Settings"
-
-#: src/ui/SessionPanel.cpp:372
-msgid "Data Log"
-msgstr "Data Log"
-
-#: src/ui/SessionPanel.cpp:375
+#: src/ui/SessionPanel.cpp:649
 msgid "HEX Display"
 msgstr "HEX Display"
 
-#: src/ui/SessionPanel.cpp:376
+#: src/ui/SessionPanel.cpp:650
 msgid "Timestamp"
 msgstr "Timestamp"
 
-#: src/ui/SessionPanel.cpp:410
-msgid "Result Log"
-msgstr "Result Log"
-
-#: src/ui/SessionPanel.cpp:500
+#: src/ui/SessionPanel.cpp:762
 msgid "Value:"
 msgstr "Value:"
 
-#: src/ui/SessionPanel.cpp:540
+#: src/ui/SessionPanel.cpp:801
 msgid "Raw Bytes:"
-msgstr ""
+msgstr "Raw Bytes:"
 
-#: src/ui/SessionPanel.cpp:554
+#: src/ui/SessionPanel.cpp:816
 msgid "Send"
 msgstr "Send"
 
-#: src/ui/SessionPanel.cpp:559
+#: src/ui/SessionPanel.cpp:824
 msgid "Read"
 msgstr "Read"
 
-#: src/ui/SessionPanel.cpp:560
+#: src/ui/SessionPanel.cpp:829
 msgid "Write"
 msgstr "Write"
 
-#: src/ui/SessionPanel.cpp:743 src/ui/SessionPanel.cpp:783
-msgid "Payload is empty. Please fill in the 'Value' field."
-msgstr ""
+#: src/ui/SessionPanel.cpp:860
+msgid "+ New Variable"
+msgstr "+ New Variable"
 
-#: src/ui/SessionPanel.cpp:756 src/ui/SessionPanel.cpp:796
+#: src/ui/SessionPanel.cpp:1004 src/ui/SessionPanel.cpp:1033
+msgid "Payload is empty. Please fill in the 'Value' field."
+msgstr "Payload is empty. Please fill in the 'Value' field."
+
+#: src/ui/SessionPanel.cpp:1015 src/ui/SessionPanel.cpp:1042
 #, c-format
 msgid "Sent: %llu bytes"
 msgstr "Sent: %llu bytes"
 
-#: src/ui/SessionPanel.cpp:814
+#: src/ui/SessionPanel.cpp:1053
 msgid "Send failed"
 msgstr "Send failed"
 
-#: src/ui/SessionPanel.cpp:897
-msgid "Step Name"
-msgstr "Step Name"
+#: src/ui/SessionPanel.cpp:1130
+msgid "Variable name already exists."
+msgstr "Variable name already exists."
 
-#: src/ui/SessionPanel.cpp:898
-msgid "Status"
-msgstr "Status"
-
-#: src/ui/SessionPanel.cpp:903
-msgid "Run All"
-msgstr "Run All"
-
-#: src/ui/SessionPanel.cpp:903
-msgid "Run (Step-by-Step)"
-msgstr "Run (Step-by-Step)"
-
-#: src/ui/SessionPanel.cpp:904
-msgid "Stop"
-msgstr "Stop"
-
-#: src/ui/SessionPanel.cpp:907
-msgid "Batch Create"
-msgstr ""
-
-#: src/ui/SessionPanel.cpp:910
-msgid "Up"
-msgstr "Up"
-
-#: src/ui/SessionPanel.cpp:911
-msgid "Down"
-msgstr "Down"
-
-#: src/ui/SessionPanel.cpp:921 src/ui/SessionPanel.cpp:1117
+#: src/ui/SessionPanel.cpp:1213 src/ui/SessionPanel.cpp:1653
 msgid "Pending"
 msgstr "Pending"
 
-#: src/ui/SessionPanel.cpp:977
-#, fuzzy
+#: src/ui/SessionPanel.cpp:1216
+msgid "+ New Step"
+msgstr "+ New Step"
+
+#: src/ui/SessionPanel.cpp:1227
+msgid "Auto Mode Test Flow"
+msgstr "Auto Mode Test Flow"
+
+#: src/ui/SessionPanel.cpp:1228
+msgid "Interactive Mode Test Flow"
+msgstr "Interactive Mode Test Flow"
+
+#: src/ui/SessionPanel.cpp:1239
+msgid "Step Name"
+msgstr "Step Name"
+
+#: src/ui/SessionPanel.cpp:1240
+msgid "Status"
+msgstr "Status"
+
+#: src/ui/SessionPanel.cpp:1418
 msgid "Please select a base step first."
-msgstr "Please select a variable from the left list."
+msgstr "Please select a base step first."
 
-#: src/ui/SessionPanel.cpp:984
+#: src/ui/SessionPanel.cpp:1423
 msgid "Batch Generate Steps"
-msgstr ""
+msgstr "Batch Generate Steps"
 
-#: src/ui/SessionPanel.cpp:988
-#, fuzzy
+#: src/ui/SessionPanel.cpp:1428
 msgid "Repeat Count:"
-msgstr "Count:"
+msgstr "Repeat Count:"
 
-#: src/ui/SessionPanel.cpp:992
+#: src/ui/SessionPanel.cpp:1434
 msgid "Interval (ms):"
-msgstr ""
+msgstr "Interval (ms):"
 
-#: src/ui/SessionPanel.cpp:997
+#: src/ui/SessionPanel.cpp:1440
 msgid "Auto Increment/Decrement:"
-msgstr ""
+msgstr "Auto Increment/Decrement:"
 
-#: src/ui/SessionPanel.cpp:1104
+#: src/ui/SessionPanel.cpp:1554
+msgid "No enabled variables to record."
+msgstr "No enabled variables to record."
+
+#: src/ui/SessionPanel.cpp:1558
+msgid "Select variables to record:"
+msgstr "Select variables to record:"
+
+#: src/ui/SessionPanel.cpp:1558
+msgid "Record Settings"
+msgstr "Record Settings"
+
+#: src/ui/SessionPanel.cpp:1579
+msgid "No readable variables found."
+msgstr "No readable variables found."
+
+#: src/ui/SessionPanel.cpp:1640
 #, c-format
 msgid "Protocol '%s' does not support action '%s'."
-msgstr ""
+msgstr "Protocol '%s' does not support action '%s'."
 
-#: src/ui/SessionPanel.cpp:1107
+#: src/ui/SessionPanel.cpp:1643
 msgid "Unsupported Action"
-msgstr ""
+msgstr "Unsupported Action"
 
-#: src/ui/SessionPanel.cpp:1112
+#: src/ui/SessionPanel.cpp:1648
 msgid "No valid steps."
 msgstr "No valid steps."
 
-#: src/ui/SessionPanel.cpp:1129
+#: src/ui/SessionPanel.cpp:1663
 msgid "Passed"
 msgstr "Passed"
 
-#: src/ui/SessionPanel.cpp:1129
+#: src/ui/SessionPanel.cpp:1663
 msgid "Failed"
 msgstr "Failed"
 
-#: src/ui/SessionPanel.cpp:1155
-#, fuzzy
+#: src/ui/SessionPanel.cpp:1687
 msgid "Test Finished Successfully\n"
-msgstr "Test Finished Successfully"
+msgstr "Test Finished Successfully\n"
 
-#: src/ui/SessionPanel.cpp:1155
-#, fuzzy
+#: src/ui/SessionPanel.cpp:1687
 msgid "Test Failed\n"
-msgstr "Test Failed"
+msgstr "Test Failed\n"
 
-#: src/ui/SessionPanel.cpp:1172
+#: src/ui/SessionPanel.cpp:1707
 #, c-format
 msgid ""
 "Step %d finished.\n"
@@ -1311,194 +1252,383 @@ msgstr ""
 "\n"
 "Ready to execute Step %d. Continue?"
 
-#: src/ui/SessionPanel.cpp:1213
+#: src/ui/SessionPanel.cpp:1736
 #, c-format
 msgid "Target: %s"
 msgstr "Target: %s"
 
-#: src/ui/SessionPanel.cpp:1227
+#: src/ui/SessionPanel.cpp:1754
 msgid "Idle"
 msgstr "Idle"
 
-#: src/ui/SessionPanel.cpp:1231
-msgid "Connecting..."
-msgstr "Connecting..."
-
-#: src/ui/SessionPanel.cpp:1235
-msgid "Reconnecting..."
-msgstr "Reconnecting..."
-
-#: src/ui/SessionPanel.cpp:1241
+#: src/ui/SessionPanel.cpp:1768
 #, c-format
 msgid "Connected (%d)"
 msgstr "Connected (%d)"
 
-#: src/ui/SessionPanel.cpp:1242
+#: src/ui/SessionPanel.cpp:1769
 msgid "Listening"
 msgstr "Listening"
 
-#: src/ui/SessionPanel.cpp:1244
-msgid "Connected"
-msgstr "Connected"
-
-#: src/ui/SessionPanel.cpp:1265
-msgid "Cancel Reconnecting"
-msgstr "Cancel Reconnecting"
-
-#: src/ui/SessionPanel.cpp:1268
-msgid "Stop Listening"
-msgstr "Stop Listening"
-
-#: src/ui/SessionPanel.cpp:1268
-msgid "Disconnect"
-msgstr "Disconnect"
-
-#: src/ui/SessionPanel.cpp:1310 src/ui/SessionPanel.cpp:1420
-#, c-format
-msgid "Received: %llu bytes"
-msgstr "Received: %llu bytes"
-
-#: src/ui/SessionPanel.cpp:1349
-#, fuzzy, c-format
-msgid "Reconnecting (attempt %d) ...\n"
-msgstr "Reconnecting (attempt %d) ..."
-
-#: src/ui/SessionPanel.cpp:1362
-#, fuzzy, c-format
-msgid "Client #%d connected\n"
-msgstr "Client #%d connected"
-
-#: src/ui/SessionPanel.cpp:1375
-#, fuzzy, c-format
-msgid "Client #%d disconnected\n"
-msgstr "Client #%d disconnected"
-
-#: src/ui/SessionPanel.cpp:1454
+#: src/ui/SessionPanel.cpp:1788
 #, c-format
 msgid "Clients: %d"
 msgstr "Clients: %d"
 
-#: src/ui/SessionPanel.cpp:1469
-msgid "No enabled variables to record."
-msgstr ""
+#: src/ui/SessionPanel.cpp:1798 src/ui/SessionPanel.cpp:1910
+#, c-format
+msgid "Received: %llu bytes"
+msgstr "Received: %llu bytes"
 
-#: src/ui/SessionPanel.cpp:1473
-msgid "Select variables to record:"
-msgstr ""
+#: src/ui/SessionPanel.cpp:1839
+#, c-format
+msgid "Reconnecting (attempt %d) ...\n"
+msgstr "Reconnecting (attempt %d) ...\n"
 
-#: src/ui/SessionPanel.cpp:1483
-#, fuzzy
-msgid "Stop Recording"
-msgstr "Stop Listening"
+#: src/ui/SessionPanel.cpp:1852
+#, c-format
+msgid "Client #%d connected\n"
+msgstr "Client #%d connected\n"
 
-#: src/ui/SessionPanel.cpp:1494
-msgid "No readable variables found."
-msgstr ""
+#: src/ui/SessionPanel.cpp:1865
+#, c-format
+msgid "Client #%d disconnected\n"
+msgstr "Client #%d disconnected\n"
 
-#: src/ui/SettingsDialog.cpp:11
-#, fuzzy
+#: src/ui/SettingsDialog.cpp:12 src/ui/SettingsDialog.cpp:24
 msgid "Application Settings"
-msgstr "Application exiting"
+msgstr "Application Settings"
 
-#: src/ui/SettingsDialog.cpp:25
+#: src/ui/SettingsDialog.cpp:40
 msgid "Window Behavior"
-msgstr ""
+msgstr "Window Behavior"
 
-#: src/ui/SettingsDialog.cpp:28
-#, fuzzy
+#: src/ui/SettingsDialog.cpp:45
 msgid "Minimize to system tray when closing"
-msgstr "Minimized to system tray"
-
-#: src/ui/SettingsDialog.cpp:33
-msgid "General"
-msgstr ""
-
-#: src/ui/SettingsDialog.cpp:39
-#, fuzzy
-msgid "Log Display"
-msgstr "HEX Display"
-
-#: src/ui/SettingsDialog.cpp:41
-msgid "Show data in HEX format by default"
-msgstr ""
-
-#: src/ui/SettingsDialog.cpp:42
-#, fuzzy
-msgid "Auto scroll to bottom"
-msgstr "Auto Scroll"
-
-#: src/ui/SettingsDialog.cpp:43
-msgid "Show timestamp prefix"
-msgstr ""
-
-#: src/ui/SettingsDialog.cpp:50
-msgid "Fonts"
-msgstr ""
+msgstr "Minimize to system tray when closing"
 
 #: src/ui/SettingsDialog.cpp:52
-msgid "Font Size (pt):"
-msgstr ""
+msgid "General"
+msgstr "General"
 
-#: src/ui/SettingsDialog.cpp:61
-#, fuzzy
-msgid "Interface & Log"
-msgstr "Interactive Mode"
+#: src/ui/SettingsDialog.cpp:62
+msgid "Log Display"
+msgstr "Log Display"
 
 #: src/ui/SettingsDialog.cpp:67
-msgid "Apply"
-msgstr ""
+msgid "Show data in HEX format by default"
+msgstr "Show data in HEX format by default"
 
-#: src/ui/TestStepEditDialog.cpp:9
+#: src/ui/SettingsDialog.cpp:71
+msgid "Auto scroll to bottom"
+msgstr "Auto scroll to bottom"
+
+#: src/ui/SettingsDialog.cpp:75
+msgid "Show timestamp prefix"
+msgstr "Show timestamp prefix"
+
+#: src/ui/SettingsDialog.cpp:85
+msgid "Fonts"
+msgstr "Fonts"
+
+#: src/ui/SettingsDialog.cpp:91
+msgid "Font Size (pt):"
+msgstr "Font Size (pt):"
+
+#: src/ui/SettingsDialog.cpp:104
+msgid "Interface & Log"
+msgstr "Interface & Log"
+
+#: src/ui/SettingsDialog.cpp:111
+msgid "Apply"
+msgstr "Apply"
+
+#: src/ui/TestStepEditDialog.cpp:11 src/ui/TestStepEditDialog.cpp:19
 msgid "Edit Test Step"
 msgstr "Edit Test Step"
 
-#: src/ui/TestStepEditDialog.cpp:16
+#: src/ui/TestStepEditDialog.cpp:31
 msgid "Step Name:"
 msgstr "Step Name:"
 
-#: src/ui/TestStepEditDialog.cpp:21
+#: src/ui/TestStepEditDialog.cpp:39
 msgid "Action:"
 msgstr "Action:"
 
-#: src/ui/TestStepEditDialog.cpp:35
+#: src/ui/TestStepEditDialog.cpp:56
 msgid "Variable:"
 msgstr "Variable:"
 
-#: src/ui/TestStepEditDialog.cpp:48
+#: src/ui/TestStepEditDialog.cpp:71
 msgid "Target Value (Write):"
 msgstr "Target Value (Write):"
 
-#: src/ui/TestStepEditDialog.cpp:54
+#: src/ui/TestStepEditDialog.cpp:79
 msgid "Wait (ms):"
 msgstr "Wait (ms):"
 
-#: src/ui/TestStepEditDialog.cpp:59
+#: src/ui/TestStepEditDialog.cpp:87
 msgid "Assert Type:"
 msgstr "Assert Type:"
 
-#: src/ui/TestStepEditDialog.cpp:84
+#: src/ui/TestStepEditDialog.cpp:114
 msgid "Assert Expected:"
 msgstr "Assert Expected:"
 
-#: src/ui/VariableEditDialog.cpp:11
+#: src/ui/UIUtils.h:314
+msgid "No"
+msgstr "No"
+
+#: src/ui/UIUtils.h:315
+msgid "Yes"
+msgstr "Yes"
+
+#: src/ui/VariableEditDialog.cpp:13 src/ui/VariableEditDialog.cpp:22
 msgid "Edit Variable"
 msgstr "Edit Variable"
 
-#: src/ui/VariableEditDialog.cpp:18
+#: src/ui/VariableEditDialog.cpp:13 src/ui/VariableEditDialog.cpp:22
+msgid "Add Variable"
+msgstr "Add Variable"
+
+#: src/ui/VariableEditDialog.cpp:34
 msgid "Variable Name:"
 msgstr "Variable Name:"
 
-#: src/ui/VariableEditDialog.cpp:24
+#: src/ui/VariableEditDialog.cpp:41
 msgid "Data Type:"
 msgstr "Data Type:"
 
-#: src/ui/VariableEditDialog.cpp:43
+#: src/ui/VariableEditDialog.cpp:61
 msgid "Access:"
 msgstr "Access:"
 
-#: src/ui/VariableEditDialog.cpp:58
+#: src/ui/VariableEditDialog.cpp:84
 msgid "Protocol Parameters"
 msgstr "Protocol Parameters"
+
+#: src/ui/WelcomePanel.cpp:65
+msgid "Start"
+msgstr "Start"
+
+#: src/ui/WelcomePanel.cpp:93
+msgid "New Connection..."
+msgstr "New Connection..."
+
+#: src/ui/WelcomePanel.cpp:96
+msgid "Open Connection..."
+msgstr "Open Connection..."
+
+#: src/ui/WelcomePanel.cpp:102
+msgid "Recent"
+msgstr "Recent"
+
+#: src/ui/WelcomePanel.cpp:108
+msgid "No recent connections."
+msgstr "No recent connections."
+
+#~ msgid "Too many protocols, menu ID overflow"
+#~ msgstr "Too many protocols, menu ID overflow"
+
+#~ msgid "&New Connection"
+#~ msgstr "&New Connection"
+
+#~ msgid "Create a new connection"
+#~ msgstr "Create a new connection"
+
+#~ msgid "Recently used connections"
+#~ msgstr "Recently used connections"
+
+#~ msgid "Open a saved connection"
+#~ msgstr "Open a saved connection"
+
+#~ msgid "&Save Connection\tCtrl+S"
+#~ msgstr "&Save Connection\tCtrl+S"
+
+#~ msgid "Save the current connection profile"
+#~ msgstr "Save the current connection profile"
+
+#~ msgid "Save Connection &As...\tCtrl+Shift+S"
+#~ msgstr "Save Connection &As...\tCtrl+Shift+S"
+
+#~ msgid "Save the current connection profile to a new file"
+#~ msgstr "Save the current connection profile to a new file"
+
+#~ msgid "&Close Connection\tCtrl+W"
+#~ msgstr "&Close Connection\tCtrl+W"
+
+#~ msgid "&Quit\tAlt+F4"
+#~ msgstr "&Quit\tAlt+F4"
+
+#~ msgid "Quit the application"
+#~ msgstr "Quit the application"
+
+#~ msgid "Show application logs"
+#~ msgstr "Show application logs"
+
+#~ msgid "&View"
+#~ msgstr "&View"
+
+#, fuzzy
+#~ msgid "Configure application settings"
+#~ msgstr "Application exiting"
+
+#~ msgid "&About\tF1"
+#~ msgstr "&About\tF1"
+
+#~ msgid "Show info about this application"
+#~ msgstr "Show info about this application"
+
+#~ msgid "&Help"
+#~ msgstr "&Help"
+
+#~ msgid ""
+#~ "No active connection.\n"
+#~ "Use File → New Connection to get started."
+#~ msgstr ""
+#~ "No active connection.\n"
+#~ "Use File → New Connection to get started."
+
+#~ msgid "Session"
+#~ msgstr "Session"
+
+#~ msgid "Application exiting"
+#~ msgstr "Application exiting"
+
+#~ msgid "Close cancelled by user"
+#~ msgstr "Close cancelled by user"
+
+#~ msgid "Save cancelled, close aborted"
+#~ msgstr "Save cancelled, close aborted"
+
+#~ msgid "About dialog shown"
+#~ msgstr "About dialog shown"
+
+#~ msgid "User invoked Open Connection"
+#~ msgstr "User invoked Open Connection"
+
+#~ msgid "Please close the current connection first."
+#~ msgstr "Please close the current connection first."
+
+#~ msgid "Open connection cancelled by user"
+#~ msgstr "Open connection cancelled by user"
+
+#, c-format
+#~ msgid "Opening connection from file: %s"
+#~ msgstr "Opening connection from file: %s"
+
+#, c-format
+#~ msgid "Closing connection: %s"
+#~ msgstr "Closing connection: %s"
+
+#, c-format
+#~ msgid "&%d %s"
+#~ msgstr "&%d %s"
+
+#~ msgid "User selected Simplified Chinese"
+#~ msgstr "User selected Simplified Chinese"
+
+#~ msgid "wxTheApp is not icu::App"
+#~ msgstr "wxTheApp is not icu::App"
+
+#~ msgid "User selected English"
+#~ msgstr "User selected English"
+
+#, c-format
+#~ msgid "Profile saved: %s"
+#~ msgstr "Profile saved: %s"
+
+#, c-format
+#~ msgid "Profile saved as: %s"
+#~ msgstr "Profile saved as: %s"
+
+#~ msgid "User clicked Save Connection"
+#~ msgstr "User clicked Save Connection"
+
+#~ msgid "User clicked Save Connection As"
+#~ msgstr "User clicked Save Connection As"
+
+#~ msgid "Minimized to system tray"
+#~ msgstr "Minimized to system tray"
+
+#~ msgid "Restored from system tray"
+#~ msgstr "Restored from system tray"
+
+#, c-format
+#~ msgid "Unknown protocol menu id: %d"
+#~ msgstr "Unknown protocol menu id: %d"
+
+#, c-format
+#~ msgid "User invoked New Connection for protocol: %s"
+#~ msgstr "User invoked New Connection for protocol: %s"
+
+#~ msgid "User clicked Configure Connection"
+#~ msgstr "User clicked Configure Connection"
+
+#~ msgid "User clicked Open Connection"
+#~ msgstr "User clicked Open Connection"
+
+#, c-format
+#~ msgid "Listening on %s"
+#~ msgstr "Listening on %s"
+
+#, c-format
+#~ msgid "Connected [%s]: %s"
+#~ msgstr "Connected [%s]: %s"
+
+#, c-format
+#~ msgid "Connecting to %s ..."
+#~ msgstr "Connecting to %s ..."
+
+#, c-format
+#~ msgid "Reconnecting to %s ..."
+#~ msgstr "Reconnecting to %s ..."
+
+#~ msgid "Remote Host:"
+#~ msgstr "Remote Host:"
+
+#~ msgid "Remote Port:"
+#~ msgstr "Remote Port:"
+
+#~ msgid "Local Host (optional):"
+#~ msgstr "Local Host (optional):"
+
+#~ msgid "Connect Timeout (ms):"
+#~ msgstr "Connect Timeout (ms):"
+
+#~ msgid "Listen Host:"
+#~ msgstr "Listen Host:"
+
+#~ msgid "Max Clients:"
+#~ msgstr "Max Clients:"
+
+#~ msgid "Listen Backlog:"
+#~ msgstr "Listen Backlog:"
+
+#, fuzzy
+#~ msgid "Max Clients (Server):"
+#~ msgstr "Max Clients:"
+
+#~ msgid "Log window hidden"
+#~ msgstr "Log window hidden"
+
+#~ msgid "Session Status"
+#~ msgstr "Session Status"
+
+#~ msgid "Data Log"
+#~ msgstr "Data Log"
+
+#~ msgid "Result Log"
+#~ msgstr "Result Log"
+
+#~ msgid "Run (Step-by-Step)"
+#~ msgstr "Run (Step-by-Step)"
+
+#~ msgid "Up"
+#~ msgstr "Up"
+
+#~ msgid "Cancel Reconnecting"
+#~ msgstr "Cancel Reconnecting"
 
 #~ msgid "No valid icon for taskbar; tray icon unavailable"
 #~ msgstr "No valid icon for taskbar; tray icon unavailable"
@@ -1508,12 +1638,6 @@ msgstr "Protocol Parameters"
 
 #~ msgid "Minimize to system tray instead of exiting?"
 #~ msgstr "Minimize to system tray instead of exiting?"
-
-#~ msgid "Close"
-#~ msgstr "Close"
-
-#~ msgid "Add Variable"
-#~ msgstr "Add Variable"
 
 #~ msgid "Reading variable: "
 #~ msgstr "Reading variable: "
@@ -1527,8 +1651,6 @@ msgstr "Protocol Parameters"
 #~ msgid "Write failed: "
 #~ msgstr "Write failed: "
 
-#~ msgid "Variable name cannot be empty."
-#~ msgstr "Variable name cannot be empty."
-
 #~ msgid "Result"
 #~ msgstr "Result"
+

@@ -7,28 +7,27 @@
 
 namespace icu {
 
-class LogFrame : public wxFrame {
+class LogFrame : public wxDialog {
 public:
     explicit LogFrame(wxWindow* parent);
     ~LogFrame() override;
 
-    void ForceDestroy();
+    void ForceDestroy() { Destroy(); }
 
 private:
     wxTextCtrl* m_textCtrl = nullptr;
     wxCheckBox* m_autoScroll = nullptr;
     wxButton* m_clearBtn = nullptr;
-    wxButton* m_loadBtn = nullptr;  // ★ 新增：加载日志按钮
-
-    bool m_forceDestroy = false;
+    wxButton* m_loadBtn = nullptr;
 
     void BuildUi();
 
     void OnClose(wxCloseEvent& evt);
     void OnClear(wxCommandEvent& evt);
-    void OnLoad(wxCommandEvent& evt);  // ★ 新增：处理加载逻辑
+    void OnLoad(wxCommandEvent& evt);
 
-    wxDECLARE_EVENT_TABLE();
+    wxPoint m_dragStart;
+    wxPoint m_winStart;
 };
 
 }  // namespace icu

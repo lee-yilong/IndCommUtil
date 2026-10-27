@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <path d="M1 5C0.44771576 5 0 4.5522842 0 4C0 4 0 2 0 2C0 0.89543056 0.89542961 0 2 0C2 0 4 0 4 0C5.1045685 0 6 0.89543056 6 2C6 2 6 4 6 4C6 4.5522842 5.5522842 5 5 5C5 5 1 5 1 5Z" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(16 14)" />
+    <path d="M0 2L0 0" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(17 19)" />
+    <path d="M14 11C14 11 14 3.5 14 3.5C14 1.5670033 12.432999 0 10.500001 0C8.5670033 0 7 1.5670033 7 3.5000005C7 3.5000005 7 14.5 7 14.5C7 16.432997 5.4329967 18 3.5 18C1.5670033 18 0 16.432997 0 14.5C0 14.5 0 7 0 7" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(5 3)" />
+    <path d="M0 2L0 0" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(21 19)" />
+    <path d="M0 2L0 0" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)" />
+    <path d="M2 5C0.89543033 5 0 4.1045694 0 3C0 3 0 1 0 1C0 0.44771528 0.44771528 0 1 0C1 0 5 0 5 0C5.5522852 0 6 0.44771528 6 1C6 1 6 3 6 3C6 4.1045694 5.1045694 5 4 5C4 5 2 5 2 5Z" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 5)" />
+    <path d="M0 2L0 0" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(7 3)" />
+  </g>
+</svg>

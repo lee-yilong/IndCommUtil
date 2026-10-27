@@ -39,29 +39,41 @@ TEST_CASE("ProtocolRegistry: All 包含 tcp") {
     CHECK(found);
 }
 
-TEST_CASE("TcpProtocol: 基本属性") {
+TEST_CASE("TcpIpProtocol: 基本属性") {
     RegisterBuiltinProtocols();
     auto* proto = ProtocolRegistry::Instance().Find("tcp");
     REQUIRE(proto != nullptr);
 
+    CHECK(proto->Id() == "tcp");
+    CHECK(proto->DisplayName().find("TCP/IP") != std::string::npos);
     CHECK(proto->HasModes() == true);
 
     auto modes = proto->ModeNames();
     REQUIRE(modes.size() == 2);
-    CHECK(modes[0] == "Client");
-    CHECK(modes[1] == "Server");
+    CHECK(modes[0] == "TCP");
+    CHECK(modes[1] == "UDP");
 }
 
-TEST_CASE("TcpProtocol: FieldsForMode 数量") {
+TEST_CASE("TcpIpProtocol: FieldsForMode 数量") {
     RegisterBuiltinProtocols();
     auto* proto = ProtocolRegistry::Instance().Find("tcp");
     REQUIRE(proto != nullptr);
 
-    auto clientFields = proto->FieldsForMode(0);
-    auto serverFields = proto->FieldsForMode(1);
+    auto tcpFields = proto->FieldsForMode(0);
+    auto udpFields = proto->FieldsForMode(1);
 
-    CHECK(clientFields.size() >= 5);
-    CHECK(serverFields.size() >= 3);
+    // TCP = role/host/port/timeoutMs/maxClients + 3 个重连字段
+    CHECK(tcpFields.size() >= 8);
+    // UDP = role/host/port/localPort
+    CHECK(udpFields.size() >= 4);
+
+    auto hasRole = [](const std::vector<FieldDescriptor>& fields) {
+        for (const auto& fd : fields)
+            if (fd.key == "role") return true;
+        return false;
+    };
+    CHECK(hasRole(tcpFields));
+    CHECK(hasRole(udpFields));
 }
 
 TEST_CASE("TcpProtocol: label 是翻译 key（非空）") {

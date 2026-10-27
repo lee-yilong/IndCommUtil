@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <path d="M7.6000004 18C7.6000004 18 2 18 2 18C0.89543033 18 0 17.104568 0 16C0 16 0 2 0 2C0 0.89543033 0.89543056 0 2 0C2 0 16 0 16 0C17.104568 0 18 0.89543056 18 2C18 2 18 7.6000004 18 7.6000004" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)" />
+    <path d="M0 0.38199997L0.92300034 0" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(14.305 19.148)" />
+    <path d="M0 0L0 7.6000004" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(15 3)" />
+    <path d="M0.92399979 0.38299942L0 0" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(14.305 16.469)" />
+    <path d="M0.38299942 0.92300034L0 0" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(16.469 14.305)" />
+    <path d="M0.38299942 0L0 0.92399979" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(16.469 20.772)" />
+    <path d="M0 0.92300034L0.38299942 0" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(19.148 14.305)" />
+    <path d="M0.38199997 0.92399979L0 0" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(19.148 20.772)" />
+    <path d="M0 0.38299942L0.92200089 0" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(20.773 16.469)" />
+    <path d="M0 0L0.92200089 0.38299942" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(20.773 19.148)" />
+    <path d="M0 0L0 18" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(9 3)" />
+    <path d="M0 3C0 1.3431454 1.3431454 0 3 0C4.6568546 0 6 1.3431454 6 3C6 4.6568546 4.6568546 6 3 6C1.3431454 6 0 4.6568546 0 3Z" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(15 15)" />
+  </g>
+</svg>

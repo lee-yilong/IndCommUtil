@@ -128,6 +128,10 @@ file(GLOB_RECURSE GUI_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/settings/*.cpp"
 )
 
+# ★ 显式确保 WelcomePanel 被打包
+list(APPEND GUI_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/WelcomePanel.cpp")
+list(REMOVE_DUPLICATES GUI_SOURCES)
+
 add_executable(IndComm WIN32
     src/main.cpp
     ${GUI_SOURCES}
@@ -139,7 +143,7 @@ target_compile_definitions(IndComm PRIVATE wxDEBUG_LEVEL=0)
 target_link_libraries(IndComm PRIVATE
     icu_core_lib
     "${WX_LIB_DIR}/libwx_mswu_core-3.3.dll.a"
-    "${WX_LIB_DIR}/libwx_mswu_aui-3.3.dll.a"      # ★ 新增：链接 wxAui 库
+    "${WX_LIB_DIR}/libwx_mswu_aui-3.3.dll.a"
     "${WX_LIB_DIR}/libwx_baseu-3.3.dll.a"
     "${WX_LIB_DIR}/libwx_baseu_net-3.3.dll.a"
     kernel32 user32 gdi32 comdlg32 winspool winmm
@@ -156,20 +160,60 @@ if(MINGW)
     target_link_options(indcomm-cli PRIVATE -static-libgcc -static-libstdc++ -static)
 endif()
 
+# =========================================================================
+# i18n：构建时从 .po 生成 .mo
+#   仓库只跟踪 .po（.pot/.mo 被 .gitignore 忽略），因此安装/运行所需的 .mo
+#   必须在构建时生成；本机没有 msgfmt 时退回复制源目录中的 .mo。
+# =========================================================================
+find_program(GETTEXT_MSGFMT_EXECUTABLE msgfmt)
+set(I18N_LANGUAGES zh_CN en_US)
+set(I18N_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/resources/i18n")
+set(I18N_MO_FILES "")
+set(I18N_COPY_COMMANDS "")
+
+if(GETTEXT_MSGFMT_EXECUTABLE)
+    foreach(lang ${I18N_LANGUAGES})
+        set(_po "${I18N_SRC_DIR}/${lang}/LC_MESSAGES/IndustrialCommunicationUtility.po")
+        set(_mo "${I18N_BUILD_DIR}/${lang}/LC_MESSAGES/IndustrialCommunicationUtility.mo")
+        add_custom_command(
+            OUTPUT "${_mo}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${I18N_BUILD_DIR}/${lang}/LC_MESSAGES"
+            COMMAND "${GETTEXT_MSGFMT_EXECUTABLE}" --check-format -o "${_mo}" "${_po}"
+            DEPENDS "${_po}"
+            COMMENT "Compiling translation ${lang}"
+            VERBATIM
+        )
+        list(APPEND I18N_MO_FILES "${_mo}")
+        list(APPEND I18N_COPY_COMMANDS
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:IndComm>/resources/i18n/${lang}/LC_MESSAGES"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_mo}" "$<TARGET_FILE_DIR:IndComm>/resources/i18n/${lang}/LC_MESSAGES/"
+        )
+    endforeach()
+    add_custom_target(i18n ALL DEPENDS ${I18N_MO_FILES})
+    add_dependencies(IndComm i18n)
+else()
+    message(WARNING "msgfmt not found: falling back to pre-built .mo files in resources/i18n")
+    list(APPEND I18N_COPY_COMMANDS
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:IndComm>/resources/i18n"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${I18N_SRC_DIR}" "$<TARGET_FILE_DIR:IndComm>/resources/i18n"
+    )
+endif()
+
 set(WX_DLLS
     "${WX_LIB_DIR}/wxbase335u_gcc_custom.dll"
     "${WX_LIB_DIR}/wxbase335u_net_gcc_custom.dll"
     "${WX_LIB_DIR}/wxmsw335u_core_gcc_custom.dll"
-    "${WX_LIB_DIR}/wxmsw335u_aui_gcc_custom.dll"  # ★ 新增：拷贝 wxAui DLL
+    "${WX_LIB_DIR}/wxmsw335u_aui_gcc_custom.dll"
 )
 
 add_custom_command(TARGET IndComm POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${WX_DLLS} "$<TARGET_FILE_DIR:IndComm>"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:modbus> "$<TARGET_FILE_DIR:IndComm>"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sqlite.library> "$<TARGET_FILE_DIR:IndComm>"
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:IndComm>/resources/i18n"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/resources/i18n" "$<TARGET_FILE_DIR:IndComm>/resources/i18n"
-    COMMENT "Copying DLLs and i18n to GUI output"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:IndComm>/resources/icons"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons" "$<TARGET_FILE_DIR:IndComm>/resources/icons"
+    ${I18N_COPY_COMMANDS}
+    COMMENT "Copying DLLs, icons and i18n to GUI output"
 )
 
 add_custom_command(TARGET indcomm-cli POST_BUILD
@@ -201,9 +245,20 @@ if(WIN32)
 
     install(FILES "${APP_ICO}" DESTINATION .)
 
-    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/resources/i18n/"
-            DESTINATION "resources/i18n"
-            FILES_MATCHING PATTERN "*.mo")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/"
+            DESTINATION "resources/icons"
+            FILES_MATCHING PATTERN "*")
+
+    if(GETTEXT_MSGFMT_EXECUTABLE)
+        foreach(lang ${I18N_LANGUAGES})
+            install(FILES "${I18N_BUILD_DIR}/${lang}/LC_MESSAGES/IndustrialCommunicationUtility.mo"
+                    DESTINATION "resources/i18n/${lang}/LC_MESSAGES")
+        endforeach()
+    else()
+        install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/resources/i18n/"
+                DESTINATION "resources/i18n"
+                FILES_MATCHING PATTERN "*.mo")
+    endif()
 
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
         install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE" DESTINATION .)

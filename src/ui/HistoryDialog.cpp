@@ -7,62 +7,94 @@
 #include <algorithm>
 #include <chrono>
 
+#include "ui/UIUtils.h"
+
 namespace icu {
 
 HistoryDialog::HistoryDialog(wxWindow* parent, Database* db, const std::string& projectPath,
                              const std::vector<std::string>& availableVars)
     : wxDialog(parent, wxID_ANY, _("History Query"), wxDefaultPosition, wxSize(900, 600),
-               wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER),
+               wxBORDER_NONE | wxRESIZE_BORDER),
       m_db(db),
       m_projectPath(projectPath) {
-    auto* mainSizer = new wxBoxSizer(wxHORIZONTAL);
+    SetBackgroundColour(ui::kBgColor);
 
-    // --- 左侧：查询条件 ---
-    auto* leftPanel = new wxPanel(this);
+    auto* mainSizer = new wxBoxSizer(wxVERTICAL);
+
+    // 1. 标题栏
+    auto* header = ui::CreateDialogHeader(this, _("History Query"), m_dragStart, m_winStart,
+                                          [this]() { EndModal(wxID_CANCEL); });
+    mainSizer->Add(header, 0, wxEXPAND | wxTOP | wxBOTTOM, 12);
+
+    auto* contentSizer = new wxBoxSizer(wxHORIZONTAL);
+
+    // --- 左侧：查询条件卡片 ---
+    auto* leftCard = new ui::CardPanel(this);
     auto* leftSizer = new wxBoxSizer(wxVERTICAL);
 
-    auto* varBox = new wxStaticBoxSizer(wxVERTICAL, leftPanel, _("Select Variables"));
-    m_varList = new wxCheckListBox(varBox->GetStaticBox(), wxID_ANY, wxDefaultPosition,
-                                   wxDefaultSize, availableVars);
-    for (unsigned int i = 0; i < m_varList->GetCount(); ++i) m_varList->Check(i, true);
-    varBox->Add(m_varList, 1, wxEXPAND | wxALL, 5);
-    leftSizer->Add(varBox, 1, wxEXPAND | wxALL, 5);
+    auto* varTitle = new wxStaticText(leftCard, wxID_ANY, _("Select Variables"));
+    varTitle->SetFont(varTitle->GetFont().Bold());
+    varTitle->SetForegroundColour(ui::kThemeDark);
+    leftSizer->Add(varTitle, 0, wxALL, 12);
 
-    auto* timeBox = new wxStaticBoxSizer(wxVERTICAL, leftPanel, _("Time Range"));
-    auto* startSizer = new wxBoxSizer(wxHORIZONTAL);
-    startSizer->Add(new wxStaticText(timeBox->GetStaticBox(), wxID_ANY, _("Start: ")), 0,
-                    wxALIGN_CENTER_VERTICAL);
+    m_varList =
+        new wxCheckListBox(leftCard, wxID_ANY, wxDefaultPosition, wxDefaultSize, availableVars);
+    for (unsigned int i = 0; i < m_varList->GetCount(); ++i) m_varList->Check(i, true);
+    leftSizer->Add(m_varList, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 12);
+
+    auto* timeTitle = new wxStaticText(leftCard, wxID_ANY, _("Time Range"));
+    timeTitle->SetFont(timeTitle->GetFont().Bold());
+    timeTitle->SetForegroundColour(ui::kThemeDark);
+    leftSizer->Add(timeTitle, 0, wxLEFT | wxRIGHT | wxTOP, 12);
 
     auto now = wxDateTime::Now();
     auto yesterday = now - wxDateSpan::Day();
 
-    m_startDate = new wxDatePickerCtrl(timeBox->GetStaticBox(), wxID_ANY, yesterday);
-    m_startTime = new wxTimePickerCtrl(timeBox->GetStaticBox(), wxID_ANY, yesterday);
+    auto* startSizer = new wxBoxSizer(wxHORIZONTAL);
+    startSizer->Add(new wxStaticText(leftCard, wxID_ANY, _("Start: ")), 0, wxALIGN_CENTER_VERTICAL);
+    m_startDate = new wxDatePickerCtrl(leftCard, wxID_ANY, yesterday);
+    m_startTime = new wxTimePickerCtrl(leftCard, wxID_ANY, yesterday);
     startSizer->Add(m_startDate, 1, wxEXPAND | wxRIGHT, 5);
     startSizer->Add(m_startTime, 1, wxEXPAND);
-    timeBox->Add(startSizer, 0, wxEXPAND | wxALL, 5);
+    leftSizer->Add(startSizer, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
 
     auto* endSizer = new wxBoxSizer(wxHORIZONTAL);
-    endSizer->Add(new wxStaticText(timeBox->GetStaticBox(), wxID_ANY, _("End:   ")), 0,
-                  wxALIGN_CENTER_VERTICAL);
-    m_endDate = new wxDatePickerCtrl(timeBox->GetStaticBox(), wxID_ANY, now);
-    m_endTime = new wxTimePickerCtrl(timeBox->GetStaticBox(), wxID_ANY, now);
+    endSizer->Add(new wxStaticText(leftCard, wxID_ANY, _("End:   ")), 0, wxALIGN_CENTER_VERTICAL);
+    m_endDate = new wxDatePickerCtrl(leftCard, wxID_ANY, now);
+    m_endTime = new wxTimePickerCtrl(leftCard, wxID_ANY, now);
     endSizer->Add(m_endDate, 1, wxEXPAND | wxRIGHT, 5);
     endSizer->Add(m_endTime, 1, wxEXPAND);
-    timeBox->Add(endSizer, 0, wxEXPAND | wxALL, 5);
+    leftSizer->Add(endSizer, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
 
-    leftSizer->Add(timeBox, 0, wxEXPAND | wxALL, 5);
+    auto* btnQuery = new ui::FlatButton(leftCard, _("Query"), ui::kThemeBlue, *wxWHITE, [this]() {
+        wxCommandEvent e;
+        OnQuery(e);
+    });
+    leftSizer->Add(btnQuery, 0, wxEXPAND | wxALL, 12);
 
-    auto* btnQuery = new wxButton(leftPanel, wxID_ANY, _("Query"));
-    btnQuery->Bind(wxEVT_BUTTON, &HistoryDialog::OnQuery, this);
-    leftSizer->Add(btnQuery, 0, wxEXPAND | wxALL, 10);
+    leftCard->SetSizer(leftSizer);
+    contentSizer->Add(leftCard, 1, wxEXPAND | wxRIGHT, 10);
 
-    leftPanel->SetSizer(leftSizer);
-    mainSizer->Add(leftPanel, 0, wxEXPAND | wxALL, 5);
+    // --- 右侧：图表卡片 ---
+    auto* rightCard = new ui::CardPanel(this);
+    auto* rightSizer = new wxBoxSizer(wxVERTICAL);
 
-    // --- 右侧：图表 ---
-    m_chart = new ChartPanel(this);
-    mainSizer->Add(m_chart, 1, wxEXPAND | wxALL, 5);
+    m_chart = new ChartPanel(rightCard);
+    // 图表默认有白底，所以嵌在卡片内看起来很自然
+    rightSizer->Add(m_chart, 1, wxEXPAND | wxALL, 8);
+
+    rightCard->SetSizer(rightSizer);
+    contentSizer->Add(rightCard, 3, wxEXPAND);
+
+    mainSizer->Add(contentSizer, 1, wxEXPAND | wxLEFT | wxRIGHT, 16);
+
+    // 底部关闭按钮
+    auto* btnSizer = new wxBoxSizer(wxHORIZONTAL);
+    auto* btnClose = new ui::FlatButton(this, _("Close"), ui::kBtnGrayBg, ui::kTextColor,
+                                        [this]() { EndModal(wxID_CANCEL); });
+    btnSizer->AddStretchSpacer();
+    btnSizer->Add(btnClose, 0);
+    mainSizer->Add(btnSizer, 0, wxEXPAND | wxALL, 16);
 
     SetSizer(mainSizer);
     CentreOnParent();
@@ -82,7 +114,6 @@ void HistoryDialog::OnQuery(wxCommandEvent&) {
         return;
     }
 
-    // 正确提取时间
     wxDateTime start = m_startDate->GetValue();
     wxDateTime st = m_startTime->GetValue();
     start.SetHour(st.GetHour());
@@ -97,7 +128,6 @@ void HistoryDialog::OnQuery(wxCommandEvent&) {
     end.SetSecond(et.GetSecond());
     end.SetMillisecond(999);
 
-    // wxDateTime::GetValue() 返回的是从 1970-01-01 到现在的毫秒数
     long long startMs = start.GetValue().GetValue();
     long long endMs = end.GetValue().GetValue();
 
@@ -107,11 +137,10 @@ void HistoryDialog::OnQuery(wxCommandEvent&) {
     auto records = m_db->QueryHistory(m_projectPath, startSec, endSec);
 
     m_chart->Clear();
-    m_chart->SetTimeWindow(endSec - startSec);  // 设置时间窗口为查询跨度
+    m_chart->SetTimeWindow(endSec - startSec);
 
     int loadedCount = 0;
     for (const auto& rec : records) {
-        // 过滤未勾选的变量
         if (std::find(selectedVars.begin(), selectedVars.end(), rec.varName) ==
             selectedVars.end()) {
             continue;

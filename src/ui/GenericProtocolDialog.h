@@ -1,6 +1,8 @@
 #pragma once
 
-#include <wx/radiobox.h>
+#include <wx/listbox.h>
+#include <wx/radiobut.h>
+#include <wx/simplebook.h>
 #include <wx/wx.h>
 
 #include <map>
@@ -10,41 +12,82 @@
 
 namespace icu {
 
-// 数据驱动对话框：根据 IProtocol 的字段描述自动生成控件
+class StepIndicatorPanel : public wxPanel {
+public:
+    explicit StepIndicatorPanel(wxWindow* parent);
+    void SetCurrentStep(int currentStep);
+    static constexpr int kTotalSteps = 5;
+
+private:
+    int m_currentStep = 0;
+    void OnPaint(wxPaintEvent& evt);
+    wxDECLARE_EVENT_TABLE();
+};
+
 class GenericProtocolDialog : public wxDialog {
 public:
     GenericProtocolDialog(wxWindow* parent, IProtocol* protocol, int initialModeIndex,
                           const std::map<std::string, FieldValue>& initialValues);
 
+    std::string GetProtocolId() const;
     int GetModeIndex() const;
     std::map<std::string, FieldValue> GetValues() const;
 
 private:
     IProtocol* m_protocol = nullptr;
-    int m_initialMode = 0;
-    std::map<std::string, FieldValue> m_initialValues;
+    std::map<std::string, FieldValue> m_values;
+    int m_selectedModeIndex = 0;
 
-    wxRadioBox* m_modeRadio = nullptr;
-    wxBoxSizer* m_mainSizer = nullptr;
-    wxSizer* m_dynamicSizer = nullptr;
+    int m_currentStep = 0;
 
-    int m_activeModeIndex = -1;
-    wxPanel* m_currentPanel = nullptr;
+    StepIndicatorPanel* m_indicator = nullptr;
+    wxSimplebook* m_book = nullptr;
 
-    // 缓存已生成的控件，避免重复销毁重建
-    std::vector<std::map<std::string, wxWindow*>> m_controlsPerMode;
+    wxButton* m_btnBack = nullptr;
+    wxButton* m_btnNext = nullptr;
+    wxButton* m_btnFinish = nullptr;
+
+    wxListBox* m_protoListBox = nullptr;
+    wxPanel* m_protoDetailPanel = nullptr;
+
+    wxPanel* m_modeContentPanel = nullptr;
+    wxPanel* m_roleContentPanel = nullptr;
+    wxPanel* m_paramContentPanel = nullptr;
+
+    std::map<std::string, wxWindow*> m_controlMap;
 
     void BuildUi();
-    void RebuildFieldsPanel(int modeIndex);
-    wxPanel* CreateFieldsPanel(wxWindow* parent, const std::vector<FieldDescriptor>& fields,
-                               std::map<std::string, wxWindow*>& outControls);
+    void BuildPages();
+    void RebuildPages();  // ★ 核心修复：补充缺失的声明
+
+    wxPanel* CreateProtocolPage(wxWindow* parent);
+    wxPanel* CreateModePage(wxWindow* parent);
+    wxPanel* CreateRolePage(wxWindow* parent);
+    wxPanel* CreateParamsPage(wxWindow* parent);
+    wxPanel* CreateFinishPage(wxWindow* parent);
+
+    void RefreshProtocolDetail();
+    void RefreshModePage();
+    void RefreshRolePage();
+    void RefreshParamsPage();
+
     wxWindow* CreateControl(wxWindow* parent, const FieldDescriptor& fd);
+    void SaveCurrentPageData();
+    void UpdateButtonsState();
+    void OnNext(wxCommandEvent& evt);
+    void OnBack(wxCommandEvent& evt);
 
-    void ApplyInitialValues(int modeIndex, std::map<std::string, wxWindow*>& controls);
-    void CollectValues(int modeIndex, const std::map<std::string, wxWindow*>& controls,
-                       std::map<std::string, FieldValue>& out) const;
+    void OnProtocolSelected(wxCommandEvent& evt);
+    void OnModeRadioChanged(wxCommandEvent& evt);
+    void OnRoleRadioChanged(wxCommandEvent& evt);
 
-    void OnModeChanged(wxCommandEvent& evt);
+    void OnPaint(wxPaintEvent& evt);
+    void OnMouseDown(wxMouseEvent& evt);
+    void OnMouseMove(wxMouseEvent& evt);
+    void OnMouseUp(wxMouseEvent& evt);
+
+    wxPoint m_dragStart;
+    wxPoint m_winStart;
 
     wxDECLARE_EVENT_TABLE();
 };

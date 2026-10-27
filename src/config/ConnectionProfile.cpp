@@ -59,7 +59,6 @@ void ParseSession(const json& j, SessionConfig& outSession) {
             outSession.activeMode = SessionMode::Auto;
     }
 
-    // ★ 解析强类型的 variables 对象
     if (s.contains("variables") && s["variables"].is_object()) {
         for (auto& [key, v] : s["variables"].items()) {
             CommVariable var;
@@ -99,7 +98,7 @@ void ParseSession(const json& j, SessionConfig& outSession) {
 
 void WriteSession(json& j, const SessionConfig& session) {
     j["session"] = json::object();
-    auto& s = j["session"];  // ★ 确保这一行存在
+    auto& s = j["session"];
 
     if (session.activeMode == SessionMode::Manual)
         s["active_mode"] = "manual";
@@ -108,7 +107,6 @@ void WriteSession(json& j, const SessionConfig& session) {
     else if (session.activeMode == SessionMode::Auto)
         s["active_mode"] = "auto";
 
-    // ★ 保存 variables 为 Object 形式
     s["variables"] = json::object();
     for (const auto& [key, var] : session.variables) {
         json v;
@@ -176,8 +174,9 @@ bool ConnectionProfile::Load(const wxString& path, ActiveProfile& out) {
     if (!proto) return false;
 
     int modeIndex = 0;
+    std::string modeName = "";
     if (conn.contains("mode") && conn["mode"].is_string()) {
-        const std::string modeName = conn["mode"].get<std::string>();
+        modeName = conn["mode"].get<std::string>();
         const auto modes = proto->ModeNames();
         for (size_t i = 0; i < modes.size(); ++i) {
             if (modes[i] == modeName) {
@@ -188,11 +187,28 @@ bool ConnectionProfile::Load(const wxString& path, ActiveProfile& out) {
     }
 
     std::map<std::string, FieldValue> fields;
+
+    // 1. 兼容旧版：读取 connection 下平铺的字段
     for (const auto& fd : proto->FieldsForMode(modeIndex)) {
-        if (!conn.contains(fd.key)) continue;
-        const std::string s = JsonToStr(conn[fd.key]);
-        if (s.empty() && !conn[fd.key].is_string()) continue;
-        fields[fd.key] = FieldValue::Deserialize(s, fd.type);
+        if (conn.contains(fd.key)) {
+            const std::string s = JsonToStr(conn[fd.key]);
+            if (!s.empty() || conn[fd.key].is_string()) {
+                fields[fd.key] = FieldValue::Deserialize(s, fd.type);
+            }
+        }
+    }
+
+    // 2. 读取新版：分层结构 connection[ModeName][key]
+    if (!modeName.empty() && conn.contains(modeName) && conn[modeName].is_object()) {
+        const auto& modeObj = conn[modeName];
+        for (const auto& fd : proto->FieldsForMode(modeIndex)) {
+            if (modeObj.contains(fd.key)) {
+                const std::string s = JsonToStr(modeObj[fd.key]);
+                if (!s.empty() || modeObj[fd.key].is_string()) {
+                    fields[fd.key] = FieldValue::Deserialize(s, fd.type);
+                }
+            }
+        }
     }
 
     out.protocolId = protocolId;
@@ -222,14 +238,28 @@ bool ConnectionProfile::Save(const wxString& path, const std::string& protocolId
     j["connection"]["protocol"] = protocolId;
 
     const auto modes = protocol->ModeNames();
+    std::string modeName = "";
     if (modeIndex >= 0 && modeIndex < static_cast<int>(modes.size())) {
-        j["connection"]["mode"] = modes[modeIndex];
+        modeName = modes[modeIndex];
+        j["connection"]["mode"] = modeName;
     }
 
-    for (const auto& fd : protocol->FieldsForMode(modeIndex)) {
-        auto it = fields.find(fd.key);
-        if (it == fields.end()) continue;
-        WriteField(j["connection"], fd.key, it->second, fd.type);
+    // ★ 新版分层结构写入
+    if (!modeName.empty()) {
+        json modeParams = json::object();
+        for (const auto& fd : protocol->FieldsForMode(modeIndex)) {
+            auto it = fields.find(fd.key);
+            if (it == fields.end()) continue;
+            WriteField(modeParams, fd.key, it->second, fd.type);
+        }
+        j["connection"][modeName] = modeParams;
+    } else {
+        // 兜底：单模式无名称的协议直接平铺
+        for (const auto& fd : protocol->FieldsForMode(modeIndex)) {
+            auto it = fields.find(fd.key);
+            if (it == fields.end()) continue;
+            WriteField(j["connection"], fd.key, it->second, fd.type);
+        }
     }
 
     WriteSession(j, session);

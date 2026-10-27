@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <line x1="0" y1="0" x2="0" y2="6" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(15 12)" />
+    <line x1="0" y1="0" x2="6" y2="0" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(12 15)" />
+    <path d="M0 4L0 2C0 1.4477158 0.19526196 0.97631073 0.58578682 0.58578682C0.97631073 0.19526196 1.4477158 0 2 0L12 0C12.552284 0 13.023689 0.19526196 13.414213 0.58578682C13.804737 0.97631073 14 1.4477158 14 2L14 12C14 12.552284 13.804737 13.023689 13.414215 13.414213C13.023689 13.804737 12.552284 14 12 14L2 14C1.4477158 14 0.97631073 13.804737 0.58578682 13.414215C0.19526196 13.023689 0 12.552284 0 12L0 4Z" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(8 8)" />
+    <path d="M2 14C0.9000001 14 0 13.100001 0 12.000001C0 12.000001 0 2 0 2C0 0.9000001 0.9000001 0 2 0C2 0 12.000001 0 12.000001 0C13.100001 0 14 0.9000001 14 2" fill="none" stroke-width="2" stroke="#38BDF8" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)" />
+  </g>
+</svg>

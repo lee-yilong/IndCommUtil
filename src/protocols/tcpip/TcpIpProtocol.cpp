@@ -46,8 +46,8 @@ std::vector<FieldDescriptor> TcpIpProtocol::TcpFields() const {
         {"port", wxTRANSLATE("Port:"), FieldValue::Type::Int, FieldValue(502), 1, 65535},
         {"timeoutMs", wxTRANSLATE("Timeout (ms):"), FieldValue::Type::Int, FieldValue(3000), 100,
          600000},
-        {"maxClients", wxTRANSLATE("Max Clients (Server):"), FieldValue::Type::Int, FieldValue(10),
-         1, 1000}};
+        {"maxClients", wxTRANSLATE("Max Connections:"), FieldValue::Type::Int, FieldValue(10), 1,
+         1000}};
 
     auto reconn = ReconnectConfig::GetFieldDescriptors();
     f.insert(f.end(), reconn.begin(), reconn.end());
