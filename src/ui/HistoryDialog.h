@@ -19,11 +19,13 @@ public:
 
 private:
     void OnQuery(wxCommandEvent& evt);
+    void OnPresetChanged(wxCommandEvent& evt);
 
     Database* m_db;
     std::string m_projectPath;
 
     wxCheckListBox* m_varList;
+    wxChoice* m_presetChoice;
     wxDatePickerCtrl* m_startDate;
     wxTimePickerCtrl* m_startTime;
     wxDatePickerCtrl* m_endDate;

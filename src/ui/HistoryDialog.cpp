@@ -11,6 +11,13 @@
 
 namespace icu {
 
+namespace {
+const int kQuickRangeSeconds[] = {1, 5, 10, 30, 60, 300, 600, 3600, 86400};
+const char* const kQuickRangeLabels[] = {"1s",   "5s",    "10s", "30s", "1min",
+                                         "5min", "10min", "1h",  "24h"};
+constexpr int kQuickRangeCount = 9;
+}  // namespace
+
 HistoryDialog::HistoryDialog(wxWindow* parent, Database* db, const std::string& projectPath,
                              const std::vector<std::string>& availableVars)
     : wxDialog(parent, wxID_ANY, _("History Query"), wxDefaultPosition, wxSize(900, 600),
@@ -41,6 +48,17 @@ HistoryDialog::HistoryDialog(wxWindow* parent, Database* db, const std::string& 
         new wxCheckListBox(leftCard, wxID_ANY, wxDefaultPosition, wxDefaultSize, availableVars);
     for (unsigned int i = 0; i < m_varList->GetCount(); ++i) m_varList->Check(i, true);
     leftSizer->Add(m_varList, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 12);
+
+    auto* quickTitle = new wxStaticText(leftCard, wxID_ANY, _("Quick Range"));
+    quickTitle->SetFont(quickTitle->GetFont().Bold());
+    quickTitle->SetForegroundColour(ui::kThemeDark);
+    leftSizer->Add(quickTitle, 0, wxLEFT | wxRIGHT | wxTOP, 12);
+
+    m_presetChoice = new wxChoice(leftCard, wxID_ANY);
+    for (int i = 0; i < kQuickRangeCount; ++i) m_presetChoice->Append(kQuickRangeLabels[i]);
+    m_presetChoice->SetSelection(8);  // 24h
+    m_presetChoice->Bind(wxEVT_CHOICE, &HistoryDialog::OnPresetChanged, this);
+    leftSizer->Add(m_presetChoice, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
 
     auto* timeTitle = new wxStaticText(leftCard, wxID_ANY, _("Time Range"));
     timeTitle->SetFont(timeTitle->GetFont().Bold());
@@ -98,6 +116,20 @@ HistoryDialog::HistoryDialog(wxWindow* parent, Database* db, const std::string& 
 
     SetSizer(mainSizer);
     CentreOnParent();
+}
+
+void HistoryDialog::OnPresetChanged(wxCommandEvent&) {
+    const int index = m_presetChoice->GetSelection();
+    if (index < 0 || index >= kQuickRangeCount) return;
+
+    const wxDateTime end = wxDateTime::Now();
+    wxDateTime start = end;
+    start.Subtract(wxTimeSpan::Seconds(kQuickRangeSeconds[index]));
+
+    m_startDate->SetValue(start);
+    m_startTime->SetValue(start);
+    m_endDate->SetValue(end);
+    m_endTime->SetValue(end);
 }
 
 void HistoryDialog::OnQuery(wxCommandEvent&) {

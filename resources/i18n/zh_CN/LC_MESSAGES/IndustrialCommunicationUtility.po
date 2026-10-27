@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: IndustrialCommunicationUtility 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-27 21:12+0800\n"
+"POT-Creation-Date: 2026-10-27 21:44+0800\n"
 "PO-Revision-Date: 2026-10-23 12:00+0800\n"
 "Last-Translator: AI Assistant\n"
 "Language-Team: Simplified Chinese\n"
@@ -78,20 +78,20 @@ msgid "English"
 msgstr "English"
 
 #: src/app/MainFrame.cpp:202 src/ui/GenericProtocolDialog.cpp:330
-#: src/ui/SessionPanel.cpp:466 src/ui/SessionPanel.cpp:1874
+#: src/ui/SessionPanel.cpp:505 src/ui/SessionPanel.cpp:1978
 #: src/ui/SettingsDialog.cpp:117 src/ui/TestStepEditDialog.cpp:133
 #: src/ui/UIUtils.h:313 src/ui/UIUtils.h:317 src/ui/VariableEditDialog.cpp:122
 msgid "Cancel"
 msgstr "取消"
 
-#: src/app/MainFrame.cpp:204 src/ui/SessionPanel.cpp:1876
+#: src/app/MainFrame.cpp:204 src/ui/SessionPanel.cpp:1980
 #: src/ui/SettingsDialog.cpp:113 src/ui/TestStepEditDialog.cpp:135
 #: src/ui/UIUtils.h:318 src/ui/UIUtils.h:376 src/ui/VariableEditDialog.cpp:124
 msgid "OK"
 msgstr "确定"
 
 #: src/app/MainFrame.cpp:368 src/app/MainFrame.cpp:779
-#: src/app/MainFrame.cpp:910 src/ui/HistoryDialog.cpp:93
+#: src/app/MainFrame.cpp:910 src/ui/HistoryDialog.cpp:111
 msgid "Close"
 msgstr "关闭"
 
@@ -135,18 +135,18 @@ msgstr "退出"
 msgid "Add"
 msgstr "添加"
 
-#: src/app/MainFrame.cpp:809 src/ui/SessionPanel.cpp:1463
-#: src/ui/SessionPanel.cpp:1517
+#: src/app/MainFrame.cpp:809 src/ui/SessionPanel.cpp:1553
+#: src/ui/SessionPanel.cpp:1607
 msgid "Copy"
 msgstr "复制"
 
 #: src/app/MainFrame.cpp:813 src/app/MainFrame.cpp:941
-#: src/ui/SessionPanel.cpp:1464 src/ui/SessionPanel.cpp:1518
+#: src/ui/SessionPanel.cpp:1554 src/ui/SessionPanel.cpp:1608
 msgid "Edit"
 msgstr "编辑"
 
-#: src/app/MainFrame.cpp:817 src/ui/SessionPanel.cpp:1465
-#: src/ui/SessionPanel.cpp:1519
+#: src/app/MainFrame.cpp:817 src/ui/SessionPanel.cpp:1555
+#: src/ui/SessionPanel.cpp:1609
 msgid "Delete"
 msgstr "删除"
 
@@ -190,19 +190,19 @@ msgstr "还原"
 msgid "Failed to open session"
 msgstr "无法打开会话"
 
-#: src/app/MainFrame.cpp:1308 src/ui/SessionPanel.cpp:2259
+#: src/app/MainFrame.cpp:1308 src/ui/SessionPanel.cpp:2398
 msgid "Connected"
 msgstr "已连接"
 
-#: src/app/MainFrame.cpp:1312 src/ui/SessionPanel.cpp:2246
+#: src/app/MainFrame.cpp:1312 src/ui/SessionPanel.cpp:2385
 msgid "Connecting..."
 msgstr "连接中..."
 
-#: src/app/MainFrame.cpp:1316 src/ui/SessionPanel.cpp:2250
+#: src/app/MainFrame.cpp:1316 src/ui/SessionPanel.cpp:2389
 msgid "Reconnecting..."
 msgstr "重新连接中..."
 
-#: src/app/MainFrame.cpp:1320 src/ui/SessionPanel.cpp:2263
+#: src/app/MainFrame.cpp:1320 src/ui/SessionPanel.cpp:2402
 msgid "Disconnected"
 msgstr "已断开连接"
 
@@ -230,8 +230,8 @@ msgstr "打开连接配置"
 
 #: src/app/MainFrame.cpp:1459 src/app/MainFrame.cpp:1498
 #: src/app/MainFrame.cpp:1507 src/app/MainFrame.cpp:1615
-#: src/ui/LogFrame.cpp:173 src/ui/SessionPanel.cpp:1171
-#: src/ui/SessionPanel.cpp:1257 src/ui/SessionPanel.cpp:2084
+#: src/ui/LogFrame.cpp:173 src/ui/SessionPanel.cpp:1219
+#: src/ui/SessionPanel.cpp:1305 src/ui/SessionPanel.cpp:2188
 msgid "Error"
 msgstr "错误"
 
@@ -835,18 +835,18 @@ msgstr "显示窗口"
 msgid "Exit"
 msgstr "退出"
 
-#: src/ui/ChartPanel.cpp:143
+#: src/ui/ChartPanel.cpp:153
 msgid "(Paused - Double click to follow)"
 msgstr "（已暂停 - 双击恢复跟随）"
 
-#: src/ui/ChartPanel.cpp:192
+#: src/ui/ChartPanel.cpp:202
 msgid "Waiting for data..."
 msgstr "等待数据..."
 
-#: src/ui/ChartPanel.cpp:224
+#: src/ui/ChartPanel.cpp:231
 #, c-format
-msgid "Time (Window: %.1fs)"
-msgstr "时间（窗口：%.1f 秒）"
+msgid "Window: %s"
+msgstr "窗口：%s"
 
 #: src/ui/GenericProtocolDialog.cpp:213 src/ui/GenericProtocolDialog.cpp:362
 msgid "Protocol"
@@ -941,46 +941,50 @@ msgstr "设置完成"
 msgid "Click Finish to create the connection."
 msgstr "点击“完成”创建连接。"
 
-#: src/ui/HistoryDialog.cpp:16 src/ui/HistoryDialog.cpp:25
+#: src/ui/HistoryDialog.cpp:23 src/ui/HistoryDialog.cpp:32
 msgid "History Query"
 msgstr "历史查询"
 
-#: src/ui/HistoryDialog.cpp:35
+#: src/ui/HistoryDialog.cpp:42
 msgid "Select Variables"
 msgstr "选择变量"
 
-#: src/ui/HistoryDialog.cpp:45
+#: src/ui/HistoryDialog.cpp:52
+msgid "Quick Range"
+msgstr "快捷时间段"
+
+#: src/ui/HistoryDialog.cpp:63
 msgid "Time Range"
 msgstr "时间范围"
 
-#: src/ui/HistoryDialog.cpp:54
+#: src/ui/HistoryDialog.cpp:72
 msgid "Start: "
 msgstr "开始："
 
-#: src/ui/HistoryDialog.cpp:62
+#: src/ui/HistoryDialog.cpp:80
 msgid "End:   "
 msgstr "结束："
 
-#: src/ui/HistoryDialog.cpp:69
+#: src/ui/HistoryDialog.cpp:87
 msgid "Query"
 msgstr "查询"
 
-#: src/ui/HistoryDialog.cpp:112
+#: src/ui/HistoryDialog.cpp:144
 msgid "Please select at least one variable."
 msgstr "请至少选择一个变量。"
 
-#: src/ui/HistoryDialog.cpp:112 src/ui/HistoryDialog.cpp:138
-#: src/ui/HistoryDialog.cpp:159 src/ui/SessionPanel.cpp:1082
-#: src/ui/SessionPanel.cpp:1829 src/ui/SessionPanel.cpp:1990
-#: src/ui/SessionPanel.cpp:2015
+#: src/ui/HistoryDialog.cpp:144 src/ui/HistoryDialog.cpp:170
+#: src/ui/HistoryDialog.cpp:191 src/ui/SessionPanel.cpp:1130
+#: src/ui/SessionPanel.cpp:1933 src/ui/SessionPanel.cpp:2094
+#: src/ui/SessionPanel.cpp:2119
 msgid "Notice"
 msgstr "提示"
 
-#: src/ui/HistoryDialog.cpp:138
+#: src/ui/HistoryDialog.cpp:170
 msgid "End time must be later than start time."
 msgstr "结束时间必须晚于开始时间。"
 
-#: src/ui/HistoryDialog.cpp:159
+#: src/ui/HistoryDialog.cpp:191
 msgid "No data found in this time range."
 msgstr "该时间范围内没有数据。"
 
@@ -996,11 +1000,11 @@ msgstr "日志窗口已打开"
 msgid "Load File..."
 msgstr "加载文件..."
 
-#: src/ui/LogFrame.cpp:106 src/ui/SessionPanel.cpp:367
+#: src/ui/LogFrame.cpp:106 src/ui/SessionPanel.cpp:406
 msgid "Clear"
 msgstr "清空"
 
-#: src/ui/LogFrame.cpp:111 src/ui/SessionPanel.cpp:615
+#: src/ui/LogFrame.cpp:111 src/ui/SessionPanel.cpp:663
 msgid "Auto Scroll"
 msgstr "自动滚动"
 
@@ -1017,194 +1021,202 @@ msgstr "已加载日志文件：%s"
 msgid "Failed to open log file."
 msgstr "打开日志文件失败。"
 
-#: src/ui/SessionPanel.cpp:213
+#: src/ui/SessionPanel.cpp:222
 msgid "Communication Variables"
 msgstr "通信变量"
 
-#: src/ui/SessionPanel.cpp:219
+#: src/ui/SessionPanel.cpp:228
 msgid "Name"
 msgstr "名称"
 
-#: src/ui/SessionPanel.cpp:220
+#: src/ui/SessionPanel.cpp:229
 msgid "Type"
 msgstr "类型"
 
-#: src/ui/SessionPanel.cpp:221
+#: src/ui/SessionPanel.cpp:230
 msgid "Access"
 msgstr "权限"
 
-#: src/ui/SessionPanel.cpp:222
+#: src/ui/SessionPanel.cpp:231
 msgid "Value"
 msgstr "值"
 
-#: src/ui/SessionPanel.cpp:316
+#: src/ui/SessionPanel.cpp:331
+msgid "Time Window:"
+msgstr "时间窗口："
+
+#: src/ui/SessionPanel.cpp:343
+msgid "Scroll to zoom · Drag to pan · Double-click to follow"
+msgstr "滚轮缩放 · 拖动平移 · 双击恢复跟随"
+
+#: src/ui/SessionPanel.cpp:355
 msgid "Manual Mode"
 msgstr "手动模式"
 
-#: src/ui/SessionPanel.cpp:317 src/ui/SessionPanel.cpp:2191
+#: src/ui/SessionPanel.cpp:356 src/ui/SessionPanel.cpp:2330
 msgid "Interactive Mode"
 msgstr "交互模式"
 
-#: src/ui/SessionPanel.cpp:318
+#: src/ui/SessionPanel.cpp:357
 msgid "Auto Mode"
 msgstr "自动模式"
 
-#: src/ui/SessionPanel.cpp:319
+#: src/ui/SessionPanel.cpp:358
 msgid "Chart"
 msgstr "图表"
 
-#: src/ui/SessionPanel.cpp:326
+#: src/ui/SessionPanel.cpp:365
 msgid "Operation Request"
 msgstr "操作请求"
 
-#: src/ui/SessionPanel.cpp:335 src/ui/SessionPanel.cpp:1323
+#: src/ui/SessionPanel.cpp:374 src/ui/SessionPanel.cpp:1371
 msgid "Please select a variable from the left list."
 msgstr "请从左侧列表中选择一个变量。"
 
-#: src/ui/SessionPanel.cpp:360
+#: src/ui/SessionPanel.cpp:399
 msgid "Communication Log"
 msgstr "通信日志"
 
-#: src/ui/SessionPanel.cpp:458 src/ui/SessionPanel.cpp:522
+#: src/ui/SessionPanel.cpp:497 src/ui/SessionPanel.cpp:561
 msgid "Open Connection (Ctrl+O)"
 msgstr "打开连接 (Ctrl+O)"
 
-#: src/ui/SessionPanel.cpp:461
+#: src/ui/SessionPanel.cpp:500
 msgid "Stop Listening"
 msgstr "停止监听"
 
-#: src/ui/SessionPanel.cpp:462
+#: src/ui/SessionPanel.cpp:501
 msgid "Disconnect"
 msgstr "断开连接"
 
-#: src/ui/SessionPanel.cpp:470 src/ui/SessionPanel.cpp:523
+#: src/ui/SessionPanel.cpp:509 src/ui/SessionPanel.cpp:562
 msgid "Configure Connection"
 msgstr "配置连接"
 
-#: src/ui/SessionPanel.cpp:475
+#: src/ui/SessionPanel.cpp:514
 msgid "Stop Recording"
 msgstr "停止记录"
 
-#: src/ui/SessionPanel.cpp:475 src/ui/SessionPanel.cpp:524
+#: src/ui/SessionPanel.cpp:514 src/ui/SessionPanel.cpp:563
 msgid "Record Data"
 msgstr "记录数据"
 
-#: src/ui/SessionPanel.cpp:477 src/ui/SessionPanel.cpp:525
+#: src/ui/SessionPanel.cpp:516 src/ui/SessionPanel.cpp:564
 msgid "History"
 msgstr "历史"
 
-#: src/ui/SessionPanel.cpp:480
+#: src/ui/SessionPanel.cpp:519
 msgid "Add Variable (Ctrl+N)"
 msgstr "添加变量 (Ctrl+N)"
 
-#: src/ui/SessionPanel.cpp:480
+#: src/ui/SessionPanel.cpp:519
 msgid "Add Step (Ctrl+N)"
 msgstr "添加步骤 (Ctrl+N)"
 
-#: src/ui/SessionPanel.cpp:481 src/ui/SessionPanel.cpp:530
+#: src/ui/SessionPanel.cpp:520 src/ui/SessionPanel.cpp:569
 msgid "Copy (Ctrl+C)"
 msgstr "复制 (Ctrl+C)"
 
-#: src/ui/SessionPanel.cpp:482 src/ui/SessionPanel.cpp:531
+#: src/ui/SessionPanel.cpp:521 src/ui/SessionPanel.cpp:570
 msgid "Edit (Ctrl+E)"
 msgstr "编辑 (Ctrl+E)"
 
-#: src/ui/SessionPanel.cpp:483 src/ui/SessionPanel.cpp:532
+#: src/ui/SessionPanel.cpp:522 src/ui/SessionPanel.cpp:571
 msgid "Delete (Del)"
 msgstr "删除 (Del)"
 
-#: src/ui/SessionPanel.cpp:486
+#: src/ui/SessionPanel.cpp:525
 msgid "Stop Flow"
 msgstr "停止运行"
 
-#: src/ui/SessionPanel.cpp:486 src/ui/SessionPanel.cpp:536
+#: src/ui/SessionPanel.cpp:525 src/ui/SessionPanel.cpp:575
 msgid "Run Flow"
 msgstr "运行流程"
 
-#: src/ui/SessionPanel.cpp:489 src/ui/SessionPanel.cpp:537
-#: src/ui/SessionPanel.cpp:1521
+#: src/ui/SessionPanel.cpp:528 src/ui/SessionPanel.cpp:576
+#: src/ui/SessionPanel.cpp:1611
 msgid "Batch Create Steps"
 msgstr "批量创建步骤"
 
-#: src/ui/SessionPanel.cpp:490 src/ui/SessionPanel.cpp:541
-#: src/ui/SessionPanel.cpp:1467 src/ui/SessionPanel.cpp:1523
+#: src/ui/SessionPanel.cpp:529 src/ui/SessionPanel.cpp:580
+#: src/ui/SessionPanel.cpp:1557 src/ui/SessionPanel.cpp:1613
 msgid "Move Up"
 msgstr "上移"
 
-#: src/ui/SessionPanel.cpp:491 src/ui/SessionPanel.cpp:542
-#: src/ui/SessionPanel.cpp:1468 src/ui/SessionPanel.cpp:1524
+#: src/ui/SessionPanel.cpp:530 src/ui/SessionPanel.cpp:581
+#: src/ui/SessionPanel.cpp:1558 src/ui/SessionPanel.cpp:1614
 msgid "Move Down"
 msgstr "下移"
 
-#: src/ui/SessionPanel.cpp:529
+#: src/ui/SessionPanel.cpp:568
 msgid "Add (Ctrl+N)"
 msgstr "添加 (Ctrl+N)"
 
-#: src/ui/SessionPanel.cpp:565
+#: src/ui/SessionPanel.cpp:605
 msgid "Received: 0 bytes"
 msgstr "已接收: 0 字节"
 
-#: src/ui/SessionPanel.cpp:566
+#: src/ui/SessionPanel.cpp:606
 msgid "Sent: 0 bytes"
 msgstr "已发送: 0 字节"
 
-#: src/ui/SessionPanel.cpp:567
+#: src/ui/SessionPanel.cpp:607
 msgid "Clients: 0"
 msgstr "客户端: 0"
 
-#: src/ui/SessionPanel.cpp:613
+#: src/ui/SessionPanel.cpp:661
 msgid "HEX Display"
 msgstr "HEX 显示"
 
-#: src/ui/SessionPanel.cpp:614
+#: src/ui/SessionPanel.cpp:662
 msgid "Timestamp"
 msgstr "时间戳"
 
-#: src/ui/SessionPanel.cpp:732
+#: src/ui/SessionPanel.cpp:780
 #, c-format
 msgid "Value (%s):"
 msgstr "值（%s）："
 
-#: src/ui/SessionPanel.cpp:786
+#: src/ui/SessionPanel.cpp:834
 msgid "Raw Bytes:"
 msgstr "原始字节："
 
-#: src/ui/SessionPanel.cpp:807 src/ui/SessionPanel.cpp:1115
-#: src/ui/SessionPanel.cpp:1141
+#: src/ui/SessionPanel.cpp:855 src/ui/SessionPanel.cpp:1163
+#: src/ui/SessionPanel.cpp:1189
 msgid "Send"
 msgstr "发送"
 
-#: src/ui/SessionPanel.cpp:815
+#: src/ui/SessionPanel.cpp:863
 msgid "Read"
 msgstr "读取"
 
-#: src/ui/SessionPanel.cpp:820
+#: src/ui/SessionPanel.cpp:868
 msgid "Write"
 msgstr "写入"
 
-#: src/ui/SessionPanel.cpp:860 src/ui/SessionPanel.cpp:1011
-#: src/ui/SessionPanel.cpp:1094
+#: src/ui/SessionPanel.cpp:908 src/ui/SessionPanel.cpp:1059
+#: src/ui/SessionPanel.cpp:1142
 msgid "Modbus register value must be 0..65535."
 msgstr "Modbus 寄存器值必须在 0..65535 之间。"
 
-#: src/ui/SessionPanel.cpp:864 src/ui/SessionPanel.cpp:1015
-#: src/ui/SessionPanel.cpp:1098
+#: src/ui/SessionPanel.cpp:912 src/ui/SessionPanel.cpp:1063
+#: src/ui/SessionPanel.cpp:1146
 msgid "Modbus register value must be an integer."
 msgstr "Modbus 寄存器值必须是整数。"
 
-#: src/ui/SessionPanel.cpp:871
+#: src/ui/SessionPanel.cpp:919
 msgid "Please enter a value."
 msgstr "请输入一个值。"
 
-#: src/ui/SessionPanel.cpp:875
+#: src/ui/SessionPanel.cpp:923
 msgid "Invalid value: "
 msgstr "无效的值："
 
-#: src/ui/SessionPanel.cpp:916
+#: src/ui/SessionPanel.cpp:964
 msgid "+ New Variable"
 msgstr "+ 新建变量"
 
-#: src/ui/SessionPanel.cpp:1020
+#: src/ui/SessionPanel.cpp:1068
 #, c-format
 msgid ""
 "Write failed: invalid value for type %s.\n"
@@ -1212,17 +1224,17 @@ msgid ""
 "%s"
 msgstr "写入失败：类型 %s 的值无效。\\n\\n%s"
 
-#: src/ui/SessionPanel.cpp:1022 src/ui/SessionPanel.cpp:1106
-#: src/ui/SessionPanel.cpp:1152 src/ui/TestStepEditDialog.cpp:189
+#: src/ui/SessionPanel.cpp:1070 src/ui/SessionPanel.cpp:1154
+#: src/ui/SessionPanel.cpp:1200 src/ui/TestStepEditDialog.cpp:189
 #: src/ui/TestStepEditDialog.cpp:203
 msgid "Invalid Value"
 msgstr "无效的值"
 
-#: src/ui/SessionPanel.cpp:1082
+#: src/ui/SessionPanel.cpp:1130
 msgid "Payload is empty. Please fill in the 'Value' field."
 msgstr "负载为空，请填写“值”字段。"
 
-#: src/ui/SessionPanel.cpp:1104
+#: src/ui/SessionPanel.cpp:1152
 #, c-format
 msgid ""
 "%s failed: invalid value for type %s.\n"
@@ -1230,12 +1242,12 @@ msgid ""
 "%s"
 msgstr "%s失败：类型 %s 的值无效。\\n\\n%s"
 
-#: src/ui/SessionPanel.cpp:1126 src/ui/SessionPanel.cpp:1160
+#: src/ui/SessionPanel.cpp:1174 src/ui/SessionPanel.cpp:1208
 #, c-format
 msgid "Sent: %llu bytes"
 msgstr "已发送: %llu 字节"
 
-#: src/ui/SessionPanel.cpp:1150
+#: src/ui/SessionPanel.cpp:1198
 #, c-format
 msgid ""
 "Send failed: invalid value for type %s.\n"
@@ -1243,32 +1255,32 @@ msgid ""
 "%s"
 msgstr "发送失败：类型 %s 的值无效。\\n\\n%s"
 
-#: src/ui/SessionPanel.cpp:1171
+#: src/ui/SessionPanel.cpp:1219
 msgid "Send failed"
 msgstr "发送失败"
 
-#: src/ui/SessionPanel.cpp:1257
+#: src/ui/SessionPanel.cpp:1305
 msgid "Variable name already exists."
 msgstr "变量名已存在。"
 
-#: src/ui/SessionPanel.cpp:1350 src/ui/SessionPanel.cpp:2089
+#: src/ui/SessionPanel.cpp:1398 src/ui/SessionPanel.cpp:2193
 msgid "Pending"
 msgstr "等待中"
 
-#: src/ui/SessionPanel.cpp:1353
+#: src/ui/SessionPanel.cpp:1401
 msgid "+ New Step"
 msgstr "+ 新建步骤"
 
-#: src/ui/SessionPanel.cpp:1462 src/ui/VariableEditDialog.cpp:13
+#: src/ui/SessionPanel.cpp:1552 src/ui/VariableEditDialog.cpp:13
 #: src/ui/VariableEditDialog.cpp:22
 msgid "Add Variable"
 msgstr "添加变量"
 
-#: src/ui/SessionPanel.cpp:1516
+#: src/ui/SessionPanel.cpp:1606
 msgid "Add Step"
 msgstr "添加步骤"
 
-#: src/ui/SessionPanel.cpp:1573
+#: src/ui/SessionPanel.cpp:1663
 #, c-format
 msgid ""
 "Step %d failed:\n"
@@ -1282,100 +1294,128 @@ msgstr ""
 "步骤 %d 失败：\\n\\n%s\\n\\n是 = 重试此步骤\\n否 = 跳过此步骤\\n取消 = 结束流"
 "程"
 
-#: src/ui/SessionPanel.cpp:1577
+#: src/ui/SessionPanel.cpp:1667
 msgid "Step Failed"
 msgstr "步骤失败"
 
-#: src/ui/SessionPanel.cpp:1607
+#: src/ui/SessionPanel.cpp:1697
 msgid "Auto Mode Test Flow"
 msgstr "自动模式测试流程"
 
-#: src/ui/SessionPanel.cpp:1607
+#: src/ui/SessionPanel.cpp:1697
 msgid "Interactive Mode Test Flow"
 msgstr "交互模式测试流程"
 
-#: src/ui/SessionPanel.cpp:1618
+#: src/ui/SessionPanel.cpp:1717
 msgid "Step Name"
 msgstr "步骤名称"
 
-#: src/ui/SessionPanel.cpp:1619
+#: src/ui/SessionPanel.cpp:1718
 msgid "Status"
 msgstr "状态"
 
-#: src/ui/SessionPanel.cpp:1829
+#: src/ui/SessionPanel.cpp:1933
 msgid "Please select a base step first."
 msgstr "请先选择一个基准步骤。"
 
-#: src/ui/SessionPanel.cpp:1836 src/ui/SessionPanel.cpp:1841
+#: src/ui/SessionPanel.cpp:1940 src/ui/SessionPanel.cpp:1945
 msgid "Batch Generate Steps"
 msgstr "批量生成步骤"
 
-#: src/ui/SessionPanel.cpp:1859
+#: src/ui/SessionPanel.cpp:1963
 msgid "Repeat Count:"
 msgstr "重复次数："
 
-#: src/ui/SessionPanel.cpp:1863
+#: src/ui/SessionPanel.cpp:1967
 msgid "Interval (ms):"
 msgstr "间隔（毫秒）："
 
-#: src/ui/SessionPanel.cpp:1867
+#: src/ui/SessionPanel.cpp:1971
 msgid "Auto Increment/Decrement:"
 msgstr "自动递增/递减："
 
-#: src/ui/SessionPanel.cpp:1990
+#: src/ui/SessionPanel.cpp:2094
 msgid "No enabled variables to record."
 msgstr "没有已启用的变量可记录。"
 
-#: src/ui/SessionPanel.cpp:1994
+#: src/ui/SessionPanel.cpp:2098
 msgid "Select variables to record:"
 msgstr "选择要记录的变量："
 
-#: src/ui/SessionPanel.cpp:1994
+#: src/ui/SessionPanel.cpp:2098
 msgid "Record Settings"
 msgstr "记录设置"
 
-#: src/ui/SessionPanel.cpp:2015
+#: src/ui/SessionPanel.cpp:2119
 msgid "No readable variables found."
 msgstr "没有找到可读变量。"
 
-#: src/ui/SessionPanel.cpp:2077
+#: src/ui/SessionPanel.cpp:2181
 #, c-format
 msgid "Protocol '%s' does not support action '%s'."
 msgstr "协议 '%s' 不支持动作 '%s'。"
 
-#: src/ui/SessionPanel.cpp:2079
+#: src/ui/SessionPanel.cpp:2183
 msgid "Unsupported Action"
 msgstr "不支持的动作"
 
-#: src/ui/SessionPanel.cpp:2084
+#: src/ui/SessionPanel.cpp:2188
 msgid "No valid steps."
 msgstr "没有有效的步骤。"
 
-#: src/ui/SessionPanel.cpp:2104
+#: src/ui/SessionPanel.cpp:2211
 msgid "Running"
 msgstr "运行中"
 
-#: src/ui/SessionPanel.cpp:2108
+#: src/ui/SessionPanel.cpp:2215
 msgid "Passed"
 msgstr "通过"
 
-#: src/ui/SessionPanel.cpp:2112
+#: src/ui/SessionPanel.cpp:2219
 msgid "Failed"
 msgstr "失败"
 
-#: src/ui/SessionPanel.cpp:2116
+#: src/ui/SessionPanel.cpp:2223
 msgid "Skipped"
 msgstr "已跳过"
 
-#: src/ui/SessionPanel.cpp:2169
+#: src/ui/SessionPanel.cpp:2236
+#, c-format
+msgid "Running %d / %d"
+msgstr "正在执行 %d / %d"
+
+#: src/ui/SessionPanel.cpp:2241
+#, c-format
+msgid "Completed %d / %d"
+msgstr "已完成 %d / %d"
+
+#: src/ui/SessionPanel.cpp:2246
+#, c-format
+msgid "Step %d failed"
+msgstr "第 %d 步失败"
+
+#: src/ui/SessionPanel.cpp:2251
+#, c-format
+msgid "Skipped %d / %d"
+msgstr "已跳过 %d / %d"
+
+#: src/ui/SessionPanel.cpp:2304
+msgid "Finished"
+msgstr "已完成"
+
+#: src/ui/SessionPanel.cpp:2304
+msgid "Stopped"
+msgstr "已停止"
+
+#: src/ui/SessionPanel.cpp:2308
 msgid "Test Finished Successfully\n"
 msgstr "测试成功完成\n"
 
-#: src/ui/SessionPanel.cpp:2169
+#: src/ui/SessionPanel.cpp:2308
 msgid "Test Failed\n"
 msgstr "测试失败\n"
 
-#: src/ui/SessionPanel.cpp:2189
+#: src/ui/SessionPanel.cpp:2328
 #, c-format
 msgid ""
 "Step %d finished.\n"
@@ -1386,45 +1426,45 @@ msgstr ""
 "\n"
 "准备执行步骤 %d。是否继续？"
 
-#: src/ui/SessionPanel.cpp:2224
+#: src/ui/SessionPanel.cpp:2363
 #, c-format
 msgid "Target: %s"
 msgstr "目标: %s"
 
-#: src/ui/SessionPanel.cpp:2242
+#: src/ui/SessionPanel.cpp:2381
 msgid "Idle"
 msgstr "空闲"
 
-#: src/ui/SessionPanel.cpp:2256
+#: src/ui/SessionPanel.cpp:2395
 #, c-format
 msgid "Connected (%d)"
 msgstr "已连接 (%d)"
 
-#: src/ui/SessionPanel.cpp:2257
+#: src/ui/SessionPanel.cpp:2396
 msgid "Listening"
 msgstr "正在监听"
 
-#: src/ui/SessionPanel.cpp:2276
+#: src/ui/SessionPanel.cpp:2415
 #, c-format
 msgid "Clients: %d"
 msgstr "客户端: %d"
 
-#: src/ui/SessionPanel.cpp:2286 src/ui/SessionPanel.cpp:2400
+#: src/ui/SessionPanel.cpp:2425 src/ui/SessionPanel.cpp:2539
 #, c-format
 msgid "Received: %llu bytes"
 msgstr "已接收: %llu 字节"
 
-#: src/ui/SessionPanel.cpp:2329
+#: src/ui/SessionPanel.cpp:2468
 #, c-format
 msgid "Reconnecting (attempt %d) ...\n"
 msgstr "正在重连（第 %d 次）...\n"
 
-#: src/ui/SessionPanel.cpp:2342
+#: src/ui/SessionPanel.cpp:2481
 #, c-format
 msgid "Client #%d connected\n"
 msgstr "客户端 #%d 已连接\n"
 
-#: src/ui/SessionPanel.cpp:2355
+#: src/ui/SessionPanel.cpp:2494
 #, c-format
 msgid "Client #%d disconnected\n"
 msgstr "客户端 #%d 已断开\n"

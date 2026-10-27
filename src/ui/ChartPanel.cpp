@@ -11,6 +11,16 @@
 
 namespace icu {
 
+namespace {
+wxString FormatDuration(double seconds) {
+    if (seconds >= 86400) return wxString::Format("%.0fd", seconds / 86400.0);
+    if (seconds >= 3600) return wxString::Format("%.0fh", seconds / 3600.0);
+    if (seconds >= 60) return wxString::Format("%.0fmin", seconds / 60.0);
+    if (seconds >= 1) return wxString::Format("%.0fs", seconds);
+    return wxString::Format("%.0fms", seconds * 1000.0);
+}
+}  // namespace
+
 // clang-format off
 wxBEGIN_EVENT_TABLE(ChartPanel, wxPanel)
     EVT_PAINT(ChartPanel::OnPaint)
@@ -105,8 +115,8 @@ void ChartPanel::OnPaint(wxPaintEvent&) {
     wxSize size = GetClientSize();
     int paddingLeft = 60;
     int paddingRight = 120;
-    int paddingTop = 20;
-    int paddingBottom = 40;
+    int paddingTop = 30;
+    int paddingBottom = 28;
 
     int plotWidth = size.x - paddingLeft - paddingRight;
     int plotHeight = size.y - paddingTop - paddingBottom;
@@ -189,42 +199,54 @@ void ChartPanel::DrawXAxis(wxGraphicsContext* gc, const wxSize& size) {
     }
 
     if (!hasData) {
-        gc->DrawText(_("Waiting for data..."), size.x / 2 - 50, size.y + 5);
+        gc->DrawText(_("Waiting for data..."), size.x / 2 - 50, size.y + 6);
         return;
     }
 
     double viewEnd = m_autoFollow ? maxTime : (m_viewEnd == 0 ? maxTime : m_viewEnd);
     double viewStart = viewEnd - m_viewWindow;
 
-    int xSteps = 5;
+    auto toDateTime = [](double seconds) {
+        auto tp = std::chrono::system_clock::from_time_t(0) +
+                  std::chrono::milliseconds(static_cast<long long>(seconds * 1000));
+        return wxDateTime(std::chrono::system_clock::to_time_t(tp));
+    };
+
+    const wxDateTime startDt = toDateTime(viewStart);
+    const wxDateTime endDt = toDateTime(viewEnd);
+
+    // 日期只显示一次，X 轴刻度只保留 hh:mm:ss
+    gc->SetFont(wxFont(9, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL),
+                wxColour(90, 90, 90));
+    wxString dateText;
+    if (startDt.Format("%Y-%m-%d") == endDt.Format("%Y-%m-%d"))
+        dateText = endDt.Format("%Y-%m-%d");
+    else
+        dateText = startDt.Format("%Y-%m-%d") + " ~ " + endDt.Format("%Y-%m-%d");
+
+    double tw = 0, th = 0;
+    gc->GetTextExtent(dateText, &tw, &th);
+    gc->DrawText(dateText, 0, -th - 4);
+
+    wxString windowText = wxString::Format(_("Window: %s"), FormatDuration(m_viewWindow));
+    gc->GetTextExtent(windowText, &tw, &th);
+    gc->DrawText(windowText, size.x - tw, -th - 4);
+
+    gc->SetFont(wxFont(9, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL), *wxBLACK);
+
+    // 按可用宽度决定刻度数量，避免时间文字互相重叠
+    int xSteps = size.x / 110;
+    xSteps = std::max(2, std::min(6, xSteps));
     for (int i = 0; i <= xSteps; ++i) {
         double x = size.x * i / xSteps;
-        double ratio = (double)i / xSteps;
+        double t = viewStart + m_viewWindow * i / xSteps;
+        wxString text = toDateTime(t).Format("%H:%M:%S");
 
-        double t = viewStart + m_viewWindow * ratio;
-
-        auto tp = std::chrono::system_clock::from_time_t(0) +
-                  std::chrono::milliseconds(static_cast<long long>(t * 1000));
-        std::time_t time_t_val = std::chrono::system_clock::to_time_t(tp);
-        wxDateTime dt(time_t_val);
-
-        wxString text;
-        if (m_viewWindow < 60) {
-            auto ms = static_cast<long long>(t * 1000) % 1000;
-            text = wxString::Format("%s.%03lld", dt.Format("%H:%M:%S"), ms);
-        } else {
-            text = dt.Format("%H:%M:%S");
-        }
-
-        double tw, th;
         gc->GetTextExtent(text, &tw, &th);
-        gc->DrawText(text, x - tw / 2, size.y + 5);
+        double drawX = x - tw / 2;
+        drawX = std::max(0.0, std::min(drawX, size.x - tw));
+        gc->DrawText(text, drawX, size.y + 6);
     }
-
-    wxString label = wxString::Format(_("Time (Window: %.1fs)"), m_viewWindow);
-    double tw, th;
-    gc->GetTextExtent(label, &tw, &th);
-    gc->DrawText(label, size.x / 2 - tw / 2, size.y + 20);
 }
 
 void ChartPanel::DrawLines(wxGraphicsContext* gc, const wxSize& size) {

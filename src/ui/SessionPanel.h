@@ -98,6 +98,14 @@ private:
     wxPanel* m_manualPage = nullptr;
     wxPanel* m_interactivePage = nullptr;
     wxPanel* m_autoPage = nullptr;
+    wxChoice* m_chartWindowChoice = nullptr;
+
+    wxGauge* m_autoProgressGauge = nullptr;
+    wxGauge* m_interactiveProgressGauge = nullptr;
+    wxStaticText* m_autoProgressLabel = nullptr;
+    wxStaticText* m_interactiveProgressLabel = nullptr;
+    wxListCtrl* m_runningStepList = nullptr;
+    long m_runningStepRow = -1;
 
     // ★ 原生 wxBitmapButton 工具栏：直接响应点击，不做 UPDATE_UI 轮询。
     //   这里缓存每个按钮当前显示的图标 / 可用状态 / 提示，只有真正变化时才刷新控件，
@@ -219,6 +227,9 @@ private:
     void OnListMotion(wxListCtrl* list, const wxPoint& pos);
     void OnListLeftUp(wxListCtrl* list, const wxPoint& pos);
     void CancelListDrag();
+    void UpdateStepProgress(wxListCtrl* list, int completed, const wxString& text);
+    void HighlightRunningStep(wxListCtrl* list, long row);
+    void ClearRunningHighlight();
     void MoveVariableOrder(long from, long to);
     void MoveStepOrder(wxListCtrl* stepList, nlohmann::json& flow, long from, long to);
     // 测试步骤失败时询问用户：重试 / 跳过 / 结束

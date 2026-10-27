@@ -77,6 +77,10 @@ bool TryParseNumeric(const std::string& type, const std::string& val, double& ou
     return false;
 }
 
+wxString LogTimestamp() {
+    return wxDateTime::Now().Format("[%Y-%m-%d %H:%M:%S] ");
+}
+
 enum {
     idTbAction = 5000,
     idTbConfigure,
@@ -91,6 +95,11 @@ enum {
     idTbUp,
     idTbDown
 };
+
+const int kChartWindowSeconds[] = {1, 5, 10, 30, 60, 300, 600, 3600, 86400};
+const char* const kChartWindowLabels[] = {"1s",   "5s",    "10s", "30s", "1min",
+                                          "5min", "10min", "1h",  "24h"};
+constexpr int kChartWindowCount = 9;
 }  // namespace
 
 SessionPanel::SessionPanel(wxWindow* parent, IProtocol* protocol, int modeIndex, ISession* session,
@@ -174,7 +183,7 @@ void SessionPanel::AppendUnifiedLog(bool isRx, const std::string& varName, const
                                     const std::string& value, const std::vector<uint8_t>& rawBytes,
                                     int clientId) {
     if (!m_commonLogCtrl) return;
-    wxString timeStr = wxDateTime::Now().Format("[%H:%M:%S.%l] ");
+    wxString timeStr = LogTimestamp();
     wxString dirStr = isRx ? (clientId > 0 ? wxString::Format("<#%d ", clientId) : "< ") : "> ";
     wxString varStr = wxString::FromUTF8(varName);
     if (varStr.IsEmpty()) varStr = "Unknown";
@@ -307,16 +316,46 @@ void SessionPanel::BuildUi() {
     m_manualPage = new wxPanel(m_modeNotebook);
     m_interactivePage = new wxPanel(m_modeNotebook);
     m_autoPage = new wxPanel(m_modeNotebook);
-    m_chartPanel = new ChartPanel(m_modeNotebook);
 
     m_manualPage->SetBackgroundColour(kBgColor);
     m_interactivePage->SetBackgroundColour(kBgColor);
     m_autoPage->SetBackgroundColour(kBgColor);
 
+    auto* chartPage = new wxPanel(m_modeNotebook);
+    chartPage->SetBackgroundColour(kBgColor);
+    m_chartPanel = new ChartPanel(chartPage);
+
+    auto* chartSizer = new wxBoxSizer(wxVERTICAL);
+    auto* chartBar = new wxBoxSizer(wxHORIZONTAL);
+
+    auto* windowTitle = new wxStaticText(chartPage, wxID_ANY, _("Time Window:"));
+    windowTitle->SetForegroundColour(kSubTextColor);
+    m_chartWindowChoice = new wxChoice(chartPage, wxID_ANY);
+    for (int i = 0; i < kChartWindowCount; ++i) m_chartWindowChoice->Append(kChartWindowLabels[i]);
+    m_chartWindowChoice->SetSelection(2);  // 10s
+    m_chartWindowChoice->Bind(wxEVT_CHOICE, [this](wxCommandEvent&) {
+        const int index = m_chartWindowChoice->GetSelection();
+        if (index >= 0 && index < kChartWindowCount && m_chartPanel)
+            m_chartPanel->SetTimeWindow(kChartWindowSeconds[index]);
+    });
+
+    auto* chartHint = new wxStaticText(chartPage, wxID_ANY,
+                                       _("Scroll to zoom · Drag to pan · Double-click to follow"));
+    chartHint->SetForegroundColour(kSubTextColor);
+
+    chartBar->Add(windowTitle, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
+    chartBar->Add(m_chartWindowChoice, 0, wxALIGN_CENTER_VERTICAL);
+    chartBar->AddStretchSpacer();
+    chartBar->Add(chartHint, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 4);
+
+    chartSizer->Add(chartBar, 0, wxEXPAND | wxALL, 8);
+    chartSizer->Add(m_chartPanel, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 8);
+    chartPage->SetSizer(chartSizer);
+
     m_modeNotebook->AddPage(m_manualPage, _("Manual Mode"));
     m_modeNotebook->AddPage(m_interactivePage, _("Interactive Mode"));
     m_modeNotebook->AddPage(m_autoPage, _("Auto Mode"));
-    m_modeNotebook->AddPage(m_chartPanel, _("Chart"));
+    m_modeNotebook->AddPage(chartPage, _("Chart"));
     m_modeNotebook->Bind(wxEVT_NOTEBOOK_PAGE_CHANGED, &SessionPanel::OnNotebookPageChanged, this);
 
     auto* manualSizer = new wxBoxSizer(wxVERTICAL);
@@ -549,27 +588,36 @@ void SessionPanel::BuildCommonUi(wxBoxSizer* mainSizer) {
     // ★ 注意：这里不再绑定 wxEVT_UPDATE_UI。按钮的可用状态 / 图标由
     //   UpdateToolbarState() 在会话状态、列表选中、模式切换等时机显式刷新。
 
-    auto* statusRow = new wxBoxSizer(wxHORIZONTAL);
+    auto* infoRow = new wxBoxSizer(wxHORIZONTAL);
 
     m_statusLabel = new wxStaticText(topPanel, wxID_ANY, "-");
     wxFont f2 = m_statusLabel->GetFont();
     f2.MakeBold();
     f2.SetPointSize(10);
     m_statusLabel->SetFont(f2);
-    statusRow->Add(m_statusLabel, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, 16);
+    infoRow->Add(m_statusLabel, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, 16);
 
-    m_targetLabel = new wxStaticText(topPanel, wxID_ANY, "-");
+    m_targetLabel = new wxStaticText(topPanel, wxID_ANY, "-", wxDefaultPosition, wxDefaultSize,
+                                     wxST_ELLIPSIZE_END);
     m_targetLabel->SetForegroundColour(kSubTextColor);
-    statusRow->Add(m_targetLabel, 1, wxALIGN_CENTER_VERTICAL | wxLEFT, 16);
+    infoRow->Add(m_targetLabel, 1, wxALIGN_CENTER_VERTICAL | wxLEFT, 16);
 
     m_rxLabel = new wxStaticText(topPanel, wxID_ANY, _("Received: 0 bytes"));
     m_txLabel = new wxStaticText(topPanel, wxID_ANY, _("Sent: 0 bytes"));
     m_clientsLabel = new wxStaticText(topPanel, wxID_ANY, _("Clients: 0"));
-    statusRow->Add(m_rxLabel, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 12);
-    statusRow->Add(m_txLabel, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 12);
-    statusRow->Add(m_clientsLabel, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 16);
+    m_rxLabel->SetForegroundColour(kSubTextColor);
+    m_txLabel->SetForegroundColour(kSubTextColor);
+    m_clientsLabel->SetForegroundColour(kSubTextColor);
 
-    topSizer->Add(statusRow, 0, wxEXPAND | wxTOP | wxBOTTOM, 12);
+    // 收发统计单独放一行右对齐，避免和目标地址挤在一起导致文字被裁剪/叠住
+    auto* statsRow = new wxBoxSizer(wxHORIZONTAL);
+    statsRow->AddStretchSpacer();
+    statsRow->Add(m_rxLabel, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 16);
+    statsRow->Add(m_txLabel, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 16);
+    statsRow->Add(m_clientsLabel, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 16);
+
+    topSizer->Add(infoRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
+    topSizer->Add(statsRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
 
     topPanel->SetSizer(topSizer);
     mainSizer->Add(topPanel, 0, wxEXPAND | wxALL, 6);
@@ -1415,6 +1463,50 @@ void SessionPanel::CancelListDrag() {
     m_dragging = false;
 }
 
+void SessionPanel::UpdateStepProgress(wxListCtrl* list, int completed, const wxString& text) {
+    const bool autoMode = (list == m_autoStepList);
+    wxGauge* gauge = autoMode ? m_autoProgressGauge : m_interactiveProgressGauge;
+    wxStaticText* label = autoMode ? m_autoProgressLabel : m_interactiveProgressLabel;
+    if (!list) return;
+
+    const int total = std::max(0, static_cast<int>(list->GetItemCount()) - 1);
+    const int value = std::max(0, std::min(completed, total));
+    if (gauge) {
+        gauge->SetRange(std::max(1, total));
+        gauge->SetValue(value);
+    }
+    if (label) {
+        label->SetLabel(text.IsEmpty() ? wxString::Format("%d / %d", value, total) : text);
+        label->GetParent()->Layout();
+    }
+}
+
+void SessionPanel::HighlightRunningStep(wxListCtrl* list, long row) {
+    if (!list || row < 0 || row >= list->GetItemCount() - 1) return;
+    if (m_runningStepList == list && m_runningStepRow == row) {
+        // 重试同一步时把失败时的红色背景恢复成运行中的蓝色
+        list->SetItemBackgroundColour(row, wxColour(219, 234, 254));
+        list->EnsureVisible(row);
+        return;
+    }
+
+    ClearRunningHighlight();
+    list->SetItemBackgroundColour(row, wxColour(219, 234, 254));
+    list->SetItemState(row, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED);
+    list->EnsureVisible(row);
+    m_runningStepList = list;
+    m_runningStepRow = row;
+}
+
+void SessionPanel::ClearRunningHighlight() {
+    if (m_runningStepList && m_runningStepRow >= 0 &&
+        m_runningStepRow < m_runningStepList->GetItemCount() - 1) {
+        m_runningStepList->SetItemBackgroundColour(m_runningStepRow, kCardBgColor);
+    }
+    m_runningStepList = nullptr;
+    m_runningStepRow = -1;
+}
+
 void SessionPanel::MoveVariableOrder(long from, long to) {
     if (!m_sessionConfig) return;
     auto& order = m_sessionConfig->variableOrder;
@@ -1612,6 +1704,15 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     header->SetForegroundColour(kSubTextColor);
     cardSizer->Add(header, 0, wxLEFT | wxRIGHT | wxTOP, 12);
 
+    auto* progressRow = new wxBoxSizer(wxHORIZONTAL);
+    auto* progressGauge = new wxGauge(card, wxID_ANY, 100, wxDefaultPosition, wxSize(-1, 10));
+    progressGauge->SetValue(0);
+    auto* progressLabel = new wxStaticText(card, wxID_ANY, "0 / 0");
+    progressLabel->SetForegroundColour(kSubTextColor);
+    progressRow->Add(progressGauge, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
+    progressRow->Add(progressLabel, 0, wxALIGN_CENTER_VERTICAL);
+    cardSizer->Add(progressRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 12);
+
     auto* stepList = new wxListCtrl(card, wxID_ANY, wxDefaultPosition, wxDefaultSize,
                                     wxLC_REPORT | wxBORDER_NONE);
     stepList->SetBackgroundColour(kCardBgColor);
@@ -1623,10 +1724,15 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     main->Add(card, 1, wxEXPAND | wxALL, 6);
     parent->SetSizer(main);
 
-    if (isAutoMode)
+    if (isAutoMode) {
         m_autoStepList = stepList;
-    else
+        m_autoProgressGauge = progressGauge;
+        m_autoProgressLabel = progressLabel;
+    } else {
         m_interactiveStepList = stepList;
+        m_interactiveProgressGauge = progressGauge;
+        m_interactiveProgressLabel = progressLabel;
+    }
 
     stepList->Bind(wxEVT_LEFT_DOWN, [this, stepList](wxMouseEvent& evt) {
         m_activeContext = ActiveContext::Steps;
@@ -2088,7 +2194,10 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
     for (int i = 0; i < stepList->GetItemCount() - 1; ++i) {
         stepList->SetItem(i, 1, _("Pending"));
         stepList->SetItemTextColour(i, *wxBLACK);
+        stepList->SetItemBackgroundColour(i, kCardBgColor);
     }
+    ClearRunningHighlight();
+    UpdateStepProgress(stepList, 0, wxString::Format("0 / %d", static_cast<int>(flow.size())));
 
     m_testRunner =
         new TestRunner(m_protocol, m_session, std::move(steps), m_sessionConfig->variables);
@@ -2119,6 +2228,29 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
             }
             stepList->SetItem(index, 1, text);
             stepList->SetItemTextColour(index, colour);
+
+            const int total = std::max(0, static_cast<int>(stepList->GetItemCount()) - 1);
+            switch (status) {
+                case StepStatus::Running:
+                    HighlightRunningStep(stepList, index);
+                    UpdateStepProgress(stepList, index,
+                                       wxString::Format(_("Running %d / %d"), index + 1, total));
+                    break;
+                case StepStatus::Passed:
+                    UpdateStepProgress(stepList, index + 1,
+                                       wxString::Format(_("Completed %d / %d"), index + 1, total));
+                    break;
+                case StepStatus::Failed:
+                    stepList->SetItemBackgroundColour(index, wxColour(254, 226, 226));
+                    UpdateStepProgress(stepList, index,
+                                       wxString::Format(_("Step %d failed"), index + 1));
+                    break;
+                case StepStatus::Skipped:
+                    stepList->SetItemBackgroundColour(index, kCardBgColor);
+                    UpdateStepProgress(stepList, index + 1,
+                                       wxString::Format(_("Skipped %d / %d"), index + 1, total));
+                    break;
+            }
             stepList->EnsureVisible(index);
             RefreshVariableList();
             // 同步手动操作区显示的值，避免运行后仍显示旧值
@@ -2149,8 +2281,7 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
     m_testRunner->OnStepLog([this](const std::string& msg) {
         CallAfter([this, msg]() {
             if (m_commonLogCtrl) {
-                m_commonLogCtrl->AppendText(wxDateTime::Now().Format("[%H:%M:%S.%l] ") +
-                                            wxString::FromUTF8(msg) + "\n");
+                m_commonLogCtrl->AppendText(LogTimestamp() + wxString::FromUTF8(msg) + "\n");
                 m_commonLogCtrl->SetInsertionPointEnd();
             }
         });
@@ -2161,11 +2292,17 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
         CallAfter([this, varName, val]() { RecordData(varName, val); });
     });
 
-    m_testRunner->OnFinished([this](bool overallSuccess) {
-        CallAfter([this, overallSuccess]() {
+    m_testRunner->OnFinished([this, stepList](bool overallSuccess) {
+        CallAfter([this, stepList, overallSuccess]() {
+            const int total =
+                stepList ? std::max(0, static_cast<int>(stepList->GetItemCount()) - 1) : 0;
+            const int completed = (m_runningStepRow >= 0) ? m_runningStepRow + 1 : 0;
+            ClearRunningHighlight();
+            UpdateStepProgress(stepList, overallSuccess ? total : completed,
+                               overallSuccess ? _("Finished") : _("Stopped"));
             if (m_commonLogCtrl) {
                 m_commonLogCtrl->AppendText(
-                    wxDateTime::Now().Format("[%H:%M:%S.%l] ") +
+                    LogTimestamp() +
                     (overallSuccess ? _("Test Finished Successfully\n") : _("Test Failed\n")));
                 m_commonLogCtrl->SetInsertionPointEnd();
             }
@@ -2325,7 +2462,7 @@ void SessionPanel::BindStreamCallbacks() {
         CallAfter([this, attempt]() {
             if (m_commonLogCtrl) {
                 m_commonLogCtrl->AppendText(
-                    wxDateTime::Now().Format("[%H:%M:%S.%l] ") +
+                    LogTimestamp() +
                     wxString::Format(_("Reconnecting (attempt %d) ...\n"), attempt));
                 m_commonLogCtrl->SetInsertionPointEnd();
             }
@@ -2338,7 +2475,7 @@ void SessionPanel::BindStreamCallbacks() {
             UpdateClientsLabel();
             UpdateStateLabel(m_session->State());
             if (m_commonLogCtrl) {
-                m_commonLogCtrl->AppendText(wxDateTime::Now().Format("[%H:%M:%S.%l] ") +
+                m_commonLogCtrl->AppendText(LogTimestamp() +
                                             wxString::Format(_("Client #%d connected\n"), cid));
                 m_commonLogCtrl->SetInsertionPointEnd();
             }
@@ -2351,7 +2488,7 @@ void SessionPanel::BindStreamCallbacks() {
             UpdateClientsLabel();
             UpdateStateLabel(m_session->State());
             if (m_commonLogCtrl) {
-                m_commonLogCtrl->AppendText(wxDateTime::Now().Format("[%H:%M:%S.%l] ") +
+                m_commonLogCtrl->AppendText(LogTimestamp() +
                                             wxString::Format(_("Client #%d disconnected\n"), cid));
                 m_commonLogCtrl->SetInsertionPointEnd();
             }
@@ -2376,8 +2513,7 @@ void SessionPanel::BindTransactionCallbacks() {
     m_txSession->OnLog([this](const std::string& msg) {
         CallAfter([this, msg]() {
             if (m_commonLogCtrl) {
-                m_commonLogCtrl->AppendText(wxDateTime::Now().Format("[%H:%M:%S.%l] ") +
-                                            wxString::FromUTF8(msg) + "\n");
+                m_commonLogCtrl->AppendText(LogTimestamp() + wxString::FromUTF8(msg) + "\n");
                 m_commonLogCtrl->SetInsertionPointEnd();
             }
         });
