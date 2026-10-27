@@ -12,6 +12,7 @@
 #include <wx/textctrl.h>
 #include <wx/wx.h>
 
+#include <chrono>
 #include <condition_variable>
 #include <functional>
 #include <map>
@@ -30,6 +31,7 @@
 #include "protocols/mqtt/MqttSession.h"
 #include "ui/ChartPanel.h"
 #include "ui/HistoryDialog.h"
+#include "ui/LogList.h"
 #include "ui/UIUtils.h"
 
 namespace icu {
@@ -94,6 +96,8 @@ private:
     void AppendUnifiedLog(bool isRx, const std::string& varName, const std::string& type,
                           const std::string& value, const std::vector<uint8_t>& rawBytes,
                           int clientId = 0);
+    void AppendLogMessage(const wxString& text, bool error = false);
+    void AppendRunnerLog(const wxString& text);
 
     wxSplitterWindow* m_mainSplitter = nullptr;
     wxSplitterWindow* m_rightSplitter = nullptr;
@@ -106,6 +110,10 @@ private:
 
     ui::ProgressBar* m_autoProgressBar = nullptr;
     ui::ProgressBar* m_interactiveProgressBar = nullptr;
+    wxStaticText* m_autoRatioLabel = nullptr;
+    wxStaticText* m_interactiveRatioLabel = nullptr;
+    wxStaticText* m_autoTimeLabel = nullptr;
+    wxStaticText* m_interactiveTimeLabel = nullptr;
     ui::FlatButton* m_autoRetryBtn = nullptr;
     ui::FlatButton* m_autoStopBtn = nullptr;
     ui::FlatButton* m_interactiveRetryBtn = nullptr;
@@ -115,6 +123,13 @@ private:
     wxListCtrl* m_activeStepList = nullptr;
     wxListCtrl* m_runningStepList = nullptr;
     long m_runningStepRow = -1;
+
+    std::chrono::steady_clock::time_point m_runStart;
+    long long m_plannedWaitMs = 0;
+    long long m_extraWaitMs = 0;
+    bool m_runTimingActive = false;
+    std::chrono::steady_clock::time_point m_failureWaitStart;
+    wxTimer* m_runTimer = nullptr;
 
     struct PendingFailure {
         std::mutex mutex;
@@ -166,7 +181,7 @@ private:
     size_t m_txBytes = 0;
     int m_clientCount = 0;
 
-    wxTextCtrl* m_commonLogCtrl = nullptr;
+    ui::LogList* m_commonLogCtrl = nullptr;
 
     wxCheckBox* m_hexDisplay = nullptr;
     wxCheckBox* m_showTimestamp = nullptr;
@@ -245,6 +260,7 @@ private:
     void OnListLeftUp(wxListCtrl* list, const wxPoint& pos);
     void CancelListDrag();
     void UpdateStepProgress(wxListCtrl* list, int completed, const wxString& text);
+    void UpdateRunTiming(wxListCtrl* list);
     void HighlightRunningStep(wxListCtrl* list, long row);
     void ClearRunningHighlight();
     void ShowInlineFailure(wxListCtrl* list, int stepIndex, const wxString& message,

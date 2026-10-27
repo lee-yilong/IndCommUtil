@@ -77,8 +77,14 @@ bool TryParseNumeric(const std::string& type, const std::string& val, double& ou
     return false;
 }
 
-wxString LogTimestamp() {
-    return wxDateTime::Now().Format("[%Y-%m-%d %H:%M:%S] ");
+wxString FormatDurationCN(long long milliseconds) {
+    if (milliseconds < 0) milliseconds = 0;
+    const long long totalSec = (milliseconds + 500) / 1000;
+    if (totalSec >= 3600) {
+        return wxString::Format("%02lld%s%02lld%s%02lld%s", totalSec / 3600, _("h"),
+                                (totalSec % 3600) / 60, _("min"), totalSec % 60, _("s"));
+    }
+    return wxString::Format("%02lld%s%02lld%s", totalSec / 60, _("min"), totalSec % 60, _("s"));
 }
 
 int ShowMsg(const wxString& message, const wxString& title, long style,
@@ -130,6 +136,11 @@ SessionPanel::SessionPanel(wxWindow* parent, IProtocol* protocol, int modeIndex,
 
     BuildUi();
 
+    m_runTimer = new wxTimer(this);
+    Bind(wxEVT_TIMER, [this](wxTimerEvent&) {
+        if (m_runTimingActive) UpdateRunTiming(m_activeStepList);
+    });
+
     if (m_streamSession)
         BindStreamCallbacks();
     else if (m_txSession)
@@ -153,6 +164,11 @@ SessionPanel::SessionPanel(wxWindow* parent, IProtocol* protocol, int modeIndex,
 }
 
 SessionPanel::~SessionPanel() {
+    if (m_runTimer) {
+        m_runTimer->Stop();
+        delete m_runTimer;
+        m_runTimer = nullptr;
+    }
     if (m_pendingFailure) {
         {
             std::lock_guard<std::mutex> lock(m_pendingFailure->mutex);
@@ -176,6 +192,11 @@ void SessionPanel::ApplyGlobalSettings() {
     if (m_hexDisplay) m_hexDisplay->SetValue(ui.GetHexDisplay());
     if (m_showTimestamp) m_showTimestamp->SetValue(ui.GetShowTimestamp());
     if (m_autoScroll) m_autoScroll->SetValue(ui.GetAutoScroll());
+    if (m_commonLogCtrl) {
+        m_commonLogCtrl->SetShowHex(ui.GetHexDisplay());
+        m_commonLogCtrl->SetShowTime(ui.GetShowTimestamp());
+        m_commonLogCtrl->SetAutoScroll(ui.GetAutoScroll());
+    }
 }
 
 void SessionPanel::RecordData(const std::string& varName, double value) {
@@ -196,26 +217,54 @@ void SessionPanel::AppendUnifiedLog(bool isRx, const std::string& varName, const
                                     const std::string& value, const std::vector<uint8_t>& rawBytes,
                                     int clientId) {
     if (!m_commonLogCtrl) return;
-    wxString timeStr = LogTimestamp();
-    wxString dirStr = isRx ? (clientId > 0 ? wxString::Format("<#%d ", clientId) : "< ") : "> ";
+
+    const wxString timeStr = wxDateTime::Now().Format("%H:%M:%S");
     wxString varStr = wxString::FromUTF8(varName);
     if (varStr.IsEmpty()) varStr = "Unknown";
-    wxString typeStr = wxString::FromUTF8(type);
-    wxString valStr = wxString::FromUTF8(value);
+    const wxString typeStr = wxString::FromUTF8(type);
+    const wxString valStr = wxString::FromUTF8(value);
 
     wxString hexStr;
     for (uint8_t b : rawBytes) hexStr += wxString::Format("%02X ", b);
     hexStr = hexStr.Trim();
+    if (!hexStr.IsEmpty()) hexStr = "HEX " + hexStr;
 
-    wxString line;
-    if (typeStr.IsEmpty() || typeStr == "Unknown") {
-        line = timeStr + dirStr + wxString::Format("%s | HEX: %s\n", varStr, hexStr);
-    } else {
-        line = timeStr + dirStr +
-               wxString::Format("%s (%s): %s | HEX: %s\n", varStr, typeStr, valStr, hexStr);
-    }
-    m_commonLogCtrl->AppendText(line);
-    m_commonLogCtrl->SetInsertionPointEnd();
+    wxString content;
+    if (isRx && clientId > 0)
+        content = wxString::Format("#%d  %s", clientId, valStr);
+    else if (isRx)
+        content = valStr;
+    else
+        content = wxString::Format("%s = %s", varStr, valStr);
+
+    if (!typeStr.IsEmpty() && typeStr != "Unknown" && !isRx)
+        content = wxString::Format("%s (%s) = %s", varStr, typeStr, valStr);
+
+    m_commonLogCtrl->Append(timeStr, isRx ? ui::LogList::Kind::Receive : ui::LogList::Kind::Send,
+                            content, hexStr);
+}
+
+void SessionPanel::AppendLogMessage(const wxString& text, bool error) {
+    if (!m_commonLogCtrl) return;
+    m_commonLogCtrl->AppendMessage(wxDateTime::Now().Format("%H:%M:%S"), text, error);
+}
+
+void SessionPanel::AppendRunnerLog(const wxString& text) {
+    if (!m_commonLogCtrl) return;
+    const wxString timeStr = wxDateTime::Now().Format("%H:%M:%S");
+
+    if (text.StartsWith(">>> "))
+        m_commonLogCtrl->Append(timeStr, ui::LogList::Kind::Send, text.Mid(4));
+    else if (text.StartsWith("=> "))
+        m_commonLogCtrl->Append(timeStr, ui::LogList::Kind::Send, text.Mid(3));
+    else if (text.StartsWith("<<< "))
+        m_commonLogCtrl->Append(timeStr, ui::LogList::Kind::Receive, text.Mid(4));
+    else if (text.StartsWith("!!! "))
+        m_commonLogCtrl->Append(timeStr, ui::LogList::Kind::Error, text.Mid(4));
+    else if (text.StartsWith("^^^ ") || text.StartsWith("--- "))
+        m_commonLogCtrl->AppendMessage(timeStr, text.Mid(4));
+    else
+        m_commonLogCtrl->AppendMessage(timeStr, text);
 }
 
 void SessionPanel::BuildUi() {
@@ -438,12 +487,35 @@ void SessionPanel::BuildUi() {
     logHeaderSizer->Add(clearBtn, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 12);
     logMainSizer->Add(logHeaderSizer, 0, wxEXPAND | wxTOP | wxBOTTOM, 8);
 
-    m_commonLogCtrl = new wxTextCtrl(logCard, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
-                                     wxTE_MULTILINE | wxTE_READONLY | wxTE_RICH2 | wxBORDER_NONE);
-    wxFont mono(10, wxFONTFAMILY_TELETYPE, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
-    m_commonLogCtrl->SetFont(mono);
-    m_commonLogCtrl->SetBackgroundColour(wxColour(249, 250, 251));
+    // 表头：时间 / 方向 / 内容，和 LogList 的绘制列保持一致
+    auto* columnsPanel =
+        new wxPanel(logCard, wxID_ANY, wxDefaultPosition, wxSize(-1, 28), wxBORDER_NONE);
+    columnsPanel->SetBackgroundColour(wxColour(248, 250, 252));
+    auto* columnsSizer = new wxBoxSizer(wxHORIZONTAL);
+    auto addColumn = [&](const wxString& text, int width, int left) {
+        auto* label = new wxStaticText(columnsPanel, wxID_ANY, text);
+        label->SetFont(label->GetFont().Scaled(0.9).Bold());
+        label->SetForegroundColour(wxColour(100, 116, 139));
+        label->SetMinSize(wxSize(width, -1));
+        columnsSizer->Add(label, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, left);
+        return label;
+    };
+    addColumn(_("Time"), ui::LogList::kTimeWidth, ui::LogList::kTimeX);
+    addColumn(_("Direction"), ui::LogList::kDirectionWidth,
+              ui::LogList::kDirectionX - ui::LogList::kTimeX - ui::LogList::kTimeWidth);
+    auto* contentColumn = new wxStaticText(columnsPanel, wxID_ANY, _("Content"));
+    contentColumn->SetFont(contentColumn->GetFont().Scaled(0.9).Bold());
+    contentColumn->SetForegroundColour(wxColour(100, 116, 139));
+    columnsSizer->Add(
+        contentColumn, 1, wxALIGN_CENTER_VERTICAL | wxLEFT,
+        ui::LogList::kContentX - ui::LogList::kDirectionX - ui::LogList::kDirectionWidth);
+    columnsPanel->SetSizer(columnsSizer);
+    logMainSizer->Add(columnsPanel, 0, wxEXPAND | wxLEFT | wxRIGHT, 8);
 
+    m_commonLogCtrl = new ui::LogList(logCard);
+    m_commonLogCtrl->SetShowHex(settings::UISettings::Instance().GetHexDisplay());
+    m_commonLogCtrl->SetShowTime(settings::UISettings::Instance().GetShowTimestamp());
+    m_commonLogCtrl->SetAutoScroll(settings::UISettings::Instance().GetAutoScroll());
     logMainSizer->Add(m_commonLogCtrl, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 8);
 
     logCard->SetSizer(logMainSizer);
@@ -693,14 +765,17 @@ void SessionPanel::BuildStreamUi(wxBoxSizer* mainSizer, wxWindow* parentWindow) 
     m_showTimestamp->SetValue(ui.GetShowTimestamp());
     m_autoScroll->SetValue(ui.GetAutoScroll());
 
-    m_hexDisplay->Bind(wxEVT_CHECKBOX, [](wxCommandEvent& evt) {
+    m_hexDisplay->Bind(wxEVT_CHECKBOX, [this](wxCommandEvent& evt) {
         settings::UISettings::Instance().SetHexDisplay(evt.IsChecked());
+        if (m_commonLogCtrl) m_commonLogCtrl->SetShowHex(evt.IsChecked());
     });
-    m_showTimestamp->Bind(wxEVT_CHECKBOX, [](wxCommandEvent& evt) {
+    m_showTimestamp->Bind(wxEVT_CHECKBOX, [this](wxCommandEvent& evt) {
         settings::UISettings::Instance().SetShowTimestamp(evt.IsChecked());
+        if (m_commonLogCtrl) m_commonLogCtrl->SetShowTime(evt.IsChecked());
     });
-    m_autoScroll->Bind(wxEVT_CHECKBOX, [](wxCommandEvent& evt) {
+    m_autoScroll->Bind(wxEVT_CHECKBOX, [this](wxCommandEvent& evt) {
         settings::UISettings::Instance().SetAutoScroll(evt.IsChecked());
+        if (m_commonLogCtrl) m_commonLogCtrl->SetAutoScroll(evt.IsChecked());
     });
 
     logToolbar->Add(m_hexDisplay, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 16);
@@ -1496,11 +1571,32 @@ void SessionPanel::UpdateStepProgress(wxListCtrl* list, int completed, const wxS
 
     const bool autoMode = (list == m_autoStepList);
     ui::ProgressBar* bar = autoMode ? m_autoProgressBar : m_interactiveProgressBar;
+    wxStaticText* ratioLabel = autoMode ? m_autoRatioLabel : m_interactiveRatioLabel;
     if (!bar) return;
 
     const int total = std::max(0, static_cast<int>(list->GetItemCount()) - 1);
     const int value = std::max(0, std::min(completed, total));
     bar->SetProgress(value, total);
+    if (ratioLabel) ratioLabel->SetLabel(wxString::Format("%d / %d", value, total));
+    UpdateRunTiming(list);
+}
+
+void SessionPanel::UpdateRunTiming(wxListCtrl* list) {
+    const bool autoMode = (list == m_autoStepList);
+    wxStaticText* label = autoMode ? m_autoTimeLabel : m_interactiveTimeLabel;
+    if (!label) return;
+
+    if (!m_runTimingActive) {
+        label->SetLabel(wxString::Format(_("Est./Elapsed: %s, %s"), "--", "--"));
+        return;
+    }
+
+    const auto now = std::chrono::steady_clock::now();
+    const long long elapsedMs =
+        std::chrono::duration_cast<std::chrono::milliseconds>(now - m_runStart).count();
+    const long long estimatedMs = m_plannedWaitMs + m_extraWaitMs;
+    label->SetLabel(wxString::Format(_("Est./Elapsed: %s, %s"), FormatDurationCN(estimatedMs),
+                                     FormatDurationCN(elapsedMs)));
 }
 
 void SessionPanel::HighlightRunningStep(wxListCtrl* list, long row) {
@@ -1703,6 +1799,7 @@ void SessionPanel::ShowInlineFailure(wxListCtrl* list, int stepIndex, const wxSt
         if (state->done) return;
     }
     m_pendingFailure = state;
+    m_failureWaitStart = std::chrono::steady_clock::now();
 
     const bool autoMode = (list == m_autoStepList);
     ui::FlatButton* retry = autoMode ? m_autoRetryBtn : m_interactiveRetryBtn;
@@ -1747,6 +1844,15 @@ void SessionPanel::ResolvePendingFailure(StepFailureAction action) {
     }
     state->cv.notify_all();
     m_pendingFailure.reset();
+
+    if (m_runTimingActive && m_failureWaitStart != std::chrono::steady_clock::time_point{}) {
+        const auto now = std::chrono::steady_clock::now();
+        m_extraWaitMs +=
+            std::chrono::duration_cast<std::chrono::milliseconds>(now - m_failureWaitStart).count();
+        m_failureWaitStart = {};
+        UpdateRunTiming(m_activeStepList);
+    }
+
     HideInlineFailure();
 }
 
@@ -1763,20 +1869,43 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     hf.MakeBold();
     progressTitle->SetFont(hf);
     progressTitle->SetForegroundColour(kSubTextColor);
+
     auto* progressBar = new ui::ProgressBar(card);
-    auto* retryBtn = new ui::FlatButton(card, _("Retry"), kThemeColor, *wxWHITE, [this]() {
+    progressBar->SetMinSize(wxSize(180, 22));
+    progressBar->SetMaxSize(wxSize(180, 22));
+
+    auto* ratioLabel = new wxStaticText(card, wxID_ANY, "0 / 0");
+    ratioLabel->SetMinSize(wxSize(80, -1));
+    ratioLabel->SetForegroundColour(kTextColor);
+
+    auto* timeLabel = new wxStaticText(card, wxID_ANY, "");
+    timeLabel->SetForegroundColour(kSubTextColor);
+
+    // 固定宽度按钮区：即使按钮隐藏也保留位置，避免进度条随状态伸缩
+    auto* actionPanel =
+        new wxPanel(card, wxID_ANY, wxDefaultPosition, wxSize(176, 32), wxBORDER_NONE);
+    actionPanel->SetBackgroundColour(kCardBgColor);
+    actionPanel->SetMinSize(wxSize(176, 32));
+    auto* actionSizer = new wxBoxSizer(wxHORIZONTAL);
+    auto* retryBtn = new ui::FlatButton(actionPanel, _("Retry"), kThemeColor, *wxWHITE, [this]() {
         ResolvePendingFailure(StepFailureAction::Retry);
     });
-    auto* stopBtn = new ui::FlatButton(card, _("Stop"), kBorderColor, kTextColor, [this]() {
+    auto* stopBtn = new ui::FlatButton(actionPanel, _("Stop"), kBorderColor, kTextColor, [this]() {
         ResolvePendingFailure(StepFailureAction::Stop);
     });
     retryBtn->Hide();
     stopBtn->Hide();
+    actionSizer->Add(retryBtn, 0, wxRIGHT, 6);
+    actionSizer->Add(stopBtn, 0);
+    actionPanel->SetSizer(actionSizer);
+
     progressRow->Add(progressTitle, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
-    progressRow->Add(progressBar, 1, wxALIGN_CENTER_VERTICAL | wxRIGHT, 8);
-    progressRow->Add(retryBtn, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 6);
-    progressRow->Add(stopBtn, 0, wxALIGN_CENTER_VERTICAL);
+    progressRow->Add(progressBar, 0, wxALIGN_CENTER_VERTICAL | wxRIGHT, 10);
+    progressRow->Add(ratioLabel, 0, wxALIGN_CENTER_VERTICAL);
+    progressRow->AddStretchSpacer(1);
+    progressRow->Add(actionPanel, 0, wxALIGN_CENTER_VERTICAL);
     cardSizer->Add(progressRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
+    cardSizer->Add(timeLabel, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 10);
 
     auto* failLabel = new wxStaticText(card, wxID_ANY, "");
     failLabel->SetForegroundColour(wxColour(198, 40, 40));
@@ -1798,12 +1927,16 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     if (isAutoMode) {
         m_autoStepList = stepList;
         m_autoProgressBar = progressBar;
+        m_autoRatioLabel = ratioLabel;
+        m_autoTimeLabel = timeLabel;
         m_autoRetryBtn = retryBtn;
         m_autoStopBtn = stopBtn;
         m_autoFailLabel = failLabel;
     } else {
         m_interactiveStepList = stepList;
         m_interactiveProgressBar = progressBar;
+        m_interactiveRatioLabel = ratioLabel;
+        m_interactiveTimeLabel = timeLabel;
         m_interactiveRetryBtn = retryBtn;
         m_interactiveStopBtn = stopBtn;
         m_interactiveFailLabel = failLabel;
@@ -2278,6 +2411,13 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
     }
     ClearRunningHighlight();
     HideInlineFailure();
+    m_plannedWaitMs = 0;
+    for (const auto& stepJson : flow) m_plannedWaitMs += stepJson.value("wait_ms", 0);
+    m_extraWaitMs = 0;
+    m_runStart = std::chrono::steady_clock::now();
+    m_runTimingActive = true;
+    m_failureWaitStart = {};
+    if (m_runTimer) m_runTimer->Start(500);
     UpdateStepProgress(stepList, 0, wxString::Format("0 / %d", static_cast<int>(flow.size())));
 
     m_testRunner =
@@ -2363,12 +2503,7 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
         [this](int index, const std::string& msg) { return AskStepFailure(index, msg); });
 
     m_testRunner->OnStepLog([this](const std::string& msg) {
-        CallAfter([this, msg]() {
-            if (m_commonLogCtrl) {
-                m_commonLogCtrl->AppendText(LogTimestamp() + wxString::FromUTF8(msg) + "\n");
-                m_commonLogCtrl->SetInsertionPointEnd();
-            }
-        });
+        CallAfter([this, msg]() { AppendRunnerLog(wxString::FromUTF8(msg)); });
     });
 
     m_testRunner->OnDataRecorded([this](const std::string& varName, double val) {
@@ -2387,12 +2522,10 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
             m_activeStepList = nullptr;
             UpdateStepProgress(stepList, overallSuccess ? total : completed,
                                overallSuccess ? _("Finished") : _("Stopped"));
-            if (m_commonLogCtrl) {
-                m_commonLogCtrl->AppendText(
-                    LogTimestamp() +
-                    (overallSuccess ? _("Test Finished Successfully\n") : _("Test Failed\n")));
-                m_commonLogCtrl->SetInsertionPointEnd();
-            }
+            m_runTimingActive = false;
+            if (m_runTimer) m_runTimer->Stop();
+            AppendLogMessage(overallSuccess ? _("Test Finished Successfully") : _("Test Failed"),
+                             !overallSuccess);
             if (m_testRunner) {
                 // 先 join 线程再释放，避免回调尚未返回时对象已被销毁
                 m_testRunner->Stop();
@@ -2549,12 +2682,7 @@ void SessionPanel::BindStreamCallbacks() {
 
     m_streamSession->OnReconnectAttempt([this](int attempt) {
         CallAfter([this, attempt]() {
-            if (m_commonLogCtrl) {
-                m_commonLogCtrl->AppendText(
-                    LogTimestamp() +
-                    wxString::Format(_("Reconnecting (attempt %d) ...\n"), attempt));
-                m_commonLogCtrl->SetInsertionPointEnd();
-            }
+            AppendLogMessage(wxString::Format(_("Reconnecting (attempt %d) ..."), attempt));
         });
     });
 
@@ -2563,11 +2691,7 @@ void SessionPanel::BindStreamCallbacks() {
             ++m_clientCount;
             UpdateClientsLabel();
             UpdateStateLabel(m_session->State());
-            if (m_commonLogCtrl) {
-                m_commonLogCtrl->AppendText(LogTimestamp() +
-                                            wxString::Format(_("Client #%d connected\n"), cid));
-                m_commonLogCtrl->SetInsertionPointEnd();
-            }
+            AppendLogMessage(wxString::Format(_("Client #%d connected"), cid));
         });
     });
 
@@ -2576,11 +2700,7 @@ void SessionPanel::BindStreamCallbacks() {
             if (m_clientCount > 0) --m_clientCount;
             UpdateClientsLabel();
             UpdateStateLabel(m_session->State());
-            if (m_commonLogCtrl) {
-                m_commonLogCtrl->AppendText(LogTimestamp() +
-                                            wxString::Format(_("Client #%d disconnected\n"), cid));
-                m_commonLogCtrl->SetInsertionPointEnd();
-            }
+            AppendLogMessage(wxString::Format(_("Client #%d disconnected"), cid));
         });
     });
 
@@ -2600,12 +2720,7 @@ void SessionPanel::BindTransactionCallbacks() {
         });
     });
     m_txSession->OnLog([this](const std::string& msg) {
-        CallAfter([this, msg]() {
-            if (m_commonLogCtrl) {
-                m_commonLogCtrl->AppendText(LogTimestamp() + wxString::FromUTF8(msg) + "\n");
-                m_commonLogCtrl->SetInsertionPointEnd();
-            }
-        });
+        CallAfter([this, msg]() { AppendRunnerLog(wxString::FromUTF8(msg)); });
     });
 }
 

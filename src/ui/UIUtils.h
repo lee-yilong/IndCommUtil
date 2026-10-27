@@ -278,12 +278,11 @@ private:
 
         if (ratio > 0.0) {
             const double fillWidth = std::max(6.0, size.x * ratio);
-            gc->SetBrush(wxBrush(kThemeBlue));
+            gc->SetBrush(wxBrush(wxColour(34, 197, 94)));
             gc->DrawRoundedRectangle(0, 0, fillWidth, size.y, 5);
         }
 
-        const wxString text =
-            wxString::Format("%d/%d  %d%%", m_value, m_total, static_cast<int>(ratio * 100));
+        const wxString text = wxString::Format("%.2f%%", ratio * 100.0);
         gc->SetFont(GetFont().Scaled(0.95), ratio >= 0.5 ? *wxWHITE : kTextColor);
         double tw = 0, th = 0;
         gc->GetTextExtent(text, &tw, &th);
