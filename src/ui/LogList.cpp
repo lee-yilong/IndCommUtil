@@ -34,6 +34,10 @@ LogList::LogList(wxWindow* parent)
         if (evt.IsShown() && m_autoScroll) ScrollToBottom();
         evt.Skip();
     });
+    Bind(wxEVT_SIZE, [this](wxSizeEvent& evt) {
+        evt.Skip();
+        Refresh();
+    });
 }
 
 void LogList::ScrollToBottom() {

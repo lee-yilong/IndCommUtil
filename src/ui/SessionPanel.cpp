@@ -7,6 +7,10 @@
 #include <wx/mousestate.h>
 #include <wx/stdpaths.h>
 #include <wx/tokenzr.h>
+#ifdef __WXMSW__
+#include <commctrl.h>
+#include <wx/msw/wrapwin.h>
+#endif
 
 #include <algorithm>
 #include <chrono>
@@ -28,6 +32,105 @@
 #include "ui/UIUtils.h"
 
 namespace icu {
+
+namespace {
+
+enum class StepVisual { Pending, Running, Passed, Failed, Skipped };
+
+#ifdef __WXMSW__
+// wxListCtrl 只能设置整行颜色；这里用 MSW 的 NM_CUSTOMDRAW 给状态列单独上色，
+// 名称/详情保持与通信日志时间相同的灰色。
+class StepListCtrl : public wxListCtrl {
+public:
+    StepListCtrl(wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size,
+                 long style)
+        : wxListCtrl(parent, id, pos, size, style) {}
+
+    void ResetStatuses(size_t count) {
+        m_status.assign(count, static_cast<int>(StepVisual::Pending));
+        Refresh();
+    }
+
+    void SetRowStatus(long row, StepVisual visual) {
+        if (row < 0) return;
+        if (m_status.size() <= static_cast<size_t>(row))
+            m_status.resize(static_cast<size_t>(row) + 1, static_cast<int>(StepVisual::Pending));
+        m_status[static_cast<size_t>(row)] = static_cast<int>(visual);
+        Refresh();
+    }
+
+protected:
+    WXLRESULT MSWWindowProc(WXUINT msg, WXWPARAM wParam, WXLPARAM lParam) override {
+        if (msg == WM_NOTIFY) {
+            auto* hdr = reinterpret_cast<LPNMHDR>(lParam);
+            if (hdr && hdr->hwndFrom == GetHandle() && hdr->code == NM_CUSTOMDRAW) {
+                auto* cd = reinterpret_cast<LPNMLVCUSTOMDRAW>(lParam);
+                switch (cd->nmcd.dwDrawStage) {
+                    case CDDS_PREPAINT:
+                        return CDRF_NOTIFYITEMDRAW;
+                    case CDDS_ITEMPREPAINT:
+                        return CDRF_NOTIFYSUBITEMDRAW;
+                    case CDDS_ITEMPREPAINT | CDDS_SUBITEM: {
+                        const long row = static_cast<long>(cd->nmcd.dwItemSpec);
+                        if (row >= 0 && static_cast<size_t>(row) < m_status.size()) {
+                            wxColour color(100, 116, 139);  // 通信日志时间颜色
+                            if (cd->iSubItem == 1) {
+                                switch (static_cast<StepVisual>(m_status[row])) {
+                                    case StepVisual::Running:
+                                        color = wxColour(59, 130, 246);
+                                        break;
+                                    case StepVisual::Passed:
+                                        color = wxColour(34, 197, 94);
+                                        break;
+                                    case StepVisual::Failed:
+                                        color = wxColour(239, 68, 68);
+                                        break;
+                                    case StepVisual::Skipped:
+                                        color = wxColour(180, 83, 9);
+                                        break;
+                                    default:
+                                        color = wxColour(148, 163, 184);
+                                        break;
+                                }
+                            }
+                            cd->clrText = RGB(color.Red(), color.Green(), color.Blue());
+                            return CDRF_NEWFONT;
+                        }
+                        return CDRF_DODEFAULT;
+                    }
+                    default:
+                        break;
+                }
+            }
+        }
+        return wxListCtrl::MSWWindowProc(msg, wParam, lParam);
+    }
+
+private:
+    std::vector<int> m_status;
+};
+#endif
+
+void SetStepVisual(wxListCtrl* list, long row, StepVisual visual) {
+#ifdef __WXMSW__
+    if (auto* steps = dynamic_cast<StepListCtrl*>(list)) steps->SetRowStatus(row, visual);
+#else
+    (void)list;
+    (void)row;
+    (void)visual;
+#endif
+}
+
+void ResetStepVisuals(wxListCtrl* list, size_t count) {
+#ifdef __WXMSW__
+    if (auto* steps = dynamic_cast<StepListCtrl*>(list)) steps->ResetStatuses(count);
+#else
+    (void)list;
+    (void)count;
+#endif
+}
+
+}  // namespace
 
 namespace {
 
@@ -527,6 +630,7 @@ void SessionPanel::BuildUi() {
 
     auto* logPanel = new wxPanel(m_rightSplitter);
     logPanel->SetBackgroundColour(kBgColor);
+    logPanel->SetMinSize(wxSize(-1, 210));
     auto* logSizer = new wxBoxSizer(wxVERTICAL);
 
     auto* logCard = new ui::CardPanel(logPanel);
@@ -584,8 +688,8 @@ void SessionPanel::BuildUi() {
     logSizer->Add(logCard, 1, wxEXPAND | wxALL, 6);
     logPanel->SetSizer(logSizer);
 
-    m_rightSplitter->SplitHorizontally(m_modeNotebook, logPanel, 320);
-    m_rightSplitter->SetMinimumPaneSize(150);
+    m_rightSplitter->SplitHorizontally(m_modeNotebook, logPanel, 300);
+    m_rightSplitter->SetMinimumPaneSize(200);
 
     m_mainSplitter->SplitVertically(varPanel, m_rightSplitter, 360);
     m_mainSplitter->SetMinimumPaneSize(180);
@@ -1635,10 +1739,10 @@ void SessionPanel::RefreshStepList(wxListCtrl* stepList, const nlohmann::json& f
             long item = stepList->InsertItem(idx++, wxString::FromUTF8(s.value("name", "Unnamed")));
             stepList->SetItem(item, 1, _("Pending"));
             stepList->SetItem(item, 2, DescribeStep(s));
-            stepList->SetItemTextColour(item, kSubTextColor);
             stepList->SetItemBackgroundColour(item, kCardBgColor);
         }
     }
+    ResetStepVisuals(stepList, static_cast<size_t>(idx));
     long newItem = stepList->InsertItem(idx, _("+ New Step"));
     stepList->SetItemTextColour(newItem, kThemeColor);
     UpdateStepProgress(stepList, 0, "");
@@ -2123,12 +2227,17 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     failLabel->Hide();
     cardSizer->Add(failLabel, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 12);
 
+#ifdef __WXMSW__
+    auto* stepList = new StepListCtrl(card, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                                      wxLC_REPORT | wxBORDER_NONE);
+#else
     auto* stepList = new wxListCtrl(card, wxID_ANY, wxDefaultPosition, wxDefaultSize,
                                     wxLC_REPORT | wxBORDER_NONE);
+#endif
     stepList->SetBackgroundColour(kCardBgColor);
-    stepList->InsertColumn(0, _("Step Name"), wxLIST_FORMAT_LEFT, 220);
-    stepList->InsertColumn(1, _("Status"), wxLIST_FORMAT_LEFT, 80);
-    stepList->InsertColumn(2, _("Details"), wxLIST_FORMAT_LEFT, 320);
+    stepList->InsertColumn(0, _("Step Name"), wxLIST_FORMAT_LEFT, 210);
+    stepList->InsertColumn(1, _("Status"), wxLIST_FORMAT_LEFT, 70);
+    stepList->InsertColumn(2, _("Details"), wxLIST_FORMAT_LEFT, 300);
     cardSizer->Add(stepList, 1, wxEXPAND | wxALL, 8);
 
     card->SetSizer(cardSizer);
@@ -2628,9 +2737,10 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
 
     for (int i = 0; i < stepList->GetItemCount() - 1; ++i) {
         stepList->SetItem(i, 1, _("Pending"));
-        stepList->SetItemTextColour(i, kSubTextColor);
         stepList->SetItemBackgroundColour(i, kCardBgColor);
     }
+    ResetStepVisuals(
+        stepList, static_cast<size_t>(std::max(0, static_cast<int>(stepList->GetItemCount()) - 1)));
     ClearRunningHighlight();
     HideInlineFailure();
     m_plannedWaitMs = 0;
@@ -2650,27 +2760,27 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
         wxTheApp->CallAfter([this, stepList, index, status]() {
             if (index < 0 || index >= stepList->GetItemCount() - 1) return;
             wxString text;
-            wxColour colour = kSubTextColor;
+            StepVisual visual = StepVisual::Pending;
             switch (status) {
                 case StepStatus::Running:
                     text = _("Running");
-                    colour = kThemeColor;
+                    visual = StepVisual::Running;
                     break;
                 case StepStatus::Passed:
                     text = _("Passed");
-                    colour = wxColour(46, 125, 50);
+                    visual = StepVisual::Passed;
                     break;
                 case StepStatus::Failed:
                     text = _("Failed");
-                    colour = wxColour(198, 40, 40);
+                    visual = StepVisual::Failed;
                     break;
                 case StepStatus::Skipped:
                     text = _("Skipped");
-                    colour = wxColour(180, 83, 9);
+                    visual = StepVisual::Skipped;
                     break;
             }
             stepList->SetItem(index, 1, text);
-            stepList->SetItemTextColour(index, colour);
+            SetStepVisual(stepList, index, visual);
 
             const int total = std::max(0, static_cast<int>(stepList->GetItemCount()) - 1);
             switch (status) {
