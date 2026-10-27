@@ -132,8 +132,7 @@ TestStepEditDialog::TestStepEditDialog(wxWindow* parent, const nlohmann::json& i
     auto* btnSizer = new wxBoxSizer(wxHORIZONTAL);
     auto* btnCancel = new ui::FlatButton(this, _("Cancel"), ui::kBtnGrayBg, ui::kTextColor,
                                          [this]() { EndModal(wxID_CANCEL); });
-    auto* btnOk = new ui::FlatButton(this, _("OK"), ui::kThemeBlue, *wxWHITE,
-                                     [this]() { OnOk(); });
+    auto* btnOk = new ui::FlatButton(this, _("OK"), ui::kThemeBlue, *wxWHITE, [this]() { OnOk(); });
 
     btnSizer->AddStretchSpacer();
     btnSizer->Add(btnCancel, 0, wxRIGHT, 10);
@@ -190,11 +189,11 @@ void TestStepEditDialog::OnOk() {
         if (!value.empty() && it != m_varTypes.end()) {
             std::string error;
             if (!ValueValidator::Validate(it->second, value, error)) {
-                wxMessageBox(wxString::Format(
-                                 _("Invalid value for variable '%s' (type %s):\n\n%s"),
-                                 wxString::FromUTF8(varName), wxString::FromUTF8(it->second),
-                                 wxString::FromUTF8(error)),
-                             _("Invalid Value"), wxOK | wxICON_WARNING, this);
+                wxMessageBox(
+                    wxString::Format(_("Invalid value for variable '%s' (type %s):\n\n%s"),
+                                     wxString::FromUTF8(varName), wxString::FromUTF8(it->second),
+                                     wxString::FromUTF8(error)),
+                    _("Invalid Value"), wxOK | wxICON_WARNING, this);
                 m_valueCtrl->SetFocus();
                 return;
             }

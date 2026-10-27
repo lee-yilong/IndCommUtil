@@ -4,8 +4,8 @@
 #include <wx/spinctrl.h>
 #include <wx/wx.h>
 
-#include <nlohmann/json.hpp>
 #include <map>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
 

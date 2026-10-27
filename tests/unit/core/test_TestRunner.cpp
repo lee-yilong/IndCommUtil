@@ -1,12 +1,12 @@
-#include "core/ITestStep.h"
-#include "core/TestRunner.h"
-#include "doctest.h"
-
 #include <atomic>
 #include <chrono>
 #include <mutex>
 #include <string>
 #include <vector>
+
+#include "core/ITestStep.h"
+#include "core/TestRunner.h"
+#include "doctest.h"
 
 using namespace icu;
 

@@ -72,8 +72,8 @@ struct TabContext {
 // ================= 自定义标签栏（替代 wxAuiNotebook） =================
 class TabItem : public wxPanel {
 public:
-    TabItem(wxWindow* parent, const wxString& title, bool active,
-            std::function<void()> onSelect, std::function<void()> onClose);
+    TabItem(wxWindow* parent, const wxString& title, bool active, std::function<void()> onSelect,
+            std::function<void()> onClose);
 
     void SetActive(bool active);
     void SetTitle(const wxString& title);

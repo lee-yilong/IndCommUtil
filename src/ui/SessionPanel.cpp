@@ -266,13 +266,11 @@ void SessionPanel::BuildUi() {
         m_activeContext = ActiveContext::Variables;
         DoEditVariable();
     });
-    m_varList->Bind(wxEVT_CONTEXT_MENU, [this](wxContextMenuEvent& evt) {
-        ShowVarContextMenu(evt.GetPosition());
-    });
+    m_varList->Bind(wxEVT_CONTEXT_MENU,
+                    [this](wxContextMenuEvent& evt) { ShowVarContextMenu(evt.GetPosition()); });
 
     m_varList->Bind(wxEVT_LIST_ITEM_SELECTED, &SessionPanel::OnVarSelected, this);
-    m_varList->Bind(wxEVT_LIST_ITEM_DESELECTED,
-                    [this](wxListEvent&) { UpdateToolbarState(); });
+    m_varList->Bind(wxEVT_LIST_ITEM_DESELECTED, [this](wxListEvent&) { UpdateToolbarState(); });
     m_varList->Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& evt) {
         if (evt.ControlDown()) {
             if (evt.GetKeyCode() == 'N')
@@ -449,8 +447,8 @@ void SessionPanel::UpdateToolbarState() {
     const bool running = (m_testRunner != nullptr);
     const bool hasSelection = HasSelection();
     const SessionState state = m_session ? m_session->State() : SessionState::Idle;
-    const bool canConfigure = hasSession && (state == SessionState::Idle ||
-                                             state == SessionState::Disconnected);
+    const bool canConfigure =
+        hasSession && (state == SessionState::Idle || state == SessionState::Disconnected);
 
     // 连接 / 断开
     wxString actionIcon = "open";
@@ -458,7 +456,7 @@ void SessionPanel::UpdateToolbarState() {
     if (hasSession && state == SessionState::Connected) {
         actionIcon = "disconnect";
         actionTip = (m_streamSession && m_streamSession->IsServerMode()) ? _("Stop Listening")
-                                                                        : _("Disconnect");
+                                                                         : _("Disconnect");
     } else if (hasSession &&
                (state == SessionState::Connecting || state == SessionState::Reconnecting)) {
         actionIcon = "reconnecting";
@@ -489,7 +487,6 @@ void SessionPanel::UpdateToolbarState() {
     SetToolBtn(idTbUp, "up", hasSession && isStepCtx && hasSelection, _("Move Up"));
     SetToolBtn(idTbDown, "down", hasSession && isStepCtx && hasSelection, _("Move Down"));
 }
-
 
 void SessionPanel::BuildCommonUi(wxBoxSizer* mainSizer) {
     auto* topPanel = new wxPanel(this);
@@ -727,9 +724,9 @@ void SessionPanel::BuildVarOpUi(const CommVariable& var) {
         m_varOpControls[fd.key] = ctrl;
     }
 
-    auto* lblVal = new wxStaticText(
-        m_varOpSizer->GetContainingWindow(), wxID_ANY,
-        wxString::Format(_("Value (%s):"), wxString::FromUTF8(var.type)));
+    auto* lblVal =
+        new wxStaticText(m_varOpSizer->GetContainingWindow(), wxID_ANY,
+                         wxString::Format(_("Value (%s):"), wxString::FromUTF8(var.type)));
     lblVal->SetForegroundColour(kTextColor);
     grid->Add(lblVal, 0, wxALIGN_CENTER_VERTICAL);
     auto* valueCtrl = new wxTextCtrl(m_varOpSizer->GetContainingWindow(), wxID_ANY,
@@ -1018,8 +1015,7 @@ void SessionPanel::OnExecuteWrite(wxCommandEvent&) {
     if (!ok) {
         ValidateValueInput();
         wxMessageBox(wxString::Format(_("Write failed: invalid value for type %s.\n\n%s"),
-                                      wxString::FromUTF8(varCopy.type),
-                                      wxString::FromUTF8(error)),
+                                      wxString::FromUTF8(varCopy.type), wxString::FromUTF8(error)),
                      _("Invalid Value"), wxOK | wxICON_WARNING, this);
         return;
     }
@@ -1103,8 +1099,7 @@ bool SessionPanel::ValidateSelectedValue(const wxString& action) {
     if (!ok) {
         ValidateValueInput();
         wxMessageBox(wxString::Format(_("%s failed: invalid value for type %s.\n\n%s"), action,
-                                      wxString::FromUTF8(var.type),
-                                      wxString::FromUTF8(error)),
+                                      wxString::FromUTF8(var.type), wxString::FromUTF8(error)),
                      _("Invalid Value"), wxOK | wxICON_WARNING, this);
         return false;
     }
@@ -1148,10 +1143,10 @@ void SessionPanel::OnExecuteSend(wxCommandEvent&) {
     std::vector<uint8_t> bytes;
     std::string encodeError;
     if (!ValueValidator::Encode(var.type, payload, bytes, encodeError)) {
-        wxMessageBox(wxString::Format(_("Send failed: invalid value for type %s.\n\n%s"),
-                                      wxString::FromUTF8(var.type),
-                                      wxString::FromUTF8(encodeError)),
-                     _("Invalid Value"), wxOK | wxICON_WARNING, this);
+        wxMessageBox(
+            wxString::Format(_("Send failed: invalid value for type %s.\n\n%s"),
+                             wxString::FromUTF8(var.type), wxString::FromUTF8(encodeError)),
+            _("Invalid Value"), wxOK | wxICON_WARNING, this);
         return;
     }
 
@@ -1579,8 +1574,10 @@ StepFailureAction SessionPanel::AskStepFailure(int stepIndex, const std::string&
             wxMessageBox(text, _("Step Failed"), wxYES_NO | wxCANCEL | wxICON_WARNING, this);
 
         StepFailureAction action = StepFailureAction::Stop;
-        if (ret == wxYES) action = StepFailureAction::Retry;
-        else if (ret == wxNO) action = StepFailureAction::Skip;
+        if (ret == wxYES)
+            action = StepFailureAction::Retry;
+        else if (ret == wxNO)
+            action = StepFailureAction::Skip;
 
         {
             std::lock_guard<std::mutex> lock(state->mutex);
@@ -1603,9 +1600,8 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
     auto* card = new ui::CardPanel(parent);
     auto* cardSizer = new wxBoxSizer(wxVERTICAL);
 
-    auto* header = new wxStaticText(card, wxID_ANY,
-                                    isAutoMode ? _("Auto Mode Test Flow")
-                                               : _("Interactive Mode Test Flow"));
+    auto* header = new wxStaticText(
+        card, wxID_ANY, isAutoMode ? _("Auto Mode Test Flow") : _("Interactive Mode Test Flow"));
     wxFont hf = header->GetFont();
     hf.SetPointSize(10);
     hf.MakeBold();
@@ -1703,8 +1699,8 @@ void SessionPanel::BuildTestFlowUi(wxPanel* parent, bool isAutoMode) {
 void SessionPanel::DoAddStep() {
     if (!m_sessionConfig || !m_modeNotebook) return;
     const bool isAutoMode = (m_modeNotebook->GetSelection() == 2);
-    auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
-                            : m_sessionConfig->interactiveMode.testFlow;
+    auto& flow =
+        isAutoMode ? m_sessionConfig->autoMode.testFlow : m_sessionConfig->interactiveMode.testFlow;
     if (!flow.is_array()) flow = nlohmann::json::array();
     wxListCtrl* stepList = isAutoMode ? m_autoStepList : m_interactiveStepList;
     if (!stepList) return;
@@ -1750,8 +1746,8 @@ void SessionPanel::DoAddStep() {
 void SessionPanel::DoCopyStep() {
     if (!m_sessionConfig || !m_modeNotebook) return;
     const bool isAutoMode = (m_modeNotebook->GetSelection() == 2);
-    auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
-                            : m_sessionConfig->interactiveMode.testFlow;
+    auto& flow =
+        isAutoMode ? m_sessionConfig->autoMode.testFlow : m_sessionConfig->interactiveMode.testFlow;
     wxListCtrl* stepList = isAutoMode ? m_autoStepList : m_interactiveStepList;
     if (!stepList || !flow.is_array()) return;
 
@@ -1771,8 +1767,8 @@ void SessionPanel::DoCopyStep() {
 void SessionPanel::DoEditStep() {
     if (!m_sessionConfig || !m_modeNotebook) return;
     const bool isAutoMode = (m_modeNotebook->GetSelection() == 2);
-    auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
-                            : m_sessionConfig->interactiveMode.testFlow;
+    auto& flow =
+        isAutoMode ? m_sessionConfig->autoMode.testFlow : m_sessionConfig->interactiveMode.testFlow;
     wxListCtrl* stepList = isAutoMode ? m_autoStepList : m_interactiveStepList;
     if (!stepList || !flow.is_array()) return;
 
@@ -1799,8 +1795,8 @@ void SessionPanel::DoEditStep() {
 void SessionPanel::DoDeleteStep() {
     if (!m_sessionConfig || !m_modeNotebook) return;
     const bool isAutoMode = (m_modeNotebook->GetSelection() == 2);
-    auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
-                            : m_sessionConfig->interactiveMode.testFlow;
+    auto& flow =
+        isAutoMode ? m_sessionConfig->autoMode.testFlow : m_sessionConfig->interactiveMode.testFlow;
     wxListCtrl* stepList = isAutoMode ? m_autoStepList : m_interactiveStepList;
     if (!stepList || !flow.is_array()) return;
 
@@ -1820,8 +1816,8 @@ void SessionPanel::DoDeleteStep() {
 void SessionPanel::DoBatchStep() {
     if (!m_sessionConfig || !m_modeNotebook) return;
     const bool isAutoMode = (m_modeNotebook->GetSelection() == 2);
-    auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
-                            : m_sessionConfig->interactiveMode.testFlow;
+    auto& flow =
+        isAutoMode ? m_sessionConfig->autoMode.testFlow : m_sessionConfig->interactiveMode.testFlow;
     wxListCtrl* stepList = isAutoMode ? m_autoStepList : m_interactiveStepList;
     if (!stepList || !flow.is_array()) return;
 
@@ -1838,22 +1834,19 @@ void SessionPanel::DoBatchStep() {
     grid->AddGrowableCol(1, 1);
 
     grid->Add(new wxStaticText(&dlg, wxID_ANY, _("Repeat Count:")), 0, wxALIGN_CENTER_VERTICAL);
-    wxSpinCtrl* countCtrl =
-        new wxSpinCtrl(&dlg, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1,
-                       10000, 10);
+    wxSpinCtrl* countCtrl = new wxSpinCtrl(&dlg, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
+                                           wxSP_ARROW_KEYS, 1, 10000, 10);
     grid->Add(countCtrl, 1, wxEXPAND);
 
     grid->Add(new wxStaticText(&dlg, wxID_ANY, _("Interval (ms):")), 0, wxALIGN_CENTER_VERTICAL);
-    wxSpinCtrl* intervalCtrl =
-        new wxSpinCtrl(&dlg, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0,
-                       600000, 1000);
+    wxSpinCtrl* intervalCtrl = new wxSpinCtrl(&dlg, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
+                                              wxSP_ARROW_KEYS, 0, 600000, 1000);
     grid->Add(intervalCtrl, 1, wxEXPAND);
 
     grid->Add(new wxStaticText(&dlg, wxID_ANY, _("Auto Increment/Decrement:")), 0,
               wxALIGN_CENTER_VERTICAL);
-    wxSpinCtrl* incCtrl =
-        new wxSpinCtrl(&dlg, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS,
-                       -1000000, 1000000, 1);
+    wxSpinCtrl* incCtrl = new wxSpinCtrl(&dlg, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
+                                         wxSP_ARROW_KEYS, -1000000, 1000000, 1);
     grid->Add(incCtrl, 1, wxEXPAND);
 
     sizer->Add(grid, 1, wxEXPAND | wxALL, 15);
@@ -1891,8 +1884,8 @@ void SessionPanel::DoBatchStep() {
 void SessionPanel::DoUpStep() {
     if (!m_sessionConfig || !m_modeNotebook) return;
     const bool isAutoMode = (m_modeNotebook->GetSelection() == 2);
-    auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
-                            : m_sessionConfig->interactiveMode.testFlow;
+    auto& flow =
+        isAutoMode ? m_sessionConfig->autoMode.testFlow : m_sessionConfig->interactiveMode.testFlow;
     wxListCtrl* stepList = isAutoMode ? m_autoStepList : m_interactiveStepList;
     if (!stepList || !flow.is_array()) return;
 
@@ -1910,8 +1903,8 @@ void SessionPanel::DoUpStep() {
 void SessionPanel::DoDownStep() {
     if (!m_sessionConfig || !m_modeNotebook) return;
     const bool isAutoMode = (m_modeNotebook->GetSelection() == 2);
-    auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
-                            : m_sessionConfig->interactiveMode.testFlow;
+    auto& flow =
+        isAutoMode ? m_sessionConfig->autoMode.testFlow : m_sessionConfig->interactiveMode.testFlow;
     wxListCtrl* stepList = isAutoMode ? m_autoStepList : m_interactiveStepList;
     if (!stepList || !flow.is_array()) return;
 
@@ -2032,8 +2025,8 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
 
     if (!m_sessionConfig || !m_session || !m_modeNotebook) return;
     const bool isAutoMode = (m_modeNotebook->GetSelection() == 2);
-    auto& flow = isAutoMode ? m_sessionConfig->autoMode.testFlow
-                            : m_sessionConfig->interactiveMode.testFlow;
+    auto& flow =
+        isAutoMode ? m_sessionConfig->autoMode.testFlow : m_sessionConfig->interactiveMode.testFlow;
     wxListCtrl* stepList = isAutoMode ? m_autoStepList : m_interactiveStepList;
     if (!stepList || !flow.is_array() || flow.empty()) return;
 
@@ -2049,10 +2042,10 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
         if (step)
             steps.push_back(std::move(step));
         else {
-            wxMessageBox(wxString::Format(_("Protocol '%s' does not support action '%s'."),
-                                          wxString::FromUTF8(m_protocol->Id()),
-                                          wxString::FromUTF8(type)),
-                         _("Unsupported Action"), wxOK | wxICON_ERROR);
+            wxMessageBox(
+                wxString::Format(_("Protocol '%s' does not support action '%s'."),
+                                 wxString::FromUTF8(m_protocol->Id()), wxString::FromUTF8(type)),
+                _("Unsupported Action"), wxOK | wxICON_ERROR);
             return;
         }
     }
@@ -2066,11 +2059,11 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
         stepList->SetItemTextColour(i, *wxBLACK);
     }
 
-    m_testRunner = new TestRunner(m_protocol, m_session, std::move(steps), m_sessionConfig->variables);
+    m_testRunner =
+        new TestRunner(m_protocol, m_session, std::move(steps), m_sessionConfig->variables);
     m_testRunner->SetRunMode(isAutoMode ? TestRunMode::Auto : TestRunMode::SingleStep);
 
-    m_testRunner->OnStepUpdated([this, stepList](int index, StepStatus status,
-                                                 const std::string&) {
+    m_testRunner->OnStepUpdated([this, stepList](int index, StepStatus status, const std::string&) {
         wxTheApp->CallAfter([this, stepList, index, status]() {
             if (index < 0 || index >= stepList->GetItemCount() - 1) return;
             wxString text;
@@ -2100,9 +2093,8 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
         });
     });
 
-    m_testRunner->OnStepFailed([this](int index, const std::string& msg) {
-        return AskStepFailure(index, msg);
-    });
+    m_testRunner->OnStepFailed(
+        [this](int index, const std::string& msg) { return AskStepFailure(index, msg); });
 
     m_testRunner->OnStepLog([this](const std::string& msg) {
         CallAfter([this, msg]() {
@@ -2158,9 +2150,15 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
     m_testRunner->Start();
 }
 
-void SessionPanel::OnTbBatch(wxCommandEvent&) { DoBatchStep(); }
-void SessionPanel::OnTbUp(wxCommandEvent&) { DoUpStep(); }
-void SessionPanel::OnTbDown(wxCommandEvent&) { DoDownStep(); }
+void SessionPanel::OnTbBatch(wxCommandEvent&) {
+    DoBatchStep();
+}
+void SessionPanel::OnTbUp(wxCommandEvent&) {
+    DoUpStep();
+}
+void SessionPanel::OnTbDown(wxCommandEvent&) {
+    DoDownStep();
+}
 
 void SessionPanel::OnClear(wxCommandEvent&) {
     if (m_commonLogCtrl) m_commonLogCtrl->Clear();
@@ -2411,4 +2409,3 @@ bool SessionPanel::HasSelection() const {
 }
 
 }  // namespace icu
-

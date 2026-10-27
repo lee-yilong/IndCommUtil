@@ -1,5 +1,8 @@
 #pragma once
 
+#include <wx/string.h>
+#include <wx/translation.h>
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -8,9 +11,6 @@
 #include <limits>
 #include <string>
 #include <vector>
-
-#include <wx/string.h>
-#include <wx/translation.h>
 
 namespace icu {
 
@@ -24,9 +24,7 @@ public:
                type == "int" || type == "int32" || type == "uint" || type == "uint32";
     }
 
-    static bool IsFloatType(const std::string& type) {
-        return type == "float" || type == "double";
-    }
+    static bool IsFloatType(const std::string& type) { return type == "float" || type == "double"; }
 
     static std::string Trim(const std::string& s) {
         const auto begin = s.find_first_not_of(" \t\r\n");
@@ -205,7 +203,7 @@ private:
 
     static bool ParseInteger(const std::string& text, long long& out, std::string& error) {
         if (text.empty()) {
-        error = Tr(wxTRANSLATE("Value is empty."));
+            error = Tr(wxTRANSLATE("Value is empty."));
             return false;
         }
         size_t pos = 0;
@@ -224,7 +222,7 @@ private:
 
     static bool ParseDouble(const std::string& text, double& out, std::string& error) {
         if (text.empty()) {
-        error = Tr(wxTRANSLATE("Value is empty."));
+            error = Tr(wxTRANSLATE("Value is empty."));
             return false;
         }
         size_t pos = 0;
