@@ -21,6 +21,7 @@ public:
 private:
     std::string m_name;
     std::string m_variableName;
+    std::string m_writeValue;
     bool m_isReadOnly = false;
     int m_waitMs = 0;
 };

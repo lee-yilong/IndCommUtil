@@ -13,8 +13,10 @@ class ISession;
 
 struct TestResult {
     bool success = false;
+    bool isSendAction = false;  // true 表示这是写入/发送步骤
     std::string errorMessage;
-    std::string rawResponse;          // 用于 TCP 正则匹配
+    std::string rawResponse;          // 解析后的响应/写入值，用于断言与日志
+    std::string rawBytesHex;          // 原始字节的十六进制表示（用于变量列表显示）
     std::vector<uint16_t> registers;  // 用于 Modbus 数值比对
 };
 

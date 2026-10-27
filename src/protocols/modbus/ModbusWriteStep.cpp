@@ -81,6 +81,7 @@ TestResult ModbusWriteStep::Execute(ISession* session, std::map<std::string, Com
     }
 
     result.success = true;
+    result.isSendAction = true;
     result.rawResponse = valStr;
     return result;
 }

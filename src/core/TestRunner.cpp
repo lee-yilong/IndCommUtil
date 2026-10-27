@@ -102,10 +102,10 @@ void TestRunner::RunLoop() {
                     }
                 }
 
-                // 4. 输出底层响应报文
+                // 4. 输出底层响应报文 / 写入值
                 if (m_stepLogCb) {
                     if (!result.rawResponse.empty()) {
-                        m_stepLogCb("<<< " + result.rawResponse);
+                        m_stepLogCb((result.isSendAction ? "=> " : "<<< ") + result.rawResponse);
                     } else if (!result.registers.empty()) {
                         std::string regStr = "Registers: ";
                         for (auto r : result.registers) regStr += std::to_string(r) + " ";

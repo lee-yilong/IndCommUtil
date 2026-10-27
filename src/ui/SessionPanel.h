@@ -81,6 +81,7 @@ private:
 
     Database m_db;
     int64_t m_currentRunId = -1;
+    std::string m_historyKey;
     ChartPanel* m_chartPanel = nullptr;
 
     std::set<std::string> m_loggingVars;

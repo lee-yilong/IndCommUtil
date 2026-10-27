@@ -13,6 +13,7 @@ add_library(icu_core_test STATIC
     "${CMAKE_SOURCE_DIR}/src/core/StreamSession.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/SessionManager.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/TestRunner.cpp"
+    "${CMAKE_SOURCE_DIR}/src/core/Database.cpp"
     "${CMAKE_SOURCE_DIR}/src/config/ConnectionProfile.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/tcpip/TcpIpProtocol.cpp"
     "${CMAKE_SOURCE_DIR}/src/protocols/tcpip/TcpTransport.cpp"
@@ -108,7 +109,8 @@ add_custom_command(TARGET icu_tests POST_BUILD
         ${WX_DLLS_TEST}
         $<TARGET_FILE_DIR:icu_tests>
     COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:modbus> $<TARGET_FILE_DIR:icu_tests>
-    COMMENT "Copying wxWidgets and modbus DLLs to test output directory"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sqlite.library> $<TARGET_FILE_DIR:icu_tests>
+    COMMENT "Copying wxWidgets, modbus and sqlite DLLs to test output directory"
 )
 add_test(NAME icu_tests COMMAND icu_tests)
 

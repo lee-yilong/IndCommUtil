@@ -1,5 +1,7 @@
 #include "ModbusReadStep.h"
 
+#include <cmath>
+
 #include "log/Log.h"
 
 namespace icu {
@@ -12,16 +14,16 @@ ModbusReadStep::ModbusReadStep(const nlohmann::json& params) {
     m_hasAssert = false;
     if (params.contains("assert") && params["assert"].is_object()) {
         const auto& a = params["assert"];
+        m_assertType = a.value("type", "==");
         if (a.contains("expected")) {
-            if (a["expected"].is_number())
-                m_expectedValue = a["expected"].get<int>();
-            else if (a["expected"].is_string()) {
-                try {
-                    m_expectedValue = std::stoi(a["expected"].get<std::string>());
-                } catch (...) {
-                }
+            try {
+                if (a["expected"].is_number())
+                    m_expectedValue = a["expected"].get<double>();
+                else if (a["expected"].is_string())
+                    m_expectedValue = std::stod(a["expected"].get<std::string>());
+                m_hasAssert = true;
+            } catch (...) {
             }
-            m_hasAssert = true;
         }
     }
 }
@@ -74,10 +76,21 @@ bool ModbusReadStep::Assert(const TestResult& result, std::string& outErrorMsg) 
         return false;
     }
 
-    int actualValue = result.registers[0];
-    if (actualValue != m_expectedValue) {
-        outErrorMsg =
-            "Expected " + std::to_string(m_expectedValue) + ", got " + std::to_string(actualValue);
+    const double actualValue = static_cast<double>(result.registers[0]);
+    const double diff = actualValue - m_expectedValue;
+    bool ok = false;
+    if (m_assertType == "!=")
+        ok = std::fabs(diff) >= 1e-9;
+    else if (m_assertType == ">")
+        ok = diff > 0;
+    else if (m_assertType == "<")
+        ok = diff < 0;
+    else
+        ok = std::fabs(diff) < 1e-9;
+
+    if (!ok) {
+        outErrorMsg = "Expected " + m_assertType + " " + std::to_string(m_expectedValue) +
+                      ", got " + std::to_string(actualValue);
         return false;
     }
     return true;

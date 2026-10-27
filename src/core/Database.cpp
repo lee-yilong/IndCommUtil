@@ -35,6 +35,9 @@ bool Database::Open(const std::string& dbPath) {
     sqlite3_exec(m_db, pragmas, nullptr, nullptr, &errMsg);
     if (errMsg) sqlite3_free(errMsg);
 
+    // 多会话/多连接同时写历史库时避免立刻返回 SQLITE_BUSY
+    sqlite3_busy_timeout(m_db, 5000);
+
     return CreateTables();
 }
 

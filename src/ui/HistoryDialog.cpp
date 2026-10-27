@@ -134,6 +134,12 @@ void HistoryDialog::OnQuery(wxCommandEvent&) {
     double startSec = static_cast<double>(startMs) / 1000.0;
     double endSec = static_cast<double>(endMs) / 1000.0;
 
+    if (endSec <= startSec) {
+        wxMessageBox(_("End time must be later than start time."), _("Notice"),
+                     wxOK | wxICON_INFORMATION, this);
+        return;
+    }
+
     auto records = m_db->QueryHistory(m_projectPath, startSec, endSec);
 
     m_chart->Clear();

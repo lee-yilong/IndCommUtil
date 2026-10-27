@@ -185,8 +185,15 @@ void TestStepEditDialog::OnOk() {
         if (m_varCtrl->GetSelection() != wxNOT_FOUND)
             varName = std::string(m_varCtrl->GetStringSelection().utf8_str());
 
+        if (value.empty()) {
+            wxMessageBox(_("Please enter a value to write."), _("Invalid Value"),
+                         wxOK | wxICON_WARNING, this);
+            m_valueCtrl->SetFocus();
+            return;
+        }
+
         auto it = m_varTypes.find(varName);
-        if (!value.empty() && it != m_varTypes.end()) {
+        if (it != m_varTypes.end()) {
             std::string error;
             if (!ValueValidator::Validate(it->second, value, error)) {
                 wxMessageBox(

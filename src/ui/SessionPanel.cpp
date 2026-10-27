@@ -112,7 +112,8 @@ SessionPanel::SessionPanel(wxWindow* parent, IProtocol* protocol, int modeIndex,
     m_db.Open(std::string(exePath.GetFullPath().utf8_str()));
 
     wxString runPath = m_profilePath.IsEmpty() ? "Untitled" : m_profilePath;
-    m_currentRunId = m_db.CreateTestRun(std::string(runPath.utf8_str()));
+    m_historyKey = std::string(runPath.utf8_str());
+    m_currentRunId = m_db.CreateTestRun(m_historyKey);
 
     BuildUi();
 
@@ -163,6 +164,8 @@ void SessionPanel::RecordData(const std::string& varName, double value) {
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
     double timeSec = ms / 1000.0;
 
+    // 构造会话时数据库可能被其它连接短暂占用；真正写入时再补一次
+    if (m_currentRunId == -1) m_currentRunId = m_db.CreateTestRun(m_historyKey);
     if (m_currentRunId != -1) m_db.InsertRunData(m_currentRunId, varName, value, timeSec);
     if (m_chartPanel) m_chartPanel->AddDataPointWithTime(varName, value, timeSec);
 }
@@ -1828,30 +1831,58 @@ void SessionPanel::DoBatchStep() {
     }
     if (sel >= static_cast<long>(flow.size())) return;
 
-    wxDialog dlg(this, wxID_ANY, _("Batch Generate Steps"), wxDefaultPosition, wxSize(300, -1));
-    auto* sizer = new wxBoxSizer(wxVERTICAL);
-    auto* grid = new wxFlexGridSizer(2, 8, 8);
+    wxPoint dialogDragStart;
+    wxPoint dialogWinStart;
+    wxDialog dlg(this, wxID_ANY, _("Batch Generate Steps"), wxDefaultPosition, wxDefaultSize,
+                 wxBORDER_NONE | wxRESIZE_BORDER);
+    dlg.SetBackgroundColour(ui::kBgColor);
+
+    auto* mainSizer = new wxBoxSizer(wxVERTICAL);
+    auto* header = ui::CreateDialogHeader(&dlg, _("Batch Generate Steps"), dialogDragStart,
+                                          dialogWinStart, [&dlg]() { dlg.EndModal(wxID_CANCEL); });
+    mainSizer->Add(header, 0, wxEXPAND | wxTOP | wxBOTTOM, 12);
+
+    auto* card = new ui::CardPanel(&dlg);
+    auto* cardSizer = new wxBoxSizer(wxVERTICAL);
+    auto* grid = new wxFlexGridSizer(2, 10, 12);
     grid->AddGrowableCol(1, 1);
 
-    grid->Add(new wxStaticText(&dlg, wxID_ANY, _("Repeat Count:")), 0, wxALIGN_CENTER_VERTICAL);
-    wxSpinCtrl* countCtrl = new wxSpinCtrl(&dlg, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
-                                           wxSP_ARROW_KEYS, 1, 10000, 10);
-    grid->Add(countCtrl, 1, wxEXPAND);
+    auto addRow = [&](const wxString& label, wxWindow* ctrl) {
+        auto* text = new wxStaticText(card, wxID_ANY, label);
+        text->SetForegroundColour(ui::kTextColor);
+        grid->Add(text, 0, wxALIGN_CENTER_VERTICAL);
+        grid->Add(ctrl, 1, wxEXPAND);
+    };
 
-    grid->Add(new wxStaticText(&dlg, wxID_ANY, _("Interval (ms):")), 0, wxALIGN_CENTER_VERTICAL);
-    wxSpinCtrl* intervalCtrl = new wxSpinCtrl(&dlg, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
-                                              wxSP_ARROW_KEYS, 0, 600000, 1000);
-    grid->Add(intervalCtrl, 1, wxEXPAND);
+    auto* countCtrl = new wxSpinCtrl(card, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
+                                     wxSP_ARROW_KEYS, 1, 10000, 10);
+    addRow(_("Repeat Count:"), countCtrl);
 
-    grid->Add(new wxStaticText(&dlg, wxID_ANY, _("Auto Increment/Decrement:")), 0,
-              wxALIGN_CENTER_VERTICAL);
-    wxSpinCtrl* incCtrl = new wxSpinCtrl(&dlg, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
-                                         wxSP_ARROW_KEYS, -1000000, 1000000, 1);
-    grid->Add(incCtrl, 1, wxEXPAND);
+    auto* intervalCtrl = new wxSpinCtrl(card, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
+                                        wxSP_ARROW_KEYS, 0, 600000, 1000);
+    addRow(_("Interval (ms):"), intervalCtrl);
 
-    sizer->Add(grid, 1, wxEXPAND | wxALL, 15);
-    sizer->Add(dlg.CreateButtonSizer(wxOK | wxCANCEL), 0, wxEXPAND | wxALL, 10);
-    dlg.SetSizerAndFit(sizer);
+    auto* incCtrl = new wxSpinCtrl(card, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
+                                   wxSP_ARROW_KEYS, -1000000, 1000000, 1);
+    addRow(_("Auto Increment/Decrement:"), incCtrl);
+
+    cardSizer->Add(grid, 1, wxEXPAND | wxALL, 16);
+    card->SetSizer(cardSizer);
+    mainSizer->Add(card, 1, wxEXPAND | wxLEFT | wxRIGHT, 16);
+
+    auto* btnSizer = new wxBoxSizer(wxHORIZONTAL);
+    auto* btnCancel = new ui::FlatButton(&dlg, _("Cancel"), ui::kBtnGrayBg, ui::kTextColor,
+                                         [&dlg]() { dlg.EndModal(wxID_CANCEL); });
+    auto* btnOk = new ui::FlatButton(&dlg, _("OK"), ui::kThemeBlue, *wxWHITE,
+                                     [&dlg]() { dlg.EndModal(wxID_OK); });
+    btnSizer->AddStretchSpacer();
+    btnSizer->Add(btnCancel, 0, wxRIGHT, 10);
+    btnSizer->Add(btnOk, 0);
+    mainSizer->Add(btnSizer, 0, wxEXPAND | wxALL, 16);
+
+    dlg.SetSizerAndFit(mainSizer);
+    dlg.SetMinSize(dlg.FromDIP(wxSize(380, 300)));
+    dlg.CentreOnParent();
 
     if (dlg.ShowModal() == wxID_OK) {
         const int repeat = countCtrl->GetValue();
@@ -1985,7 +2016,7 @@ void SessionPanel::OnTbHistory(wxCommandEvent&) {
         return;
     }
 
-    HistoryDialog dlg(this, &m_db, std::string(m_profilePath.utf8_str()), varNames);
+    HistoryDialog dlg(this, &m_db, m_historyKey, varNames);
     dlg.ShowModal();
 }
 
@@ -2090,6 +2121,25 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
             stepList->SetItemTextColour(index, colour);
             stepList->EnsureVisible(index);
             RefreshVariableList();
+            // 同步手动操作区显示的值，避免运行后仍显示旧值
+            if (!m_selectedVarName.empty() && m_sessionConfig &&
+                m_sessionConfig->variables.count(m_selectedVarName)) {
+                if (m_varOpControls.count("__value")) {
+                    if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__value"])) {
+                        if (!txt->HasFocus()) {
+                            txt->ChangeValue(wxString::FromUTF8(
+                                m_sessionConfig->variables[m_selectedVarName].currentValue));
+                            ValidateValueInput();
+                        }
+                    }
+                }
+                if (m_varOpControls.count("__raw_bytes")) {
+                    if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__raw_bytes"])) {
+                        txt->ChangeValue(wxString::FromUTF8(
+                            m_sessionConfig->variables[m_selectedVarName].rawBytes));
+                    }
+                }
+            }
         });
     });
 
@@ -2106,8 +2156,10 @@ void SessionPanel::OnTbRunStop(wxCommandEvent&) {
         });
     });
 
-    m_testRunner->OnDataRecorded(
-        [this](const std::string& varName, double val) { RecordData(varName, val); });
+    m_testRunner->OnDataRecorded([this](const std::string& varName, double val) {
+        // 数据记录回调在测试线程触发，DB/图表只能在 UI 线程访问
+        CallAfter([this, varName, val]() { RecordData(varName, val); });
+    });
 
     m_testRunner->OnFinished([this](bool overallSuccess) {
         CallAfter([this, overallSuccess]() {
@@ -2248,8 +2300,10 @@ void SessionPanel::BindStreamCallbacks() {
                     var.rawBytes = std::string(rawStr.Trim().utf8_str());
                     RefreshVariableList();
                     if (m_varOpControls.count("__value"))
-                        if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__value"]))
+                        if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__value"])) {
                             txt->ChangeValue(wxString::FromUTF8(var.currentValue));
+                            ValidateValueInput();
+                        }
                     if (m_varOpControls.count("__raw_bytes"))
                         if (auto* txt = dynamic_cast<wxTextCtrl*>(m_varOpControls["__raw_bytes"]))
                             txt->ChangeValue(rawStr.Trim());

@@ -26,7 +26,8 @@ private:
     std::string m_variableName;
     int m_waitMs = 0;
 
-    int m_expectedValue = 0;
+    double m_expectedValue = 0.0;
+    std::string m_assertType = "==";
     bool m_hasAssert = false;
 };
 
